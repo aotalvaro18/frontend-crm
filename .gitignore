@@ -1,0 +1,94 @@
+# ===================================================================
+# .gitignore para Eklesa CRM Frontend
+# (React, Vite, TypeScript, Amplify, Playwright)
+# ===================================================================
+
+# -- Dependencias --
+# La carpeta de dependencias nunca debe ser versionada.
+node_modules/
+
+# -- Archivos de Entorno --
+# ¡CRÍTICO PARA LA SEGURIDAD! Nunca subir variables de entorno.
+.env
+.env.*.local
+.env.local
+
+# -- Logs --
+# Archivos de log generados por npm, yarn, etc.
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -- Directorios de Build y Salida --
+# El código compilado no se versiona.
+dist/
+dist-ssr/
+build/
+out/
+.vercel/
+.output/
+
+# -- Archivos Temporales y de Caché --
+# Archivos generados por herramientas de desarrollo.
+.DS_Store
+.cache/
+.npm/
+.eslintcache
+.vite/
+.tmp/
+*.local
+
+# -- Configuración del Editor de Código --
+# Ignora archivos de configuración específicos del usuario.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# -- Testing --
+# Reportes de cobertura, resultados de tests y artefactos de E2E.
+coverage/
+test-results/
+playwright-report/
+.nyc_output
+
+# -- AWS Amplify --
+# Archivos generados por la CLI de Amplify que contienen información específica de tu entorno.
+amplify/\#current-cloud-backend
+amplify/.config/local-env-info.json
+amplify/.config/local-aws-info.json
+amplify/mock-data
+amplify/backend/amplify-meta.json
+amplify/backend/awscloudformation
+build/
+dist/
+aws-exports.js
+awsconfiguration.json
+amplifyconfiguration.json
+amplifyconfiguration.dart
+amplify-build-config.json
+amplify-gradle-config.json
+amplifytools.xcconfig
+
+# Si usas el backend de Amplify, ignora estos también
+amplify/backend/api/**/build
+amplify/backend/function/**/dist
+amplify/backend/function/**/node_modules
+
+# -- Otros --
+# Archivos generados por el sistema operativo
+Thumbs.db
+ehthumbs.db
+
+# Archivos de bundles (si usas vite-bundle-analyzer)
+stats.html

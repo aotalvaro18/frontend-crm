@@ -1,0 +1,90 @@
+ /* src/styles/globals.css */
+/* Base de estilos global para el Eklesa CRM, alineado con el sistema de diseño oscuro */
+
+/* 1. Importaciones base de Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 2. Capa 'base' - Estilos globales y reseteos para el tema oscuro.
+ *    Aquí aplicamos los colores y fuentes de tu 'tailwind.config.js'.
+ */
+@layer base {
+  /*
+   * Definición de variables CSS para el tema.
+   * Esto permite cambiar fácilmente entre temas claro/oscuro en el futuro.
+   */
+  :root {
+    /* Tema Oscuro por defecto */
+    --background: theme(colors.app.dark.900);      /* #0f0f0f */
+    --foreground: theme(colors.app.gray.300);      /* #c5c5c5 */
+    --card: theme(colors.app.dark.800);            /* #1a1a1a */
+    --card-foreground: theme(colors.app.gray.200); /* #e5e5e5 */
+    --primary: theme(colors.app.accent.500);       /* #6366f1 */
+    --primary-foreground: theme(colors.white);
+    --border: theme(colors.app.dark.600);          /* #3a3a3a */
+    --input: theme(colors.app.dark.700);           /* #2a2a2a */
+    --ring: theme(colors.app.accent.500);          /* #6366f1 */
+  }
+
+  /*
+   * (Opcional) Definición para un futuro tema claro.
+   * Para activarlo, solo necesitarías añadir class="light" al <html>.
+  .light {
+    --background: theme(colors.white);
+    --foreground: theme(colors.app.dark.900);
+    --card: theme(colors.white);
+    --card-foreground: theme(colors.app.dark.900);
+    --primary: theme(colors.app.accent.700);
+    --border: theme(colors.gray.200);
+    --input: theme(colors.gray.100);
+  }
+  */
+
+  /*
+   * Estilos aplicados al elemento raíz y al cuerpo.
+   */
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    @apply min-h-screen font-sans antialiased;
+  }
+  
+  /*
+   * Un pequeño reseteo para que todos los elementos usen el color de borde definido.
+   * Esto es opcional, pero ayuda a la consistencia.
+   */
+  * {
+    @apply border-border;
+  }
+}
+
+/*
+ * 3. Capa 'components'
+ *    VACIADA INTENCIONALMENTE.
+ *    La lógica de '.btn', '.card', '.input' se moverá a los componentes de React
+ *    correspondientes (ej. Button.tsx, Card.tsx) usando `class-variance-authority`
+ *    y tu utilidad `cn.ts`. Esto es una práctica más moderna y encapsulada.
+ */
+@layer components {
+  /* Dejar vacío por ahora. Añadir solo si hay patrones muy repetitivos. */
+}
+
+/*
+ * 4. Capa 'utilities'
+ *    Aquí puedes añadir clases de utilidad personalizadas si es necesario.
+ */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Ejemplo de una utilidad para un degradado de texto que podrías usar */
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-app-accent-500 to-app-accent-700 bg-clip-text text-transparent;
+  }
+}
