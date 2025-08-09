@@ -14,7 +14,7 @@ import {
   useContactOperations,
   usePortalOperations,
   useContactErrorHandler
-} from '@/stores/contactStore';
+} from '@/hooks/useContacts';
 
 // ============================================
 // COMPONENTES ESPECIALIZADOS
@@ -65,7 +65,7 @@ const ContactDetailPage: React.FC = () => {
   } = usePortalOperations();
 
   // Error handling
-  const { lastError: error, clearError } = useContactErrorHandler();
+  const { error, clearError } = useContactErrorHandler();
 
   // ============================================
   // EFECTOS

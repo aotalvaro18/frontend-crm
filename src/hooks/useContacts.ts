@@ -817,14 +817,7 @@ export const useImportExport = () => {
   }));
 };
 
-/**
- * Hook para manejo de errores - Para tu ContactListPage
- */
-export const useContactErrorHandler = () => {
-  return useContactStore(state => ({
-    clearError: state.clearError,
-  }));
-};
+
 
 /**
  * Hook para búsqueda y filtros - Para tu ContactListPage
@@ -856,6 +849,59 @@ export const useOperationStates = () => {
 export const useConnectionStatus = () => {
   return useContactStore(state => ({
     isOnline: !state.isOffline,
+  }));
+};
+
+/**
+ * Hook para contacto seleccionado y operaciones individuales
+ */
+export const useSelectedContact = () => {
+  return useContactStore(state => ({
+    selectedContact: state.selectedContact,
+    getContactById: state.getContactById,
+    setSelectedContact: state.setSelectedContact,
+    // Mobile: Include update state for selected contact
+    isUpdating: state.selectedContact ? state.updating.has(state.selectedContact.id) : false,
+    isDeleting: state.selectedContact ? state.deleting.has(state.selectedContact.id) : false,
+  }));
+};
+
+/**
+ * Hook para operaciones CRUD individuales
+ */
+export const useContactOperations = () => {
+  return useContactStore(state => ({
+    createContact: state.createContact,
+    updateContact: state.updateContact,
+    deleteContact: state.deleteContact,
+    loading: state.loading,
+    creating: state.creating,
+    error: state.error,
+    clearError: state.clearError,
+  }));
+};
+
+/**
+ * Hook para operaciones de portal
+ */
+export const usePortalOperations = () => {
+  return useContactStore(state => ({
+    generatePortalInvitation: state.generatePortalInvitation,
+    resendPortalInvitation: state.resendPortalInvitation,
+    revokePortalAccess: state.revokePortalAccess,
+    loading: state.loading,
+    error: state.error,
+  }));
+};
+
+/**
+ * Hook para manejo de errores de forma consistente
+ */
+export const useContactErrorHandler = () => {
+  return useContactStore(state => ({
+    error: state.error,
+    lastError: state.lastError,
+    clearError: state.clearError,
   }));
 };
 

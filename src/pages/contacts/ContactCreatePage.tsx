@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 // HOOKS DESACOPLADOS
 // ============================================
 
-import { useContactOperations } from '@/stores/contactStore';
+import { useContactOperations } from '@/hooks/useContacts';
 
 // ============================================
 // COMPONENTES ESPECIALIZADOS

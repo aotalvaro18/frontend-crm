@@ -9,7 +9,7 @@ import { RefreshCw } from 'lucide-react';
 // HOOKS DESACOPLADOS (siguiendo tu arquitectura)
 // ============================================
 
-// Store hooks
+// hooks
 import { 
   useContacts,
   useBulkOperations,
@@ -19,7 +19,7 @@ import {
   useContactSearch,
   useOperationStates,
   useConnectionStatus,
-} from '@/stores/contactStore';
+} from '@/hooks/useContacts';
 
 // Custom hooks
 import { useTablePagination } from '@/hooks/usePagination';
