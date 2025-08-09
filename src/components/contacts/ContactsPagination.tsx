@@ -34,21 +34,6 @@ interface ContactsPaginationProps {
 // PAGINATION INFO COMPONENT
 // ============================================
 
-const PaginationInfo: React.FC<{
-  startIndex: number;
-  endIndex: number;
-  totalContacts: number;
-}> = ({ startIndex, endIndex, totalContacts }) => (
-  <div className="flex-1 flex justify-between text-sm text-app-gray-400 sm:hidden">
-    <span>
-      Página {Math.floor(startIndex / (endIndex - startIndex + 1)) + 1}
-    </span>
-    <span>
-      {totalContacts} total
-    </span>
-  </div>
-);
-
 // ============================================
 // DESKTOP PAGINATION COMPONENT
 // ============================================
@@ -141,7 +126,7 @@ const DesktopPagination: React.FC<{
 const MobilePagination: React.FC<{
   pagination: PaginationData;
   totalContacts: number;
-}> = ({ pagination, totalContacts }) => (
+}> = ({ pagination }) => (
   <div className="flex-1 flex justify-between sm:hidden">
     <Button
       variant="outline"

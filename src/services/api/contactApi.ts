@@ -12,47 +12,22 @@ import type {
   ContactSearchCriteria,
 } from '@/types/contact.types';
 
+import type { ContactStats } from '@/types/contact.types';
+import type { 
+  BulkOperationResult 
+} from '@/types/api.types';
+
+import type { PageRequest, PageResponse } from '@/types/common.types';
+
 // ============================================
 // TIPOS LOCALES (Ya que no existen en tu proyecto)
 // ============================================
 
 // Types básicos que necesitamos pero no están definidos
-interface PageRequest {
-  page: number;
-  size: number;
-  sort: string[];
-}
-
-interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-  numberOfElements: number;
-  first: boolean;
-  last: boolean;
-  empty: boolean;
-}
-
-// Tipos simplificados para stats y utilidades
-interface ContactStats {
-  total: number;
-  active: number;
-  inactive: number;
-  withPortal: number;
-  adoptionRate: number;
-}
 
 interface EmailAvailability {
   available: boolean;
   existingContactId?: number;
-}
-
-interface BulkOperationResult {
-  updated: number;
-  failed: number;
-  errors: string[];
 }
 
 // ============================================

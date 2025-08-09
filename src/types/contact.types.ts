@@ -5,19 +5,13 @@
 import {
   BaseEntity,
   BaseSearchCriteria,
-  PageRequest,
-  PageResponse,
   ID,
   CognitoSub,
   Timestamp,
-  CreateEntityRequest,
-  UpdateEntityRequest,
   CustomFields,
   Tag,
   Address,
-  Optional,
-  Nullable,
-} from './common.types';
+  } from './common.types';
 
 import {
   EntityResponse,
@@ -155,6 +149,24 @@ export interface Contact extends BaseEntity {
   profilePicture?: string;        // URL o S3 key
   attachments?: ContactAttachment[];
 }
+
+// Stats interface unificada - combina todos los campos necesarios
+export interface ContactStats {
+  // Campos básicos (del backend)
+  total: number;
+  active: number;
+  inactive: number;
+  withPortal: number;
+  adoptionRate: number;
+  
+  // Campos adicionales para UI (opcionales para retrocompatibilidad)
+  totalContacts?: number;
+  contactsWithPortal?: number;
+  contactsWithoutPortal?: number;
+  averageEngagementScore?: number;
+  newContactsThisMonth?: number;
+}
+
 
 // ============================================
 // ALIAS TYPES (Para compatibilidad con componentes)

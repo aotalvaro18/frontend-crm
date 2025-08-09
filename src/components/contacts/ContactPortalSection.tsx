@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { 
   Globe, Send, RotateCcw, UserX, CheckCircle, Clock, 
   AlertCircle, TrendingUp, Calendar, ExternalLink,
-  Shield, Settings
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';

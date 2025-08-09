@@ -51,6 +51,8 @@ interface NetworkInfo {
   isOnline: boolean;
   connectionType?: string;
   effectiveType?: string;
+  isSlowConnection?: boolean;
+  isFastConnection?: boolean;
 }
 
 // ============================================

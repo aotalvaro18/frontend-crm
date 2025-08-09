@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Activity, Mail, Phone, Calendar, FileText, User, 
-  MessageSquare, Globe, Plus, RefreshCw, ChevronDown, ChevronUp
+  Globe, Plus, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -66,7 +66,6 @@ interface ActivityItemComponentProps {
 
 const ActivityItemComponent: React.FC<ActivityItemComponentProps> = ({ 
   activity, 
-  isFirst, 
   isLast 
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -169,61 +168,11 @@ const EmptyActivities: React.FC = () => (
 );
 
 // ============================================
-// MOCK DATA (En producción vendrá del API)
-// ============================================
-
-const getMockActivities = (contactId: number): ActivityItem[] => [
-  {
-    id: 1,
-    type: 'CREATED',
-    title: 'Contacto creado',
-    description: 'El contacto fue añadido al sistema',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'Sistema',
-    metadata: { source: 'MANUAL', ip: '192.168.1.1' }
-  },
-  {
-    id: 2,
-    type: 'EMAIL',
-    title: 'Email de bienvenida enviado',
-    description: 'Se envió un email de bienvenida al contacto con información sobre nuestros servicios.',
-    createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'admin@eklesa.com',
-    metadata: { subject: 'Bienvenido a Eklesa', template: 'welcome-email' }
-  },
-  {
-    id: 3,
-    type: 'PORTAL_ACCESS',
-    title: 'Invitación al portal enviada',
-    description: 'Se generó y envió una invitación para acceder al portal digital.',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'admin@eklesa.com'
-  },
-  {
-    id: 4,
-    type: 'CALL',
-    title: 'Llamada telefónica',
-    description: 'Llamada de seguimiento. El contacto mostró interés en nuestros servicios.',
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'john.doe@eklesa.com',
-    metadata: { duration: '15 minutos', outcome: 'Positivo' }
-  },
-  {
-    id: 5,
-    type: 'NOTE',
-    title: 'Nota añadida',
-    description: 'El contacto está interesado en recibir más información sobre nuestros paquetes premium.',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: 'jane.smith@eklesa.com'
-  }
-];
-
-// ============================================
 // MAIN COMPONENT
 // ============================================
 
 const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ contactId }) => {
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
@@ -233,7 +182,6 @@ const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ conta
       setLoading(true);
       // Simular llamada al API
       await new Promise(resolve => setTimeout(resolve, 500));
-      setActivities(getMockActivities(contactId));
       setLoading(false);
     };
 
@@ -244,7 +192,6 @@ const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ conta
     setLoading(true);
     // Simular refresh
     await new Promise(resolve => setTimeout(resolve, 300));
-    setActivities(getMockActivities(contactId));
     setLoading(false);
   };
 

@@ -255,34 +255,7 @@ const EmptyNotes: React.FC<{ onAddNote: () => void }> = ({ onAddNote }) => (
   </div>
 );
 
-// ============================================
-// MOCK DATA (En producción vendrá del API)
-// ============================================
 
-const getMockNotes = (contactId: number): Note[] => [
-  {
-    id: 1,
-    content: "Contacto muy interesado en nuestros servicios premium. Mencionó que está buscando una solución integral para su organización.",
-    isPinned: true,
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: "admin@eklesa.com"
-  },
-  {
-    id: 2,
-    content: "Llamó para preguntar sobre precios. Le envié el catálogo por email.",
-    isPinned: false,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: "john.doe@eklesa.com"
-  },
-  {
-    id: 3,
-    content: "Recordar: Tiene reunión programada para el próximo viernes a las 3 PM.",
-    isPinned: false,
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    createdBy: "jane.smith@eklesa.com"
-  }
-];
 
 // ============================================
 // MAIN COMPONENT
@@ -302,7 +275,6 @@ const ContactNotes: React.FC<ContactNotesProps> = ({ contactId }) => {
       setLoading(true);
       // Simular llamada al API
       await new Promise(resolve => setTimeout(resolve, 300));
-      setNotes(getMockNotes(contactId));
       setLoading(false);
     };
 
@@ -388,7 +360,6 @@ const ContactNotes: React.FC<ContactNotesProps> = ({ contactId }) => {
   const handleRefresh = async () => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 300));
-    setNotes(getMockNotes(contactId));
     setLoading(false);
   };
 

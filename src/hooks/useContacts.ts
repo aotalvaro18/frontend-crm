@@ -17,33 +17,14 @@ import type {
   CreateContactRequest,
   UpdateContactRequest,
   ContactSearchCriteria,
+  ContactStats,
 } from '@/types/contact.types';
 
-// ============================================
-// TIPOS LOCALES (Matching API corregido)
-// ============================================
+import type { 
+  BulkOperationResult 
+} from '@/types/api.types';
 
-interface PageRequest {
-  page: number;
-  size: number;
-  sort: string[];
-}
-
-interface ContactStats {
-  total: number;
-  active: number;
-  inactive: number;
-  withPortal: number;
-  adoptionRate: number;
-}
-
-// CORREGIDO: Tipo de resultado de operaciones bulk que coincide con el API
-interface BulkOperationResult {
-  updated?: number;
-  deleted?: number;
-  failed: number;
-  errors: string[];
-}
+import type { PageRequest } from '@/types/common.types';
 
 // ============================================
 // CONTACT STORE STATE

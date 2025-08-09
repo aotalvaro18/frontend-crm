@@ -3,19 +3,11 @@
 
 import React from 'react';
 import { Users, CheckCircle, TrendingUp, Activity } from 'lucide-react';
+import type { ContactStats } from '@/types/contact.types';
 
 // ============================================
 // TYPES
 // ============================================
-
-interface ContactStats {
-  totalContacts: number;
-  contactsWithPortal: number;
-  averageEngagementScore: number;
-  newContactsThisMonth: number;
-  adoptionRate?: number;
-  contactsWithoutPortal?: number;
-}
 
 interface ContactsStatsCardsProps {
   stats: ContactStats;
@@ -73,14 +65,20 @@ const StatCard: React.FC<StatCardProps> = ({
 // ============================================
 
 const ContactsStatsCards: React.FC<ContactsStatsCardsProps> = ({ stats }) => {
+  // ✅ AGREGAR: Mapeo seguro para compatibilidad con ambos formatos
+  const totalContacts = stats.totalContacts ?? stats.total ?? 0;
+  const contactsWithPortal = stats.contactsWithPortal ?? stats.withPortal ?? 0;
+  const averageEngagementScore = stats.averageEngagementScore ?? 0;
+  const newContactsThisMonth = stats.newContactsThisMonth ?? 0;
+  
   const adoptionRate = stats.adoptionRate || 
-    (stats.totalContacts > 0 ? Math.round((stats.contactsWithPortal / stats.totalContacts) * 100) : 0);
+    (totalContacts > 0 ? Math.round((contactsWithPortal / totalContacts) * 100) : 0);
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       <StatCard
         title="Total"
-        value={stats.totalContacts.toLocaleString()}
+        value={totalContacts.toLocaleString()}
         icon={<Users className="h-5 w-5 sm:h-6 sm:w-6" />}
         iconBgColor="bg-primary-900/20"
         iconColor="text-primary-400"
@@ -88,7 +86,7 @@ const ContactsStatsCards: React.FC<ContactsStatsCardsProps> = ({ stats }) => {
       
       <StatCard
         title="Con Portal"
-        value={stats.contactsWithPortal.toLocaleString()}
+        value={contactsWithPortal.toLocaleString()}
         icon={<CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
         iconBgColor="bg-green-900/20"
         iconColor="text-green-400"
@@ -97,7 +95,7 @@ const ContactsStatsCards: React.FC<ContactsStatsCardsProps> = ({ stats }) => {
       
       <StatCard
         title="Engagement"
-        value={`${Math.round(stats.averageEngagementScore)}%`}
+        value={`${Math.round(averageEngagementScore)}%`}
         icon={<TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />}
         iconBgColor="bg-purple-900/20"
         iconColor="text-purple-400"
@@ -106,7 +104,7 @@ const ContactsStatsCards: React.FC<ContactsStatsCardsProps> = ({ stats }) => {
       
       <StatCard
         title="Nuevos"
-        value={stats.newContactsThisMonth.toLocaleString()}
+        value={newContactsThisMonth.toLocaleString()}
         icon={<Activity className="h-5 w-5 sm:h-6 sm:w-6" />}
         iconBgColor="bg-yellow-900/20"
         iconColor="text-yellow-400"

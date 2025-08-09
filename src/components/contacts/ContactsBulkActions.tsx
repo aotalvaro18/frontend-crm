@@ -2,7 +2,7 @@
 // Bulk actions component especializado para contactos
 
 import React, { useState } from 'react';
-import { Trash2, Download, Mail, UserCheck, X, Archive } from 'lucide-react';
+import { Trash2, Download, Mail, UserCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
@@ -108,7 +108,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
 const ContactsBulkActions: React.FC<ContactsBulkActionsProps> = ({
   selectedCount,
-  selectedIds,
   loading,
   onBulkDelete,
   onBulkExport,

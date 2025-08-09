@@ -4,22 +4,14 @@
 
 import {
     BaseEntity,
-    BaseSearchCriteria,
-    PageRequest,
-    PageResponse,
     ApiResponse,
     ApiErrorResponse,
     BatchOperationResponse,
     ID,
-    CognitoSub,
-    Timestamp,
-    CreateEntityRequest,
-    UpdateEntityRequest,
-    CustomFields,
-    Tag,
-    Address,
-    FileInfo,
+    Timestamp,    
   } from './common.types';
+
+  import type { PageResponse } from '@/types/common.types';
   
   // ============================================
   // HTTP METHOD TYPES
@@ -303,7 +295,23 @@ import {
     validationErrors: ValidationErrorResponse[];
     concurrencyErrors: ConcurrencyErrorResponse[];
   }
+
+  // ============================================
+  // ✅ NUEVO: TIPOS DE PAGINACIÓN Y OPERACIONES MASIVAS
+  // (Se centralizan aquí para ser usados en toda la aplicación)
+  // ============================================
+
+  /**
+   * Define la estructura del resultado de una operación masiva (bulk).
+   */
+  export interface BulkOperationResult {
+    updated?: number; // Cuántos se actualizaron (opcional)
+    deleted?: number; // Cuántos se eliminaron (opcional)
+    failed: number;   // Cuántos fallaron
+    errors: string[]; // Lista de mensajes de error de los que fallaron
+  }
   
+
   // ============================================
   // STATS & ANALYTICS TYPES
   // ============================================

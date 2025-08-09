@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-  User, Mail, Phone, MapPin, Building, Tag, 
+  User, Mail, Phone, MapPin, 
   Save, X, AlertCircle, Check, Globe, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,6 @@ import type {
     ContactSource,
     Gender,
     AddressDTO,               // <-- Este es el alias correcto para 'Address'
-    TagDTO,                   // <-- Necesitarás esto para los tags
     CommunicationPreferences
   } from '@/types/contact.types';
 
@@ -457,7 +456,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
     register,
     control,
     handleSubmit,
-    formState: { errors, isValid, isDirty },
+    formState: { errors },
     watch,
     setValue,
     setError,

@@ -3,7 +3,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Filter, Download, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 // ============================================
 // HOOKS DESACOPLADOS (siguiendo tu arquitectura)
