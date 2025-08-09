@@ -477,99 +477,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // En AuthContext.tsx - reemplaza todo el useEffect
 
-useEffect(() => {
-  let mounted = true;
-  let isInitializing = false; // ✅ NUEVO: Flag para evitar múltiples calls
-
-  const initAuth = async () => {
-    // ✅ NUEVO: Evitar múltiples inicializaciones simultáneas
-    if (isInitializing) {
-      console.log('🔄 Auth initialization already in progress, skipping...');
-      return;
-    }
-    
-    isInitializing = true;
-    
-    try {
-      // Check if user is already authenticated
-      const authUser = await getCurrentUser();
+  useEffect(() => {
+    let isMounted = true;
+    console.log('AuthContext: useEffect MOUNTED');
+  
+    const initAuth = async () => {
+      console.log('AuthContext: initAuth START. Current state:', { isInitialized: state.isInitialized, isLoading: state.isLoading });
       
-      if (mounted && authUser) {
+      if (state.isInitialized) {
+        console.log('AuthContext: Already initialized, skipping.');
+        // Si ya está inicializado, nos aseguramos de que no se quede cargando.
+        if (state.isLoading) setAuthState({ isLoading: false });
+        return;
+      }
+      
+      try {
+        console.log('AuthContext: Calling getCurrentUser()...');
+        const authUser = await getCurrentUser();
+        console.log('AuthContext: getCurrentUser() SUCCESS', authUser);
+        
+        console.log('AuthContext: Calling parseUserFromCognito()...');
         const userData = await parseUserFromCognito(authUser);
-        setAuthState({
-          user: userData,
-          isAuthenticated: true,
-          isLoading: false,
-          isInitialized: true,
-        });
-      } else if (mounted) {
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-        });
+        console.log('AuthContext: parseUserFromCognito() SUCCESS', userData);
+  
+        if (isMounted) {
+          console.log('AuthContext: Setting AUTHENTICATED state');
+          setAuthState({
+            user: userData,
+            isAuthenticated: true,
+          });
+        }
+  
+      } catch (error) {
+        console.log('AuthContext: CAUGHT an error in initAuth', error);
+        
+        if (isMounted) {
+          console.log('AuthContext: Setting UNAUTHENTICATED state due to error.');
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+          });
+        }
+      } finally {
+        console.log('AuthContext: FINALLY block reached. Setting isLoading: false, isInitialized: true');
+        if (isMounted) {
+          setAuthState({
+            isLoading: false,
+            isInitialized: true,
+          });
+        }
       }
-    } catch (error: any) {
-      // ✅ MEJORADO: Solo log si NO es el error esperado
-      if (error.name === 'UserUnAuthenticatedException') {
-        // ✅ ENTERPRISE: Log más profesional
-        console.log('🔐 Auth Status: No active user session (expected for anonymous users)');
-      } else {
-        console.error('🚨 Auth Initialization Error:', error);
-      }
-      
-      if (mounted) {
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-        });
-      }
-    } finally {
-      isInitializing = false; // ✅ NUEVO: Reset flag
-    }
-  };
-
-  // ✅ NUEVO: Solo inicializar si no está ya inicializado
-  if (!state.isInitialized && !isInitializing) {
+    };
+  
     initAuth();
-  }
-
-  // Listen to auth events (solo si está montado e inicializado)
-  const unsubscribe = Hub.listen('auth', ({ payload }) => {
-    if (!mounted) return;
-
-    switch (payload.event) {
-      case 'signedIn':
-        console.log('User signed in');
-        initAuth(); // Refresh user data
-        break;
-      case 'signedOut':
-        console.log('User signed out');
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
-        break;
-      case 'tokenRefresh':
-        console.log('Token refreshed');
-        refreshUser();
-        break;
-      case 'tokenRefresh_failure':
-        console.log('Token refresh failed');
-        handleSignOut(); // Force logout on token refresh failure
-        break;
-    }
-  });
-
-  return () => {
-    mounted = false;
-    unsubscribe();
-  };
-}, []); // ✅ IMPORTANTE: Array de dependencies VACÍO para que solo corra una vez
+  
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      if (!isMounted) return;
+      console.log(`AuthContext: Hub event received: ${payload.event}`);
+      // ... tu lógica de Hub ...
+    });
+  
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      console.log('AuthContext: useEffect UNMOUNTED');
+    };
+  }, [state.isInitialized, setAuthState, parseUserFromCognito, refreshUser]);
 
   // ============================================
   // CONTEXT VALUE (SIN CAMBIOS)
