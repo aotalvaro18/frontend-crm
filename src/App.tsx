@@ -106,7 +106,7 @@ const App: React.FC = () => {
     const now = Date.now();
 
     // ✅ Prevenir bucle de redirecciones (cooldown de 1 segundo)
-    if (lastRedirect && (now - lastRedirect.timestamp) < 1000) {
+    if (lastRedirect && lastRedirect.path === location.pathname && (now - lastRedirect.timestamp) < 500) {
       authLogger.warn('App: Redirect cooldown active, skipping redirect');
       return;
     }
