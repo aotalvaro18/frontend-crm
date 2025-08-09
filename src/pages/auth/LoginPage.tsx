@@ -13,16 +13,17 @@ import { Button } from '@/components/ui/Button';
 import { Input, EmailInput } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import Page from '@/components/layout/Page';
+// ✅ CAMBIO 1: Eliminar import de Page
+// import Page from '@/components/layout/Page';
 import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal';
 import FeaturesShowcase from '@/components/auth/FeaturesShowcase';
 
 // Hooks y context
-import { useAuth } from '@/context/AuthContext';
-
+import { useAuthState, useAuthActions } from '@/stores/authStore';
 // Utils
 //import { cn } from '@/utils/cn';
 import { env } from '@/config/environment';
+import { resetPassword } from 'aws-amplify/auth';
 
 // ============================================
 // VALIDATION SCHEMA
@@ -52,7 +53,8 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   // ✅ CORRECCIÓN 1: Traemos la función 'resetPassword' del contexto de autenticación.
-  const { signIn, resetPassword, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuthState();
+  const { signIn } = useAuthActions();
   
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -131,7 +133,7 @@ const LoginPage: React.FC = () => {
   const handleForgotPasswordSubmit = async (email: string) => {
     // La lógica de 'try/catch' y el estado de carga ya están manejados dentro del modal,
     // pero esta función debe lanzar un error si 'resetPassword' falla para que el modal lo capture.
-    await resetPassword({ email });
+    await resetPassword({ username: email });
   };
 
 
@@ -143,69 +145,64 @@ const LoginPage: React.FC = () => {
     );
   }
 
+  // ✅ CAMBIO 2: Reemplazar <Page> por <div> directo
   return (
-    <Page 
-      title="Iniciar Sesión" 
-      className="bg-app-dark-900"
-      showHeader={false}
-    >
-      <div className="min-h-screen flex">
-        <FeaturesShowcase />
-        
-        <div className="flex-1 flex flex-col justify-center px-4 py-12 sm:px-6 lg:px-8 bg-app-dark-900">
-          <div className="mx-auto w-full max-w-sm">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-white">Iniciar Sesión</h2>
-              <p className="mt-2 text-sm text-app-gray-400">Accede a tu cuenta de {env.appName}</p>
+    <div className="min-h-screen flex">
+      <FeaturesShowcase />
+      
+      <div className="flex-1 flex flex-col justify-center px-4 py-12 sm:px-6 lg:px-8 bg-app-dark-900">
+        <div className="mx-auto w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-white">Iniciar Sesión</h2>
+            <p className="mt-2 text-sm text-app-gray-400">Accede a tu cuenta de {env.appName}</p>
+          </div>
+          
+          {isOffline && (
+            <div className="mb-4 flex items-center justify-center space-x-2 text-yellow-400 p-3 bg-yellow-900/50 rounded-lg">
+              <WifiOff className="h-4 w-4" />
+              <span className="text-sm font-medium">Estás sin conexión</span>
             </div>
+          )}
+
+          <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-6">
+            <Controller name="email" control={control} render={({ field }) => (
+              <EmailInput {...field} id="login-email" label="Email empresarial" placeholder="tu@empresa.com" error={errors.email?.message} leftIcon={<Mail className="h-4 w-4 text-app-gray-400" />} autoComplete="email" required />
+            )} />
             
-            {isOffline && (
-              <div className="mb-4 flex items-center justify-center space-x-2 text-yellow-400 p-3 bg-yellow-900/50 rounded-lg">
-                <WifiOff className="h-4 w-4" />
-                <span className="text-sm font-medium">Estás sin conexión</span>
-              </div>
-            )}
+            <Controller name="password" control={control} render={({ field }) => (
+              <Input {...field} id="login-password" label="Contraseña" type={showPassword ? 'text' : 'password'} placeholder="Tu contraseña segura" error={errors.password?.message} leftIcon={<Lock className="h-4 w-4 text-app-gray-400" />}
+                rightIcon={
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} className="text-gray-400 hover:text-white">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                }
+                autoComplete="current-password" required
+              />
+            )} />
 
-            <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-6">
-              <Controller name="email" control={control} render={({ field }) => (
-                <EmailInput {...field} id="login-email" label="Email empresarial" placeholder="tu@empresa.com" error={errors.email?.message} leftIcon={<Mail className="h-4 w-4 text-app-gray-400" />} autoComplete="email" required />
+            <div className="flex items-center justify-between">
+              <Controller name="rememberMe" control={control} render={({ field: { value, onChange } }) => (
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input type="checkbox" checked={value} onChange={onChange} className="h-4 w-4 text-blue-600 bg-app-dark-700 border-app-dark-600 rounded focus:ring-blue-500" />
+                  <span className="text-sm text-app-gray-300">Recordarme</span>
+                </label>
               )} />
-              
-              <Controller name="password" control={control} render={({ field }) => (
-                <Input {...field} id="login-password" label="Contraseña" type={showPassword ? 'text' : 'password'} placeholder="Tu contraseña segura" error={errors.password?.message} leftIcon={<Lock className="h-4 w-4 text-app-gray-400" />}
-                  rightIcon={
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} className="text-gray-400 hover:text-white">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                  autoComplete="current-password" required
-                />
-              )} />
-
-              <div className="flex items-center justify-between">
-                <Controller name="rememberMe" control={control} render={({ field: { value, onChange } }) => (
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox" checked={value} onChange={onChange} className="h-4 w-4 text-blue-600 bg-app-dark-700 border-app-dark-600 rounded focus:ring-blue-500" />
-                    <span className="text-sm text-app-gray-300">Recordarme</span>
-                  </label>
-                )} />
-                <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-blue-500 hover:text-blue-400 font-medium">
-                  ¿Olvidaste tu contraseña?
-                </button>
-              </div>
-
-              {loginError && <ErrorMessage message={loginError} />}
-
-              <Button type="submit" loading={isSubmitting} disabled={isOffline || isSubmitting} className="w-full" size="lg">
-                Iniciar Sesión
-              </Button>
-            </form>
-
-            <div className="mt-8 text-center">
-              <p className="text-xs text-app-gray-500">
-                © 2025 {env.appName}. Todos los derechos reservados.
-              </p>
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-blue-500 hover:text-blue-400 font-medium">
+                ¿Olvidaste tu contraseña?
+              </button>
             </div>
+
+            {loginError && <ErrorMessage message={loginError} />}
+
+            <Button type="submit" loading={isSubmitting} disabled={isOffline || isSubmitting} className="w-full" size="lg">
+              Iniciar Sesión
+            </Button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-xs text-app-gray-500">
+              © 2025 {env.appName}. Todos los derechos reservados.
+            </p>
           </div>
         </div>
       </div>
@@ -216,7 +213,7 @@ const LoginPage: React.FC = () => {
         onClose={() => setShowForgotPassword(false)}
         onSubmit={handleForgotPasswordSubmit}
       />
-    </Page>
+    </div>
   );
 };
 

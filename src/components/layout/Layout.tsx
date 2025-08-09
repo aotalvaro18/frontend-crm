@@ -7,7 +7,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Menu, X, Search, Bell, Settings, User, LogOut, 
   Home, Users, Building2, Target, BarChart3, 
-  Globe, ChevronLeft, ChevronRight, Smartphone
+  Globe, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 // Components
@@ -17,7 +17,6 @@ import { cn } from '@/utils/cn';
 
 // Hooks y stores
 import { useAuthStore } from '@/stores/authStore';
-import { usePortalPageTitle } from '@/hooks/usePageTitle';
 
 // ============================================
 // TYPES

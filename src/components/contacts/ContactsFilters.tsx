@@ -42,7 +42,7 @@ const CONTACT_STATUSES = {
 // TYPES
 // ============================================
 
-interface ContactsFiltersProps {
+export interface ContactsFiltersProps { // ✅ CORRECCIÓN: Se añade 'export'
   searchCriteria: ContactSearchCriteria;
   onApplyFilters: (filters: ContactSearchCriteria) => void;
   hasActiveFilters: boolean;

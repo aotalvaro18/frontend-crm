@@ -412,8 +412,18 @@ export class BaseApiClient {
       
       const apiError = this.createApiError(response, errorData);
       
-      if (response.status === 401 && typeof window !== 'undefined') {
-        window.location.href = '/login';
+      // ✅ CORRECCIÓN QUIRÚRGICA: Reemplazar redirección forzada con lógica inteligente
+      if (apiError.status === 401) {
+        // Solo forzamos el logout si no estamos ya en una página pública o intentando loguear
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            console.warn('API Interceptor: Received 401 Unauthorized. Forcing logout.');
+            
+            // Usamos import() dinámico para evitar dependencias circulares
+            const { useAuthStore } = await import('@/stores/authStore');
+            
+            // Llamamos a la acción de signOut del store, que manejará la redirección de forma segura
+            useAuthStore.getState().signOut();
+        }
       }
 
       throw apiError;

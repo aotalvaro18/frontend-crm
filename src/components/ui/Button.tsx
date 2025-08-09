@@ -76,6 +76,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   rounded?: ButtonRounded;
   loading?: boolean;
   loadingText?: string;
+  icon?: React.ElementType;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   asChild?: boolean;

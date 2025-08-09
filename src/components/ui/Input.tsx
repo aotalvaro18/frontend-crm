@@ -5,8 +5,8 @@
 import React, { forwardRef, useState, useId } from 'react';
 import { 
   Eye, EyeOff, AlertCircle, CheckCircle, Search, 
-  X, Calendar, Clock, Phone, Mail, User, Lock,
-  Globe, MapPin, Hash, DollarSign
+  X, Calendar, Clock, Phone, Mail, Lock,
+  Globe, Hash
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -82,9 +82,9 @@ interface InputProps extends BaseInputProps, HTMLInputProps {
   showPasswordToggle?: boolean;
 }
 
-interface TextAreaProps extends BaseInputProps, HTMLTextAreaProps {
+interface TextAreaProps extends Omit<BaseInputProps, 'variant'>, HTMLTextAreaProps {
   /** Force textarea mode */
-  variant: 'textarea';
+  variant: 'textarea'; // Ahora esta definición es válida
   /** Minimum rows for textarea */
   minRows?: number;
   /** Maximum rows for textarea */
@@ -193,7 +193,6 @@ export const Input = forwardRef<
   onClear,
   autoResize = false,
   disabled,
-  type = 'text',
   value,
   onChange,
   placeholder,
@@ -202,6 +201,7 @@ export const Input = forwardRef<
   const inputId = useId();
   const [showPassword, setShowPassword] = useState(false);
   const [internalValue, setInternalValue] = useState(value || '');
+  const type = 'type' in props ? props.type : 'text';
   
   // Determine if this is a textarea
   const isTextArea = 'variant' in props && props.variant === 'textarea';
@@ -218,7 +218,7 @@ export const Input = forwardRef<
     ('showPasswordToggle' in props ? props.showPasswordToggle : true);
 
   // Determine icons
-  const finalLeftIcon = leftIcon || getDefaultIcon(type);
+  const finalLeftIcon = leftIcon || getDefaultIcon(type || '');
   const hasLeftIcon = !!finalLeftIcon;
   const hasRightIcon = !!rightIcon || shouldShowPasswordToggle || clearable || loading;
 

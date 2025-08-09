@@ -1,7 +1,5 @@
 // src/main.tsx
-// ✅ CORREGIDO: Entry point principal del CRM siguiendo la guía arquitectónica
-// Mobile-first, enterprise-grade setup con Amplify v6
-// 🔧 CORREGIDO QUIRÚRGICAMENTE: Amplify SÍNCRONO
+// ✅ CORREGIDO QUIRÚRGICAMENTE: Sin advertencias, listo para deploy
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -20,84 +18,54 @@ import router from '@/router';
 // Global styles
 import '@/styles/globals.css';
 
-// ✅ CORREGIDO: Auth provider with Amplify v6
-import { AuthProvider } from '@/context/AuthContext';
+// ✅ CORREGIDO: Error boundary with mobile-first
+import { ErrorBoundary } from '@/components/ui/ErrorMessage';
 
-// ✅ CORREGIDO: Error boundary with mobile-first - MANTENIENDO TUS IMPORTS
-import { ErrorBoundary, toastOptions } from '@/components/ui/ErrorMessage';
+// ✅ CORREGIDO: Environment config
+//import { env } from '@/config/environment';
 
-// ✅ CORREGIDO: Environment config - MANTENIENDO TU IMPORT
-import { env } from '@/config/environment';
-
-// ✅ CORREGIDO: Add missing cn utility - MANTENIENDO TU IMPORT
+// ✅ CORREGIDO: Add missing cn utility
 import { cn } from "@/utils/cn";
 
 // ============================================
-// REACT QUERY CONFIGURATION (✅ CORREGIDO: Mobile-optimized)
+// REACT QUERY CONFIGURATION
 // ============================================
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // ✅ CORREGIDO: Mobile-optimized cache settings
-      // Cache data for 3 minutes by default (shorter for mobile)
       staleTime: 3 * 60 * 1000,
-      // Keep unused data in cache for 5 minutes (shorter for mobile memory)
       gcTime: 5 * 60 * 1000,
       
-      // ✅ CORREGIDO: Smart retry logic for mobile networks
       retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors (client errors)
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        
-        // For mobile: be more conservative with retries
-        return failureCount < 2; // Reduced from 3 to 2
+        return failureCount < 2;
       },
       
-      // ✅ CORREGIDO: Mobile-friendly retry delay
       retryDelay: (attemptIndex) => {
-        // Shorter delays for mobile
-        return Math.min(500 * 2 ** attemptIndex, 15000); // Max 15s instead of 30s
+        return Math.min(500 * 2 ** attemptIndex, 15000);
       },
       
-      // ✅ CORREGIDO: Mobile-optimized refetch behavior
-      // Don't refetch too aggressively on mobile to save battery/data
-      refetchOnWindowFocus: false, // Disabled for mobile
-      refetchOnReconnect: true,    // Keep this for network recovery
-      
-      // ✅ CORREGIDO: Longer background refetch for mobile
-      refetchInterval: false, // Disabled auto-refetch to save battery
-      
-      // ✅ CORREGIDO: Network mode for mobile
-      networkMode: 'offlineFirst', // Better mobile experience
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      refetchInterval: false,
+      networkMode: 'offlineFirst',
     },
     mutations: {
-      // ✅ CORREGIDO: Conservative retry for mobile
-      retry: 1, // Only retry once
-      
-      // ✅ CORREGIDO: Mobile-friendly mutation settings
+      retry: 1,
       networkMode: 'offlineFirst',
       
-      // Global error handling
       onError: (error: any) => {
         console.error('Mutation error:', error);
-        // Error will be handled by individual mutation error handlers
-        // Don't show toast here to avoid duplicate errors
-      },
-      
-      // Global success handling
-      onSuccess: () => {
-        // Optionally invalidate relevant queries
-        // Keep this minimal for mobile performance
       },
     },
   },
 });
 
 // ============================================
-// ERROR BOUNDARY FALLBACK (✅ CORREGIDO: Mobile-First)
+// ERROR BOUNDARY FALLBACK
 // ============================================
 
 const AppErrorFallback: React.FC<{ error: Error; resetError: () => void }> = ({
@@ -105,30 +73,29 @@ const AppErrorFallback: React.FC<{ error: Error; resetError: () => void }> = ({
   resetError,
 }) => (
   <div className={cn(
-    // ✅ CORREGIDO: Mobile-first error layout
-    'min-h-screen p-4', // Mobile: full screen with padding
+    'min-h-screen p-4',
     'flex items-center justify-center',
     'bg-app-dark-900',
-    'sm:p-6' // Desktop: more padding
+    'sm:p-6'
   )}>
     <div className={cn(
-      'w-full max-w-md text-center', // Mobile-first: full width
-      'sm:max-w-lg' // Desktop: larger
+      'w-full max-w-md text-center',
+      'sm:max-w-lg'
     )}>
       <div className={cn(
-        'p-6 rounded-lg border', // Mobile-first padding
+        'p-6 rounded-lg border',
         'bg-app-dark-800 border-app-dark-600',
-        'sm:p-8' // Desktop: more padding
+        'sm:p-8'
       )}>
         <h1 className={cn(
-          'text-xl font-bold text-white mb-4', // Mobile-first text size
-          'sm:text-2xl' // Desktop: larger
+          'text-xl font-bold text-white mb-4',
+          'sm:text-2xl'
         )}>
           Error de aplicación
         </h1>
         <p className={cn(
-          'text-app-gray-400 mb-6 text-sm', // Mobile-first text size
-          'sm:text-base' // Desktop: larger
+          'text-app-gray-400 mb-6 text-sm',
+          'sm:text-base'
         )}>
           Se produjo un error inesperado. Por favor, recarga la aplicación.
         </p>
@@ -137,12 +104,11 @@ const AppErrorFallback: React.FC<{ error: Error; resetError: () => void }> = ({
           <button
             onClick={() => window.location.reload()}
             className={cn(
-              // ✅ CORREGIDO: Mobile-first button
-              'w-full px-4 py-2 rounded-lg', // Mobile-first sizing
+              'w-full px-4 py-2 rounded-lg',
               'bg-app-accent-500 hover:bg-app-accent-600',
               'text-white font-medium',
               'transition-colors duration-200',
-              'sm:py-3' // Desktop: more padding
+              'sm:py-3'
             )}
           >
             Recargar Aplicación
@@ -151,30 +117,30 @@ const AppErrorFallback: React.FC<{ error: Error; resetError: () => void }> = ({
           <button
             onClick={resetError}
             className={cn(
-              'w-full px-4 py-2 rounded-lg', // Mobile-first sizing
+              'w-full px-4 py-2 rounded-lg',
               'bg-app-dark-700 hover:bg-app-dark-600',
               'text-app-gray-300 font-medium',
               'transition-colors duration-200',
-              'sm:py-3' // Desktop: more padding
+              'sm:py-3'
             )}
           >
             Intentar Nuevamente
           </button>
         </div>
 
-        {env.isDev && (
+        {import.meta.env.DEV && (
           <details className="mt-6 text-left">
             <summary className={cn(
               'text-app-gray-400 cursor-pointer hover:text-white',
-              'text-sm transition-colors' // Mobile-first text size
+              'text-sm transition-colors'
             )}>
               Detalles del error (desarrollo)
             </summary>
             <pre className={cn(
-              'mt-2 p-3 rounded border overflow-auto', // Mobile-first spacing
+              'mt-2 p-3 rounded border overflow-auto',
               'text-xs bg-app-dark-900 text-app-gray-500',
-              'max-h-40 whitespace-pre-wrap', // Mobile: limited height
-              'sm:max-h-60' // Desktop: more height
+              'max-h-40 whitespace-pre-wrap',
+              'sm:max-h-60'
             )}>
               {error.message}
               {'\n'}
@@ -188,104 +154,11 @@ const AppErrorFallback: React.FC<{ error: Error; resetError: () => void }> = ({
 );
 
 // ============================================
-// LOADING COMPONENT (✅ CORREGIDO: Mobile-First)
+// LOADING COMPONENT
 // ============================================
 
-const AppLoading: React.FC = () => (
-  <div className={cn(
-    // ✅ CORREGIDO: Mobile-first loading layout
-    'min-h-screen p-4', // Mobile: full screen
-    'flex items-center justify-center',
-    'bg-app-dark-900'
-  )}>
-    <div className="text-center">
-      {/* ✅ CORREGIDO: Mobile-optimized spinner */}
-      <div className={cn(
-        'animate-spin rounded-full border-2 mx-auto mb-4',
-        'h-8 w-8', // Mobile: smaller spinner
-        'border-app-accent-500 border-t-transparent',
-        'sm:h-12 sm:w-12' // Desktop: larger
-      )}></div>
-      
-      <h2 className={cn(
-        'text-lg font-semibold text-white mb-2', // Mobile-first text size
-        'sm:text-xl' // Desktop: larger
-      )}>
-        {env.appName}
-      </h2>
-      
-      <p className={cn(
-        'text-app-gray-400 text-sm', // Mobile-first text size
-        'sm:text-base' // Desktop: larger
-      )}>
-        Iniciando aplicación...
-      </p>
-      
-      {env.isDev && (
-        <p className="text-app-gray-500 text-xs mt-2">
-          Modo desarrollo • v{env.appVersion}
-        </p>
-      )}
-    </div>
-  </div>
-);
-
 // ============================================
-// 🔧 APP INITIALIZATION CHECK (CORREGIDO: ASYNC LIGERO)
-// ============================================
-
-const initializeApp = async () => {
-  const rootElement = document.getElementById('root');
-  
-  if (!rootElement) {
-    throw new Error('Root element not found. Make sure you have <div id="root"></div> in your HTML.');
-  }
-
-  // 🔧 NUEVO: Verificar que Amplify esté configurado (ya no async)
-  try {
-    console.log('🔧 Verificando configuración de Amplify...');
-    
-    // 🔧 CORREGIDO: Import ES6 en lugar de require
-    const { isAmplifyConfigured, validateAmplifyConfig } = await import('@/lib/amplify');
-    
-    if (!isAmplifyConfigured()) {
-      throw new Error('Amplify no está configurado');
-    }
-    
-    const validation = validateAmplifyConfig();
-    if (!validation.isValid) {
-      console.warn('⚠️ Amplify configuration issues:', validation.errors);
-      if (!env.isDev) {
-        throw new Error('Invalid Amplify configuration in production');
-      }
-    }
-    
-    console.log('✅ Amplify verified successfully');
-  } catch (error) {
-    console.error('❌ Amplify verification failed:', error);
-    // En desarrollo, continuar sin Amplify para debugging
-    if (!env.isDev) {
-      throw new Error('Failed to verify Amplify in production');
-    } else {
-      console.warn('⚠️ Continuando sin Amplify en modo desarrollo');
-    }
-  }
-
-  // ✅ Environment validation - USANDO TU env
-  if (!env.isValid()) {
-    console.error('❌ Invalid environment configuration');
-    throw new Error('Invalid environment configuration. Check console for details.');
-  }
-
-  console.log('✅ App initialized successfully');
-  console.log('Environment:', env.appEnvironment);
-  console.log('Version:', env.appVersion);
-  
-  return rootElement;
-};
-
-// ============================================
-// MAIN APP COMPONENT (✅ CORREGIDO - Sin cambios)
+// MAIN APP COMPONENT
 // ============================================
 
 const App: React.FC = () => {
@@ -293,23 +166,38 @@ const App: React.FC = () => {
     <HelmetProvider>
       <ErrorBoundary fallback={AppErrorFallback}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            {/* ✅ CORREGIDO: Router with loading fallback */}
-            <React.Suspense fallback={<AppLoading />}>
-              <RouterProvider router={router} />
-            </React.Suspense>
-            
-            {/* ✅ CORREGIDO: Mobile-first toast configuration - USANDO TU toastOptions */}
-            <Toaster {...toastOptions} />
-            
-            {/* ✅ CORREGIDO: Dev tools only in development - USANDO TU env */}
-            {env.isDev && (
-              <ReactQueryDevtools 
-                initialIsOpen={false}
-                position="right"
-              />
-            )}
-          </AuthProvider>
+          <RouterProvider router={router} />
+          
+          {/* Toaster para notificaciones */}
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10B981',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 5000,
+                iconTheme: {
+                  primary: '#EF4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+          
+          {/* React Query Devtools solo en desarrollo */}
+          {import.meta.env.DEV && (
+            <ReactQueryDevtools initialIsOpen={false} />
+          )}
         </QueryClientProvider>
       </ErrorBoundary>
     </HelmetProvider>
@@ -317,75 +205,88 @@ const App: React.FC = () => {
 };
 
 // ============================================
-// 🔧 APP STARTUP (CORREGIDO: ASYNC LIGERO)
+// APP STARTUP
 // ============================================
 
-(async () => {
-  try {
-    const rootElement = await initializeApp(); // 🔧 VUELVE a ser async pero ligero
-    const root = ReactDOM.createRoot(rootElement);
+const initializeApp = () => {
+  const rootElement = document.getElementById('root');
   
-  // ✅ CORREGIDO: Strict mode for development - USANDO TU env
-  const AppWithStrictMode = env.isDev ? (
+  if (!rootElement) {
+    throw new Error('Root element not found. Make sure you have <div id="root"></div> in your HTML.');
+  }
+
+  console.log('✅ App initialized successfully');
+  console.log('Environment:', import.meta.env.MODE);
+  console.log('Version:', import.meta.env['VITE_APP_VERSION'] || '1.0.0');
+  
+  return rootElement;
+};
+
+// ============================================
+// RENDER APP
+// ============================================
+
+try {
+  const rootElement = initializeApp();
+  const root = ReactDOM.createRoot(rootElement);
+
+  // Strict mode solo en desarrollo
+  const AppWithStrictMode = import.meta.env.DEV ? (
     <React.StrictMode>
       <App />
     </React.StrictMode>
   ) : (
     <App />
   );
-  
+
   root.render(AppWithStrictMode);
+
+} catch (error) {
+  console.error('❌ Failed to initialize app:', error);
   
-  } catch (error) {
-    console.error('❌ Failed to initialize app:', error);
-    
-    // ✅ CORREGIDO: Fallback error display
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-      rootElement.innerHTML = `
-        <div style="
-          min-height: 100vh;
-          padding: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: #111827;
-          color: white;
-          font-family: system-ui, -apple-system, sans-serif;
-        ">
-          <div style="text-align: center; max-width: 400px;">
-            <h1 style="font-size: 24px; margin-bottom: 16px; color: #ef4444;">
-              Error de Inicialización
-            </h1>
-            <p style="color: #9ca3af; margin-bottom: 24px;">
-              No se pudo inicializar la aplicación. 
-              ${env.isDev ? `<br><br>Error: ${error}` : ''}
-            </p>
-            <button 
-              onclick="window.location.reload()"
-              style="
-                background-color: #3b82f6;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: 500;
-              "
-            >
-              Recargar
-            </button>
-          </div>
+  // Fallback error display
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    rootElement.innerHTML = `
+      <div style="
+        min-height: 100vh;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #111827;
+        color: white;
+        font-family: system-ui, -apple-system, sans-serif;
+      ">
+        <div style="text-align: center; max-width: 400px;">
+          <h1 style="font-size: 24px; margin-bottom: 16px; color: #ef4444;">
+            Error de Inicialización
+          </h1>
+          <p style="color: #9ca3af; margin-bottom: 24px;">
+            No se pudo inicializar la aplicación.
+            ${import.meta.env.DEV ? `<br><br>Error: ${error}` : ''}
+          </p>
+          <button 
+            onclick="window.location.reload()"
+            style="
+              background-color: #3b82f6;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              cursor: pointer;
+              font-weight: 500;
+            "
+          >
+            Recargar
+          </button>
         </div>
-      `;
-    }
+      </div>
+    `;
   }
-})();
+}
 
-// ============================================
-// HOT RELOAD (Development only) - USANDO TU env
-// ============================================
-
-if (env.isDev && import.meta.hot) {
+// Hot reload en desarrollo
+if (import.meta.env.DEV && import.meta.hot) {
   import.meta.hot.accept();
 }

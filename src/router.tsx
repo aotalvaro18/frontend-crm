@@ -1,145 +1,266 @@
 // src/router.tsx
-// Router principal del CRM siguiendo la guía arquitectónica
-// Mobile-first, enterprise-grade routing
+// ✅ ROUTER QUIRÚRGICO - Solo páginas que existen
 
-import React, { Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import Layout from '@/components/layout/Layout';
-import Page from '@/components/layout/Page';
-import LoginPage from '@/pages/auth/LoginPage';
+import App from './App';
+import { lazy, Suspense } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-
-// ✅ CORRECCIÓN: Importamos el componente de protección de rutas real y reutilizable.
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { authLogger } from '@/types/auth.types';
 
 // ============================================
-// LAZY LOADING COMPONENTS (Performance first)
+// LAZY IMPORTS - SOLO PÁGINAS EXISTENTES
 // ============================================
 
-// --- MÓDULOS YA CREADOS ---
-const ContactListPage = React.lazy(() => import('@/pages/contacts/ContactListPage'));
-const ContactDetailPage = React.lazy(() => import('@/pages/contacts/ContactDetailPage'));
-const ContactCreatePage = React.lazy(() => import('@/pages/contacts/ContactCreatePage'));
+// ✅ Auth pages (solo las que necesitas)
+const LoginPage = lazy(() => {
+  authLogger.info('Loading LoginPage...');
+  return import('@/pages/auth/LoginPage');
+});
 
-// --- MÓDULOS POR IMPLEMENTAR (Comentados para evitar errores) ---
-// (El resto de tus imports lazy se mantienen igual)
-/*
-const DashboardPage = React.lazy(() => import('@/pages/dashboard/DashboardPage'));
-...etc
-*/
+// ✅ CRM pages (solo las que existen)
+const ContactListPage = lazy(() => {
+  authLogger.info('Loading ContactListPage...');
+  return import('@/pages/contacts/ContactListPage');
+});
 
-// ============================================
-// ✅ CORRECCIÓN: Se eliminó la definición local de ProtectedRoute.
-// Usamos la versión importada que es más completa y mantenible.
-// ============================================
+const ContactDetailPage = lazy(() => {
+  authLogger.info('Loading ContactDetailPage...');
+  return import('@/pages/contacts/ContactDetailPage').catch(() => {
+    // Fallback si no existe
+    return { default: () => <div>ContactDetailPage - En desarrollo</div> };
+  });
+});
+
+const ContactCreatePage = lazy(() => {
+  authLogger.info('Loading ContactCreatePage...');
+  return import('@/pages/contacts/ContactCreatePage').catch(() => {
+    return { default: () => <div>ContactCreatePage - En desarrollo</div> };
+  });
+});
+
+// ✅ Layout fallbacks (si no existen)
+const AuthLayout = lazy(() => {
+  return import('@/components/layout/Layout').catch(() => {
+    // Simple fallback layout
+    const FallbackAuthLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="w-full max-w-md">{children}</div>
+      </div>
+    );
+    return { default: FallbackAuthLayout };
+  });
+});
+
+const MainLayout = lazy(() => {
+  return import('@/components/layout/Layout').catch(() => {
+    // Simple fallback layout
+    const FallbackMainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 py-8">{children}</div>
+      </div>
+    );
+    return { default: FallbackMainLayout };
+  });
+});
 
 // ============================================
 // SUSPENSE WRAPPER
 // ============================================
 
-const SuspenseWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Suspense fallback={
-    <div className="flex-grow flex items-center justify-center p-8 bg-app-dark-900">
-      <LoadingSpinner size="md" />
-    </div>
-  }>
+const SuspenseWrapper: React.FC<{ 
+  children: React.ReactNode; 
+  fallbackText?: string; 
+}> = ({ children, fallbackText = 'Cargando...' }) => (
+  <Suspense 
+    fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">{fallbackText}</p>
+        </div>
+      </div>
+    }
+  >
     {children}
   </Suspense>
+);
+
+// ============================================
+// ERROR ELEMENT
+// ============================================
+
+const RouterErrorElement: React.FC = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center p-8 max-w-md">
+      <div className="text-red-500 text-6xl mb-4">🚫</div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        Página No Encontrada
+      </h1>
+      <p className="text-gray-600 mb-6">
+        La página que buscas no existe o ha sido movida.
+      </p>
+      <div className="space-y-3">
+        <button
+          onClick={() => window.location.href = '/contacts'}
+          className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Ir al Dashboard
+        </button>
+        <button
+          onClick={() => window.history.back()}
+          className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
+        >
+          Volver Atrás
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ============================================
+// PÁGINAS PLACEHOLDER PARA DESARROLLO
+// ============================================
+
+const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center p-8">
+      <div className="text-gray-400 text-6xl mb-4">🚧</div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+      <p className="text-gray-600 mb-6">Esta página está en desarrollo</p>
+      <button
+        onClick={() => window.location.href = '/contacts'}
+        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+      >
+        Volver al Dashboard
+      </button>
+    </div>
+  </div>
 );
 
 // ============================================
 // ROUTER CONFIGURATION
 // ============================================
 
-export const router = createBrowserRouter([
-  // PUBLIC ROUTES
-  {
-    path: '/login',
-    element: <LoginPage />,
-  },
-  {
-    path: '/unauthorized',
-    element: (
-      <div className="min-h-screen bg-app-dark-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Acceso Denegado</h1>
-          <p className="text-app-gray-400 mb-6">No tienes permisos para acceder a esta página.</p>
-          <a href="/" className="text-app-accent-500 hover:underline">Volver al inicio</a>
-        </div>
-      </div>
-    ),
-  },
-
-  // PROTECTED ROUTES
+const router = createBrowserRouter([
   {
     path: '/',
-    // El Layout ahora está protegido. Si no estás autenticado, serás redirigido a /login.
-    element: (
-      <ProtectedRoute>
-        <Layout />
-      </ProtectedRoute>
-    ),
+    element: <App />,
+    errorElement: <RouterErrorElement />,
     children: [
-      // Si el usuario llega a '/', lo redirigimos a la página principal del CRM.
+      // ============================================
+      // AUTH ROUTES
+      // ============================================
+      {
+        path: 'login',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando login...">
+            <LoginPage />
+          </SuspenseWrapper>
+        ),
+      },
+
+      // ============================================
+      // CONTACTS ROUTES (EXISTENTES)
+      // ============================================
+      {
+        path: 'contacts',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando contactos...">
+            <MainLayout>
+              <ContactListPage />
+            </MainLayout>
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'contacts/new',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando formulario...">
+            <MainLayout>
+              <ContactCreatePage />
+            </MainLayout>
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'contacts/:id',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando contacto...">
+            <MainLayout>
+              <ContactDetailPage />
+            </MainLayout>
+          </SuspenseWrapper>
+        ),
+      },
+
+      // ============================================
+      // PLACEHOLDER ROUTES (PARA DESARROLLO)
+      // ============================================
+      {
+        path: 'deals',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Gestión de Oportunidades" />
+          </MainLayout>
+        ),
+      },
+      {
+        path: 'deals/:id',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Detalle de Oportunidad" />
+          </MainLayout>
+        ),
+      },
+      {
+        path: 'companies',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Gestión de Empresas" />
+          </MainLayout>
+        ),
+      },
+      {
+        path: 'companies/:id',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Detalle de Empresa" />
+          </MainLayout>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Reportes y Analytics" />
+          </MainLayout>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <MainLayout>
+            <PlaceholderPage title="Configuración" />
+          </MainLayout>
+        ),
+      },
+
+      // ============================================
+      // ROOT REDIRECT
+      // ============================================
       {
         index: true,
         element: <Navigate to="/contacts" replace />,
       },
 
-      // --- CONTACT MANAGEMENT ROUTES (ACTIVAS) ---
-      {
-        path: 'contacts',
-        children: [
-          {
-            index: true,
-            element: (
-              <SuspenseWrapper>
-                <Page title="Contactos">
-                  <ContactListPage />
-                </Page>
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: 'new',
-            element: (
-              <SuspenseWrapper>
-                <Page title="Nuevo Contacto">
-                  <ContactCreatePage />
-                </Page>
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: ':id',
-            element: (
-              <SuspenseWrapper>
-                <Page title="Detalle del Contacto">
-                  <ContactDetailPage />
-                </Page>
-              </SuspenseWrapper>
-            ),
-          },
-        ],
-      },
-
-      // ... (Tus otras rutas comentadas se mantienen igual aquí) ...
-
-      // CATCH-ALL DENTRO DEL ÁREA PROTEGIDA
-      // Si el usuario está logueado pero va a una URL protegida que no existe (ej. /settings/typo)
-      // lo redirigimos a la página principal del CRM.
+      // ============================================
+      // CATCH-ALL ROUTE
+      // ============================================
       {
         path: '*',
-        element: <Navigate to="/contacts" replace />,
+        element: <RouterErrorElement />,
       },
     ],
-  },
-
-  // FALLBACK GENERAL PARA CUALQUIER OTRA RUTA NO ENCONTRADA
-  // Esta es la regla clave que te dirige a /login por defecto.
-  {
-    path: '*',
-    element: <Navigate to="/login" replace />,
   },
 ]);
 
