@@ -18,7 +18,8 @@ import toast from 'react-hot-toast';
 // 1. Importamos solo los TIPOS con 'import type'.
 import type { 
   AuthStore, 
-  AuthState, 
+  AuthState,
+  CognitoSession,
   User,
   SignInCredentials,
   ServiceUser
@@ -140,21 +141,38 @@ const extractUserFromCognito = (authUser: AuthUser, session: AuthSession): User 
 const authServiceClient = new AuthServiceClient();
 
 // ============================================
-// ESTADO INICIAL
+// ESTADO INICIAL (MODIFICADO)
 // ============================================
 
 const initialState: AuthState = {
+  // Core user data
   user: null,
   isAuthenticated: false,
-  isLoading: true,
-  isInitialized: false,
+  isLoading: false,
   error: null,
   lastError: null,
+  
+  // MFA state
   isMfaRequired: false,
   mfaType: undefined,
+  
+  // Session data
   accessToken: null,
   sessionExpiry: undefined,
   lastActivity: undefined,
+  cognitoSession: null,
+  
+  // Loading states
+  isLoadingSession: false,
+  isLoadingProfile: false,
+  
+  // Computed properties
+  get isReady() { 
+    return !this.isLoadingSession; 
+  },
+  get hasProfile() { 
+    return !!this.user; 
+  },
 };
 
 // ============================================
@@ -168,149 +186,142 @@ export const useAuthStore = create<AuthStore>()(
         ...initialState,
 
         // ============================================
-        // CORE METHODS
+        // NEW GRANULAR FUNCTIONS
         // ============================================
 
-        initialize: async () => {
-          const currentState = get();
-          console.log('🔍 INITIALIZE: Starting with state:', {
-            isInitialized: currentState.isInitialized,
-            isAuthenticated: currentState.isAuthenticated,
-            hasUser: !!currentState.user
-          });
-          
-          if (currentState.isInitialized) {
-            authLogger.info('Auth store already initialized, skipping');
-            console.log('🔍 INITIALIZE: Already initialized, skipping');
-            return;
-          }
-          
-          authLogger.info('Initializing auth store...');
-          console.log('🔍 INITIALIZE: Setting loading true');
-          set({ isLoading: true });
+        loadCognitoSession: async () => {
+          set({ isLoadingSession: true, error: null });
           
           try {
-            console.log('🔍 INITIALIZE: Getting current user from Cognito');
             const authUser = await getCurrentUser();
-            console.log('🔍 INITIALIZE: Cognito user:', authUser);
-            
-            console.log('🔍 INITIALIZE: Getting auth session');
             const session = await fetchAuthSession();
-            console.log('🔍 INITIALIZE: Auth session tokens exist:', !!session.tokens);
-            console.log('🔍 INITIALIZE: Access token exists:', !!session.tokens?.accessToken);
-            
             const accessToken = session.tokens?.accessToken?.toString();
-            console.log('🔍 INITIALIZE: Access token string exists:', !!accessToken);
-        
-            if (authUser && accessToken) {
-              authLogger.info('Valid Cognito session found');
-              console.log('🔍 INITIALIZE: Valid session, calling auth service');
-              
-              // ✅ Intentar obtener perfil completo del auth-service
-              console.log('🔍 INITIALIZE: Calling getCurrentUserFromService...');
-              let userProfile = await authServiceClient.getCurrentUserFromService(accessToken);
-              console.log('🔍 INITIALIZE: Auth service response:', userProfile);
-              
-              // ✅ Fallback a datos de Cognito si auth-service falla
-              if (!userProfile) {
-                console.log('🔍 INITIALIZE: Using Cognito fallback');
-                userProfile = extractUserFromCognito(authUser, session);
-                console.log('🔍 INITIALIZE: Cognito user profile:', userProfile);
-              }
-        
-              const sessionExpiry = session.tokens?.accessToken?.payload?.exp 
-                ? (session.tokens.accessToken.payload.exp as number) * 1000 
-                : undefined;
-        
-              console.log('🔍 INITIALIZE: Setting final state with user:', userProfile);
-              set({
-                user: userProfile,
-                isAuthenticated: true,
+            
+            if (authUser && accessToken && session.tokens) {
+              const cognitoSession: CognitoSession = {
                 accessToken,
-                sessionExpiry,
-                lastActivity: Date.now(),
-                isLoading: false,
-                isInitialized: true,
-                error: null,
-              });
-        
-              console.log('🔍 INITIALIZE: Complete success');
-              authLogger.success('Auth store initialized successfully', { 
-                email: userProfile.email,
-                source: userProfile.id.length > 10 ? 'auth-service' : 'cognito'
-              });
-            } else {
-              console.log('🔍 INITIALIZE: No valid session - authUser:', !!authUser, 'accessToken:', !!accessToken);
-              authLogger.info('No valid session found');
+                refreshToken: (session.tokens as any)?.refreshToken?.toString(),
+                idToken: session.tokens.idToken?.toString(),
+                expiresAt: (session.tokens.accessToken.payload.exp as number) * 1000
+              };
+              
               set({ 
-                isLoading: false, 
-                isInitialized: true,
-                isAuthenticated: false,
-                user: null 
+                cognitoSession,
+                accessToken,
+                sessionExpiry: cognitoSession.expiresAt,
+                isAuthenticated: true,
+                lastActivity: Date.now()
               });
+              
+              authLogger.success('Cognito session loaded successfully');
+            } else {
+              set({ 
+                cognitoSession: null,
+                accessToken: null,
+                isAuthenticated: false
+              });
+              authLogger.info('No valid Cognito session found');
             }
           } catch (error) {
-            console.log('🔍 INITIALIZE: Error occurred:', error);
-            authLogger.info('No authenticated user found (normal on first visit)', error);
+            authLogger.info('No authenticated user found', error);
             set({ 
-              isLoading: false, 
-              isInitialized: true,
+              cognitoSession: null,
+              accessToken: null,
               isAuthenticated: false,
-              user: null,
-              error: null
+              error: null // Normal state, not an error
             });
+          } finally {
+            set({ isLoadingSession: false });
           }
         },
         
+        loadUserProfile: async () => {
+          const { cognitoSession } = get();
+          if (!cognitoSession) {
+            set({ user: null });
+            return;
+          }
+          
+          set({ isLoadingProfile: true, error: null });
+          
+          try {
+            authLogger.info('Loading user profile from auth-service');
+            
+            // Try auth-service first
+            let userProfile = await authServiceClient.getCurrentUserFromService(
+              cognitoSession.accessToken
+            );
+            
+            // Fallback to Cognito data
+            if (!userProfile) {
+              authLogger.info('Auth-service failed, using Cognito fallback');
+              const authUser = await getCurrentUser();
+              const session = await fetchAuthSession();
+              userProfile = extractUserFromCognito(authUser, session);
+            }
+            
+            set({ user: userProfile });
+            authLogger.success('User profile loaded successfully', { 
+              email: userProfile.email,
+              source: userProfile.id.length > 10 ? 'auth-service' : 'cognito'
+            });
+          } catch (error) {
+            authLogger.error('Failed to load user profile', error);
+            set({ user: null, error: getErrorMessage(error) });
+          } finally {
+            set({ isLoadingProfile: false });
+          }
+        },
+
+        // ============================================
+        // CORE METHODS (MODIFICADOS)
+        // ============================================
+
+        initialize: async () => {
+          authLogger.info('Initializing auth store...');
+          
+          // 1. Load Cognito session
+          await get().loadCognitoSession();
+          
+          // 2. Load user profile if authenticated
+          const state = get();
+          if (state.isAuthenticated && !state.user) {
+            await get().loadUserProfile();
+          }
+          
+          authLogger.success('Auth store initialization completed');
+        },
+        
         signIn: async (credentials: SignInCredentials) => {
-          console.log('🔍 SIGNIN: Starting signIn process');
-          console.log('🔍 SIGNIN: Credentials email:', credentials.email);
           authLogger.info('Sign in attempt', { email: credentials.email });
           set({ isLoading: true, error: null, lastError: null });
           
           try {
-            console.log('🔍 SIGNIN: Calling AWS Cognito signIn');
+            // 1. Cognito sign in
             const { isSignedIn, nextStep } = await signIn({ 
               username: credentials.email, 
               password: credentials.password 
             });
             
-            console.log('🔍 SIGNIN: AWS Cognito response:', { isSignedIn, nextStep });
-            
             if (isSignedIn) {
-              console.log('🔍 SIGNIN: SUCCESS - Login was successful!');
-              authLogger.success('Sign in successful');
+              authLogger.success('Cognito sign in successful');
               
-              // ✅ Re-inicializar para obtener perfil completo
-              console.log('🔍 SIGNIN: About to call get().initialize()...');
-              try {
-                await useAuthStore.getState().initialize();
-                console.log('🔍 SIGNIN: initialize() completed successfully');
-              } catch (initError) {
-                console.error('🔍 SIGNIN: ERROR in initialize():', initError);
-                throw initError;
+              // 2. Load session
+              await get().loadCognitoSession();
+              
+              // 3. Load profile if authenticated
+              if (get().isAuthenticated) {
+                await get().loadUserProfile();
               }
               
-              const user = get().user;
-              console.log('🔍 SIGNIN: Final user after initialize:', user);
-              console.log('🔍 SIGNIN: Current store state:', {
-                isAuthenticated: get().isAuthenticated,
-                isLoading: get().isLoading,
-                isInitialized: get().isInitialized,
-                hasUser: !!user
-              });
-              
+              // 4. Success feedback
+              const { user } = get();
               if (user) {
-                console.log('🔍 SIGNIN: Showing success toast');
                 toast.success(`¡Bienvenido, ${user.nombre}!`);
-              } else {
-                console.warn('🔍 SIGNIN: WARNING - No user after initialize');
               }
-              console.log('🔍 SIGNIN: Process completed successfully');
               
             } else if (nextStep) {
-              console.log('🔍 SIGNIN: MFA required', nextStep);
-              // ✅ Manejar MFA si es necesario
+              // Handle MFA if required
               authLogger.info('MFA required', { step: nextStep.signInStep });
               
               set({
@@ -320,15 +331,8 @@ export const useAuthStore = create<AuthStore>()(
                   : 'SOFTWARE_TOKEN_MFA',
                 isLoading: false,
               });
-            } else {
-              console.log('🔍 SIGNIN: Unexpected response - no isSignedIn and no nextStep');
             }
           } catch (error: any) {
-            console.error('🔍 SIGNIN: ERROR occurred:', error);
-            console.error('🔍 SIGNIN: Error name:', error.name);
-            console.error('🔍 SIGNIN: Error message:', error.message);
-            console.error('🔍 SIGNIN: Error stack:', error.stack);
-            
             authLogger.error('Sign in failed', error);
             
             const authError = createAuthError(
@@ -345,44 +349,42 @@ export const useAuthStore = create<AuthStore>()(
             });
             
             toast.error(authError.message);
+          } finally {
+            set({ isLoading: false });
           }
         },
 
         signOut: async () => {
-          authLogger.info('Sign out initiated');
+          authLogger.info('Sign out attempt');
           set({ isLoading: true });
           
           try {
             await signOut();
             
-            // ✅ Limpiar completamente el estado
-            set({ 
-              ...initialState, 
-              isLoading: false, 
-              isInitialized: true 
+            set({
+              ...initialState,
+              isLoadingSession: false,
+              isLoadingProfile: false,
             });
             
-            // ✅ Limpiar caches locales
-            localStorage.removeItem('crm_cache');
-            sessionStorage.clear();
-            
-            authLogger.success('Sign out completed');
+            authLogger.success('Sign out successful');
             toast.success('Sesión cerrada correctamente');
             
-          } catch (error) {
+          } catch (error: any) {
             authLogger.error('Sign out failed', error);
             
-            // ✅ Limpiar estado aún si hay error
-            set({ 
-              ...initialState, 
-              isLoading: false, 
-              isInitialized: true 
+            // Clear local state anyway
+            set({
+              ...initialState,
+              isLoadingSession: false,
+              isLoadingProfile: false,
+              error: 'Error al cerrar sesión, pero se limpió el estado local',
             });
             
             toast.error('Error al cerrar sesión');
           }
         },
-        
+
         getAccessToken: async () => {
           try {
             authLogger.info('Getting access token...');
@@ -516,7 +518,7 @@ const setupHubListener = () => {
     // ✅ Solo reinicializar en eventos relevantes
     if (['signedIn', 'signedOut', 'tokenRefresh'].includes(event)) {
       const store = useAuthStore.getState();
-      if (store.isInitialized) {
+      if (store.isReady) { // CAMBIO: usar isReady en vez de isInitialized
         store.initialize();
       }
     }
@@ -530,7 +532,7 @@ const setupHubListener = () => {
 setupHubListener();
 
 // ============================================
-// CONVENIENCE HOOKS
+// CONVENIENCE HOOKS (ACTUALIZADOS)
 // ============================================
 
 /**
@@ -540,7 +542,7 @@ export const useAuthState = () => useAuthStore((state) => ({
   user: state.user,
   isAuthenticated: state.isAuthenticated,
   isLoading: state.isLoading,
-  isInitialized: state.isInitialized,
+  isReady: state.isReady, // CAMBIO: usar isReady en vez de isInitialized
   error: state.error,
 }));
 

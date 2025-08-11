@@ -17,7 +17,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorMessage';
 
 // Services & Types
 import { useAuthStore } from '@/stores/authStore';
-import type { ContactDTO, ContactSearchCriteria, ContactSource } from '@/types/contact.types';
+import type { ContactDTO, ContactSearchCriteria, ContactSource, ContactStatus } from '@/types/contact.types';
 import type { PageResponse } from '@/types/common.types';
 import type { ApiError } from '@/services/api/baseApi';
 import { authLogger } from '@/types/auth.types';
@@ -43,8 +43,8 @@ const ContactListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // ✅ Auth state optimizado
-  const { isAuthenticated, isInitialized, user, getAccessToken } = useAuthStore();
+  // ✅ FIX 1: Auth state optimizado - CAMBIAR isInitialized por isReady
+  const { isAuthenticated, isReady, user, getAccessToken } = useAuthStore();
 
   // ============================================
   // COMPONENT STATE
@@ -67,11 +67,15 @@ const ContactListPage: React.FC = () => {
   // Search & filter state
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // ✅ FIX 4: Tipos consistentes en searchCriteria - eliminar 'as any'
   const [searchCriteria, setSearchCriteria] = useState<ContactSearchCriteria>({
     search: searchParams.get('search') || undefined,
-    status: (searchParams.get('status') as any) || undefined,
+    status: (searchParams.get('status') as ContactStatus) || undefined,
     source: (searchParams.get('source') as ContactSource) || undefined,
   });
+  
+  // ✅ FIX 2: selectedContactIds con funcionalidad real o simplificación
   const [selectedContactIds, setSelectedContactIds] = useState<Set<number>>(new Set());
 
   // ============================================
@@ -84,8 +88,8 @@ const ContactListPage: React.FC = () => {
     size: number = pageSize,
     isRetry: boolean = false
   ) => {
-    // ✅ Verificaciones previas optimizadas
-    if (!isAuthenticated || !isInitialized) {
+    // ✅ FIX 1: Verificaciones previas optimizadas - usar isReady en lugar de isInitialized
+    if (!isAuthenticated || !isReady) {
       authLogger.info('ContactList: Skipping search - user not authenticated');
       setState(prev => ({ ...prev, isLoading: false }));
       return;
@@ -220,7 +224,7 @@ const ContactListPage: React.FC = () => {
     currentPage, 
     pageSize, 
     isAuthenticated, 
-    isInitialized, 
+    isReady,  // ✅ FIX 3: Cambiar isInitialized por isReady en dependencias
     user, 
     getAccessToken,
     state.isLoading,
@@ -231,18 +235,18 @@ const ContactListPage: React.FC = () => {
   // EFFECTS OPTIMIZADOS
   // ============================================
 
-  // ✅ Initial load effect (mejorado)
+  // ✅ FIX 3: Initial load effect - usar isReady en lugar de isInitialized
   useEffect(() => {
-    if (isInitialized && isAuthenticated && user) {
+    if (isReady && isAuthenticated && user) {
       authLogger.info('ContactList: Initializing with authenticated user', { 
         user: user.email 
       });
       searchContacts();
-    } else if (isInitialized && !isAuthenticated) {
+    } else if (isReady && !isAuthenticated) {
       authLogger.info('ContactList: User not authenticated, showing auth required state');
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [isInitialized, isAuthenticated, user?.email]); // Dependencias específicas
+  }, [isReady, isAuthenticated, user?.email]); // ✅ FIX 3: Dependencias corregidas
 
   // ✅ Search effect with optimized debounce
   useEffect(() => {
@@ -342,12 +346,32 @@ const ContactListPage: React.FC = () => {
     searchContacts(resetCriteria, 0);
   }, [searchContacts]);
 
+  // ✅ FIX 2: Handlers para selección múltiple (opcionales pero añadidos para completitud)
+  const handleSelectContact = useCallback((contactId: number) => {
+    setSelectedContactIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(contactId)) {
+        newSet.delete(contactId);
+      } else {
+        newSet.add(contactId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((selected: boolean) => {
+    if (selected) {
+      setSelectedContactIds(new Set(state.contacts.map(c => c.id)));
+    } else {
+      setSelectedContactIds(new Set());
+    }
+  }, [state.contacts]);
+
   // ============================================
   // ESTADO COMPUTADO (Valores derivados del estado principal)
   // ============================================
   
-  // ✅ CORRECCIÓN: Volvemos a calcular 'hasActiveFilters'.
-  // Verifica si algún valor en searchCriteria no es nulo o indefinido.
+  // ✅ Volvemos a calcular 'hasActiveFilters'.
   const hasActiveFilters = Object.values(searchCriteria).some(
     value => value !== undefined && value !== null && value !== ''
   );
@@ -356,8 +380,8 @@ const ContactListPage: React.FC = () => {
   // RENDER GUARDS OPTIMIZADOS
   // ============================================
 
-  // ✅ Loading inicial
-  if (!isInitialized) {
+  // ✅ FIX 1: Loading inicial - usar isReady en lugar de isInitialized
+  if (!isReady) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -573,7 +597,7 @@ const ContactListPage: React.FC = () => {
           </div>
         )}
 
-        {/* ✅ Contacts Table con loading overlay */}
+        {/* ✅ FIX 2: Contacts Table con props corregidas y funcionalidad completa */}
         {state.contacts.length > 0 && (
           <div className="relative">
             {/* Loading overlay para refreshes */}
@@ -587,20 +611,17 @@ const ContactListPage: React.FC = () => {
             )}
             
             <ContactTable
-              // --- Props que SÍ existen en la interfaz ---
               contacts={state.contacts}
               onContactClick={handleContactView}
-              
-              // ✅ CORRECCIÓN: Añadimos las props que faltaban y que sí son necesarias
-              // Asumiendo que has definido estos estados/handlers en tu página
-              selectedIds={selectedContactIds} // Necesitas un useState para esto
-              updating={new Set()}             // Pasa un Set vacío si no manejas 'updating'
-              deleting={new Set()}             // Pasa un Set vacío si no manejas 'deleting'
+              selectedIds={selectedContactIds}
+              updating={new Set()} // Set vacío si no manejas updating individual
+              deleting={new Set()} // Set vacío si no manejas deleting individual
               onEditContact={(id) => navigate(`/contacts/${id}/edit`)}
-              
-              // (Opcional) Conecta los handlers para selección y borrado si los necesitas
-              // onSelectContact={handleSelect}
-              // onDeleteContact={handleDelete}
+              onSelectContact={handleSelectContact}
+              onSelectAll={handleSelectAll}
+              // Opcional: Si tu ContactTable soporta más props
+              // onDeleteContact={handleDeleteContact}
+              // onBulkAction={handleBulkAction}
             />
           </div>
         )}
@@ -615,6 +636,7 @@ const ContactListPage: React.FC = () => {
             <div>Retry Count: {state.retryCount}</div>
             <div>Search Criteria: {JSON.stringify(searchCriteria)}</div>
             <div>Last Fetch: {state.lastSuccessfulFetch ? new Date(state.lastSuccessfulFetch).toLocaleString() : 'None'}</div>
+            <div>Selected: {selectedContactIds.size} contacts</div>
           </div>
         )}
       </div>

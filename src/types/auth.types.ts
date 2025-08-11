@@ -24,22 +24,46 @@ export interface User {
   preferences: Record<string, any>;
 }
 
+// ============================================
+// COGNITO SESSION (NUEVA)
+// ============================================
+
+export interface CognitoSession {
+  accessToken: string;
+  refreshToken?: string;
+  idToken?: string;
+  expiresAt: number;
+}
+
 /**
  * ✅ AUTH STATE UNIFICADO
  * Usado tanto por AuthStore como por AuthContext
  */
 export interface AuthState {
+  // Core user data
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isInitialized: boolean;
   error: string | null;
   lastError: AuthError | null;
+  
+  // MFA state
   isMfaRequired: boolean;
   mfaType?: 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA';
+  
+  // Session data
   accessToken: string | null;
   sessionExpiry?: number;
   lastActivity?: number;
+  cognitoSession: CognitoSession | null;
+  
+  // Loading states (granular)
+  isLoadingSession: boolean;
+  isLoadingProfile: boolean;
+  
+  // Computed properties
+  readonly isReady: boolean;
+  readonly hasProfile: boolean;
 }
 
 /**
@@ -88,6 +112,10 @@ export interface AuthActions {
   initializeAuth: () => Promise<void>;
   checkAuthState: () => Promise<boolean>;
   handleAuthEvent: (event: string, data?: any) => void;
+
+  // New granular actions
+  loadCognitoSession: () => Promise<void>;
+  loadUserProfile: () => Promise<void>;
 }
 
 // ============================================

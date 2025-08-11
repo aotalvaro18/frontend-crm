@@ -2,7 +2,7 @@
 // ✅ ORQUESTADOR PRINCIPAL OPTIMIZADO - SIN BUCLE DE REDIRECCIÓN
 // Versión mejorada con error boundaries y logging granular
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -44,12 +44,25 @@ class AuthErrorBoundary extends React.Component<
             <p className="text-gray-600 mb-4">
               Ha ocurrido un error inesperado. Por favor, recarga la página.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Recargar Página
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Recargar Página
+              </button>
+              {import.meta.env.DEV && (
+                <details className="text-left">
+                  <summary className="text-gray-500 cursor-pointer hover:text-gray-700 text-sm">
+                    Detalles del error (desarrollo)
+                  </summary>
+                  <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+                    {this.state.error?.message}
+                    {this.state.error?.stack}
+                  </pre>
+                </details>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -60,69 +73,65 @@ class AuthErrorBoundary extends React.Component<
 }
 
 // ============================================
-// MAIN APP COMPONENT
+// COMPONENTE PRINCIPAL
 // ============================================
 
 const App: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  
-  const { isAuthenticated, isLoading, isInitialized, initialize, user, error } = useAuthStore();
-
-  // ✅ Estado local para evitar múltiples inicializaciones
-  const [initStarted, setInitStarted] = useState(false);
-  
-  // ✅ Estado para tracking de redirecciones (evitar bucles)
-  const [lastRedirect, setLastRedirect] = useState<{ path: string; timestamp: number } | null>(null);
+  const navigate = useNavigate();
 
   // ============================================
-  // 1. INICIALIZACIÓN (UNA SOLA VEZ)
+  // 🔧 CAMBIO 2: MODIFICAR DESTRUCTURING DEL STORE
+  // ============================================
+  const { 
+    isAuthenticated, 
+    isLoading, 
+    isReady, 
+    hasProfile, 
+    isLoadingProfile,
+    initialize, 
+    user, 
+    error 
+  } = useAuthStore();
+
+  // ============================================
+  // 🔧 CAMBIO 1: INICIALIZACIÓN (SIMPLIFICADA)
   // ============================================
 
   useEffect(() => {
-    if (!isInitialized && !initStarted) {
+    const initializeAuth = async () => {
       authLogger.info('App: Starting auth initialization...');
-      setInitStarted(true);
-      initialize().catch((error) => {
+      try {
+        await initialize();
+      } catch (error) {
         authLogger.error('App: Auth initialization failed', error);
-        setInitStarted(false); // Permitir retry
-      });
-    }
-  }, [isInitialized, initStarted, initialize]);
+      }
+    };
+    
+    initializeAuth();
+  }, [initialize]);
 
   // ============================================
-  // 2. LÓGICA DE REDIRECCIÓN INTELIGENTE
+  // 🔧 CAMBIO 5: LÓGICA DE REDIRECCIÓN (SIMPLIFICADA)
   // ============================================
 
   useEffect(() => {
-    // ✅ No hacer nada hasta que la inicialización termine
-    if (!isInitialized) {
-      authLogger.info('App: Waiting for auth initialization...');
-      return;
-    }
+    if (!isReady) return; // Wait for initialization
 
     const currentPath = location.pathname;
     const isPublicRoute = ['/login', '/forgot-password', '/reset-password'].includes(currentPath);
-    const now = Date.now();
-
-    // ✅ Prevenir bucle de redirecciones (cooldown de 1 segundo)
-    if (lastRedirect && lastRedirect.path === location.pathname && (now - lastRedirect.timestamp) < 500) {
-      authLogger.warn('App: Redirect cooldown active, skipping redirect');
-      return;
-    }
 
     authLogger.info('App: Evaluating route protection', {
       currentPath,
       isAuthenticated,
+      hasProfile,
       isPublicRoute,
       user: user?.email || 'none'
     });
 
-    // ✅ Usuario NO autenticado en ruta protegida → Login
+    // Usuario NO autenticado en ruta protegida → Login
     if (!isAuthenticated && !isPublicRoute) {
-      authLogger.info('App: Redirecting to login - unauthenticated user on protected route');
-      
-      setLastRedirect({ path: '/login', timestamp: now });
+      authLogger.info('App: Redirecting to login - unauthenticated user');
       navigate('/login', { 
         state: { from: location },
         replace: true 
@@ -130,61 +139,35 @@ const App: React.FC = () => {
       return;
     }
     
-    // ✅ Usuario autenticado en ruta pública → Dashboard
+    // Usuario autenticado en ruta pública → Dashboard
     if (isAuthenticated && isPublicRoute) {
       const from = (location.state as any)?.from?.pathname || '/contacts';
-      
-      authLogger.info('App: Redirecting to dashboard - authenticated user on public route', { 
-        from,
-        user: user?.email 
-      });
-      
-      setLastRedirect({ path: from, timestamp: now });
+      authLogger.info('App: Redirecting to dashboard - authenticated user', { user: user?.email });
       navigate(from, { replace: true });
       return;
     }
 
-    // ✅ Todo OK - usuario en la ruta correcta
+    // Todo OK - usuario en la ruta correcta
     authLogger.info('App: Route access granted', {
       currentPath,
       isAuthenticated,
       user: user?.email || 'none'
     });
 
-  }, [isAuthenticated, isInitialized, location, navigate, user, lastRedirect]);
+  }, [isAuthenticated, isReady, location, navigate, user, hasProfile]);
 
   // ============================================
-  // 3. MANEJO DE ERRORES CRÍTICOS
+  // 3. ERROR DISPLAY
   // ============================================
 
-  useEffect(() => {
-    if (error && isInitialized) {
-      authLogger.error('App: Auth error detected', error);
-      
-      // ✅ Solo redirigir en errores críticos específicos
-      const criticalErrors = [
-        'Token refresh failed',
-        'Invalid session',
-        'Authentication required'
-      ];
-      
-      const isCritical = criticalErrors.some(criticalError => 
-        error.toLowerCase().includes(criticalError.toLowerCase())
-      );
-      
-      if (isCritical && isAuthenticated) {
-        authLogger.error('App: Critical auth error, forcing re-authentication');
-        navigate('/login', { replace: true });
-      }
-    }
-  }, [error, isInitialized, isAuthenticated, navigate]);
+  const showGlobalError = error && location.pathname !== '/login';
 
   // ============================================
-  // 4. RENDER GUARDS Y LOADING STATES
+  // 🔧 CAMBIO 3: RENDER GUARDS Y LOADING STATES (SIMPLIFICADOS)
   // ============================================
 
-  // ✅ Loading inicial: Esperando inicialización
-  if (!isInitialized) {
+  // ✅ Loading inicial: Esperando inicialización de sesión
+  if (!isReady) {
     return (
       <AuthErrorBoundary>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -195,7 +178,7 @@ const App: React.FC = () => {
             </p>
             {import.meta.env.DEV && (
               <p className="mt-2 text-xs text-gray-400">
-                DEV: Checking auth state...
+                DEV: Loading Cognito session...
               </p>
             )}
           </div>
@@ -204,15 +187,15 @@ const App: React.FC = () => {
     );
   }
 
-  // ✅ Loading secundario: Procesando autenticación
-  if (isLoading) {
+  // ✅ Loading perfil: Usuario autenticado pero sin perfil cargado
+  if (isAuthenticated && !hasProfile && isLoadingProfile) {
     return (
       <AuthErrorBoundary>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <LoadingSpinner size="lg" />
             <p className="mt-4 text-gray-600">
-              {isAuthenticated ? 'Cargando perfil...' : 'Verificando credenciales...'}
+              Cargando perfil de usuario...
             </p>
           </div>
         </div>
@@ -227,97 +210,55 @@ const App: React.FC = () => {
   return (
     <AuthErrorBoundary>
       <ErrorBoundary>
-        <div className="min-h-screen bg-gray-50">
-          {/* ✅ OUTLET PARA LAS RUTAS */}
+        <div className="min-h-screen bg-app-dark-900 text-app-gray-100">
+          {/* Global Error Display */}
+          {showGlobalError && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">
+                    Error de autenticación: {error}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content */}
           <Outlet />
-          
-          {/* ✅ Toast notifications con configuración optimizada */}
+
+          {/* Toaster */}
           <Toaster 
             position="top-right"
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#363636',
-                color: '#fff',
-                fontSize: '14px',
+                background: '#1a1a1a',
+                color: '#e5e5e5',
+                border: '1px solid #2a2a2a',
               },
               success: {
-                duration: 3000,
                 iconTheme: {
                   primary: '#10B981',
-                  secondary: '#fff',
+                  secondary: '#1a1a1a',
                 },
               },
               error: {
-                duration: 6000,
                 iconTheme: {
                   primary: '#EF4444',
-                  secondary: '#fff',
-                },
-              },
-              loading: {
-                iconTheme: {
-                  primary: '#3B82F6',
-                  secondary: '#fff',
+                  secondary: '#1a1a1a',
                 },
               },
             }}
           />
-          
-          {/* ✅ Debug panel mejorado (solo en desarrollo) */}
+
+          {/* Development Info */}
           {import.meta.env.DEV && (
-            <div className="fixed bottom-4 left-4 z-50">
-              <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 shadow-lg">
-                <div className="space-y-1 font-mono">
-                  <div className="text-blue-400 font-semibold">🔧 DEBUG INFO</div>
-                  <div>ENV: {import.meta.env.MODE}</div>
-                  <div>Route: {location.pathname}</div>
-                  <div>Auth: {isAuthenticated ? '✅' : '❌'}</div>
-                  <div>Init: {isInitialized ? '✅' : '❌'}</div>
-                  <div>Loading: {isLoading ? '⏳' : '✅'}</div>
-                  
-                  {user && (
-                    <>
-                      <div className="border-t border-gray-700 pt-1 mt-1"></div>
-                      <div>User: {user.email}</div>
-                      <div>Name: {user.nombre}</div>
-                      <div>Roles: {user.roles.length > 0 ? user.roles.join(', ') : 'None'}</div>
-                      {user.organizationId && (
-                        <div>Org: {user.organizationId}</div>
-                      )}
-                      {user.churchId && (
-                        <div>Church: {user.churchId}</div>
-                      )}
-                    </>
-                  )}
-                  
-                  {error && (
-                    <>
-                      <div className="border-t border-gray-700 pt-1 mt-1"></div>
-                      <div className="text-red-400">Error: {error}</div>
-                    </>
-                  )}
-                  
-                  {lastRedirect && (
-                    <>
-                      <div className="border-t border-gray-700 pt-1 mt-1"></div>
-                      <div className="text-yellow-400">
-                        Last redirect: {lastRedirect.path}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(lastRedirect.timestamp).toLocaleTimeString()}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* ✅ Network status indicator (solo en desarrollo) */}
-          {import.meta.env.DEV && (
-            <div className="fixed bottom-4 right-4 z-50">
-              <div className={`w-3 h-3 rounded-full ${navigator.onLine ? 'bg-green-500' : 'bg-red-500'}`} 
+            <div className="fixed bottom-4 left-4 text-xs text-app-gray-500 bg-app-dark-800 px-2 py-1 rounded border border-app-dark-700">
+              <div>Auth: {isAuthenticated ? 'Yes' : 'No'}</div>
+              <div>User: {user?.email || 'None'}</div>
+              <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
+              <div className={`inline-block w-2 h-2 rounded-full mr-1 ${navigator.onLine ? 'bg-green-500' : 'bg-red-500'}`} 
                    title={navigator.onLine ? 'Online' : 'Offline'}>
               </div>
             </div>
