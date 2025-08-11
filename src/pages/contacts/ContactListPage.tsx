@@ -168,52 +168,64 @@ const ContactListPage: React.FC = () => {
         errorMessage = 'Verificando autenticación...';
         shouldShowToast = false; // No mostrar toast, BaseApiClient maneja esto
         
-      } else if (apiError.status === 403) {
-        errorMessage = 'No tienes permisos para ver los contactos.';
-        
-      } else if (apiError.status === 404) {
-        errorMessage = 'No se encontraron contactos.';
-        setState(prev => ({ ...prev, contacts: [] }));
-        
-      } else if (apiError.status >= 500) {
-        errorMessage = 'Error del servidor.';
-        shouldRetry = state.retryCount < 3;
-        
-        if (shouldRetry) {
-          const retryDelay = Math.pow(2, state.retryCount) * 1000;
-          authLogger.info(`ContactList: Retrying in ${retryDelay}ms (attempt ${state.retryCount + 1}/3)`);
+        } else if (apiError.status === 403) {
+          errorMessage = 'No tienes permisos para ver los contactos.';
           
-          setTimeout(() => {
-            setState(prev => ({ ...prev, retryCount: prev.retryCount + 1 }));
-            searchContacts(criteria, page, size, true);
-          }, retryDelay);
+        } else if (apiError.status === 404) {
+          setState(prev => ({ 
+            ...prev, 
+            contacts: [], 
+            isLoading: false,
+            error: null
+          }));
+          return;
+        
+        } else if (apiError.status >= 500) {
+          errorMessage = 'Error del servidor.';
+          shouldRetry = state.retryCount < 3;
           
-          errorMessage = `Error del servidor. Reintentando en ${retryDelay / 1000}s...`;
+          if (shouldRetry) {
+            const retryDelay = Math.pow(2, state.retryCount) * 1000;
+            authLogger.info(`ContactList: Retrying in ${retryDelay}ms (attempt ${state.retryCount + 1}/3)`);
+            
+            setTimeout(() => {
+              setState(prev => ({ ...prev, retryCount: prev.retryCount + 1 }));
+              searchContacts(criteria, page, size, true);
+            }, retryDelay);
+            
+            errorMessage = `Error del servidor. Reintentando en ${retryDelay / 1000}s...`;
+          } else {
+            errorMessage = 'Error del servidor persistente. Intenta recargar la página.';
+          }
+          
+        } else if (!navigator.onLine) {
+          errorMessage = 'Sin conexión a internet. Verifica tu conexión.';
+          
         } else {
-          errorMessage = 'Error del servidor persistente. Intenta recargar la página.';
+          errorMessage = `Error inesperado: ${apiError.message || 'Desconocido'}`;
         }
-        
-      } else if (!navigator.onLine) {
-        errorMessage = 'Sin conexión a internet. Verifica tu conexión.';
-        shouldRetry = true;
-        
-      } else {
-        errorMessage = apiError.message || 'Error inesperado al cargar contactos.';
-      }
 
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: errorMessage,
-        retryCount: shouldRetry ? prev.retryCount : 0,
       }));
 
-      // ✅ Toast solo para errores relevantes
-      if (shouldShowToast && !shouldRetry) {
+      if (shouldShowToast) {
         toast.error(errorMessage);
       }
     }
-  }, [searchCriteria, currentPage, pageSize, isAuthenticated, isInitialized, getAccessToken, user, state.isLoading, state.retryCount]);
+  }, [
+    searchCriteria, 
+    currentPage, 
+    pageSize, 
+    isAuthenticated, 
+    isInitialized, 
+    user, 
+    getAccessToken,
+    state.isLoading,
+    state.retryCount
+  ]);
 
   // ============================================
   // EFFECTS OPTIMIZADOS

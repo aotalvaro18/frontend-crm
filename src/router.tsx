@@ -38,19 +38,6 @@ const ContactCreatePage = lazy(() => {
   });
 });
 
-// ✅ Layout fallbacks (si no existen)
-const AuthLayout = lazy(() => {
-  return import('@/components/layout/Layout').catch(() => {
-    // Simple fallback layout
-    const FallbackAuthLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="w-full max-w-md">{children}</div>
-      </div>
-    );
-    return { default: FallbackAuthLayout };
-  });
-});
-
 const MainLayout = lazy(() => {
   return import('@/components/layout/Layout').catch(() => {
     // Simple fallback layout

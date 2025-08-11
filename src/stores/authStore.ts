@@ -51,15 +51,19 @@ class AuthServiceClient {
     try {
       authLogger.info('Fetching user profile from auth-service');
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos
+      
       const response = await fetch(`${this.baseURL}/api/auth/me`, {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
-        // ✅ Timeout para evitar requests colgados
-        signal: AbortSignal.timeout(10000) // 10 segundos
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -75,8 +79,12 @@ class AuthServiceClient {
       authLogger.success('User profile loaded from auth-service', { email: user.email });
       return user;
       
-    } catch (error) {
-      authLogger.warn('Failed to fetch user profile from service, using Cognito fallback', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        authLogger.warn('Auth service timeout (2s), using Cognito fallback');
+      } else {
+        authLogger.warn('Failed to fetch user profile from service, using Cognito fallback', error);
+      }
       return null;
     }
   }

@@ -74,7 +74,6 @@ export function usePagination(
   const {
     initialPage = 0,
     initialPageSize,
-    pageSizeOptions = APP_CONFIG.PAGE_SIZE_OPTIONS,
     maxPages = 1000,
     adaptivePageSize = true,
     prefetchNext = true,
