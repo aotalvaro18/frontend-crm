@@ -284,7 +284,7 @@ export const useAuthStore = create<AuthStore>()(
               // ✅ Re-inicializar para obtener perfil completo
               console.log('🔍 SIGNIN: About to call get().initialize()...');
               try {
-                await get().initialize();
+                await useAuthStore.getState().initialize();
                 console.log('🔍 SIGNIN: initialize() completed successfully');
               } catch (initError) {
                 console.error('🔍 SIGNIN: ERROR in initialize():', initError);
