@@ -54,7 +54,7 @@ class AuthServiceClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos
       
-      const response = await fetch(`${this.baseURL}/api/auth/me`, {
+      const response = await fetch(`${this.baseURL}/api/users/me`, {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${accessToken}`,
