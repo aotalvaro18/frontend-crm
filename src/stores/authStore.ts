@@ -173,34 +173,56 @@ export const useAuthStore = create<AuthStore>()(
 
         initialize: async () => {
           const currentState = get();
+          console.log('🔍 INITIALIZE: Starting with state:', {
+            isInitialized: currentState.isInitialized,
+            isAuthenticated: currentState.isAuthenticated,
+            hasUser: !!currentState.user
+          });
+          
           if (currentState.isInitialized) {
             authLogger.info('Auth store already initialized, skipping');
+            console.log('🔍 INITIALIZE: Already initialized, skipping');
             return;
           }
           
           authLogger.info('Initializing auth store...');
+          console.log('🔍 INITIALIZE: Setting loading true');
           set({ isLoading: true });
           
           try {
+            console.log('🔍 INITIALIZE: Getting current user from Cognito');
             const authUser = await getCurrentUser();
+            console.log('🔍 INITIALIZE: Cognito user:', authUser);
+            
+            console.log('🔍 INITIALIZE: Getting auth session');
             const session = await fetchAuthSession();
+            console.log('🔍 INITIALIZE: Auth session tokens exist:', !!session.tokens);
+            console.log('🔍 INITIALIZE: Access token exists:', !!session.tokens?.accessToken);
+            
             const accessToken = session.tokens?.accessToken?.toString();
-
+            console.log('🔍 INITIALIZE: Access token string exists:', !!accessToken);
+        
             if (authUser && accessToken) {
               authLogger.info('Valid Cognito session found');
+              console.log('🔍 INITIALIZE: Valid session, calling auth service');
               
               // ✅ Intentar obtener perfil completo del auth-service
+              console.log('🔍 INITIALIZE: Calling getCurrentUserFromService...');
               let userProfile = await authServiceClient.getCurrentUserFromService(accessToken);
+              console.log('🔍 INITIALIZE: Auth service response:', userProfile);
               
               // ✅ Fallback a datos de Cognito si auth-service falla
               if (!userProfile) {
+                console.log('🔍 INITIALIZE: Using Cognito fallback');
                 userProfile = extractUserFromCognito(authUser, session);
+                console.log('🔍 INITIALIZE: Cognito user profile:', userProfile);
               }
-
+        
               const sessionExpiry = session.tokens?.accessToken?.payload?.exp 
                 ? (session.tokens.accessToken.payload.exp as number) * 1000 
                 : undefined;
-
+        
+              console.log('🔍 INITIALIZE: Setting final state with user:', userProfile);
               set({
                 user: userProfile,
                 isAuthenticated: true,
@@ -211,12 +233,14 @@ export const useAuthStore = create<AuthStore>()(
                 isInitialized: true,
                 error: null,
               });
-
+        
+              console.log('🔍 INITIALIZE: Complete success');
               authLogger.success('Auth store initialized successfully', { 
                 email: userProfile.email,
                 source: userProfile.id.length > 10 ? 'auth-service' : 'cognito'
               });
             } else {
+              console.log('🔍 INITIALIZE: No valid session - authUser:', !!authUser, 'accessToken:', !!accessToken);
               authLogger.info('No valid session found');
               set({ 
                 isLoading: false, 
@@ -226,13 +250,14 @@ export const useAuthStore = create<AuthStore>()(
               });
             }
           } catch (error) {
+            console.log('🔍 INITIALIZE: Error occurred:', error);
             authLogger.info('No authenticated user found (normal on first visit)', error);
             set({ 
               isLoading: false, 
               isInitialized: true,
               isAuthenticated: false,
               user: null,
-              error: null // ✅ No mostrar error para usuarios no autenticados
+              error: null
             });
           }
         },
