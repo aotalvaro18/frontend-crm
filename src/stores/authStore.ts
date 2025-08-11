@@ -238,55 +238,88 @@ export const useAuthStore = create<AuthStore>()(
         },
         
         signIn: async (credentials: SignInCredentials) => {
-          console.log('🆘 EMERGENCY: signIn called with email:', credentials.email);
+          console.log('🔍 SIGNIN: Starting signIn process');
+          console.log('🔍 SIGNIN: Credentials email:', credentials.email);
           authLogger.info('Sign in attempt', { email: credentials.email });
           set({ isLoading: true, error: null, lastError: null });
           
           try {
+            console.log('🔍 SIGNIN: Calling AWS Cognito signIn');
             const { isSignedIn, nextStep } = await signIn({ 
               username: credentials.email, 
               password: credentials.password 
             });
             
+            console.log('🔍 SIGNIN: AWS Cognito response:', { isSignedIn, nextStep });
+            
             if (isSignedIn) {
+              console.log('🔍 SIGNIN: SUCCESS - Login was successful!');
               authLogger.success('Sign in successful');
               
               // ✅ Re-inicializar para obtener perfil completo
-              await get().initialize();
+              console.log('🔍 SIGNIN: About to call get().initialize()...');
+              try {
+                await get().initialize();
+                console.log('🔍 SIGNIN: initialize() completed successfully');
+              } catch (initError) {
+                console.error('🔍 SIGNIN: ERROR in initialize():', initError);
+                throw initError;
+              }
               
               const user = get().user;
+              console.log('🔍 SIGNIN: Final user after initialize:', user);
+              console.log('🔍 SIGNIN: Current store state:', {
+                isAuthenticated: get().isAuthenticated,
+                isLoading: get().isLoading,
+                isInitialized: get().isInitialized,
+                hasUser: !!user
+              });
+              
               if (user) {
+                console.log('🔍 SIGNIN: Showing success toast');
                 toast.success(`¡Bienvenido, ${user.nombre}!`);
+              } else {
+                console.warn('🔍 SIGNIN: WARNING - No user after initialize');
               }
+              console.log('🔍 SIGNIN: Process completed successfully');
+              
             } else if (nextStep) {
+              console.log('🔍 SIGNIN: MFA required', nextStep);
               // ✅ Manejar MFA si es necesario
               authLogger.info('MFA required', { step: nextStep.signInStep });
               
               set({
                 isMfaRequired: true,
-                mfaType: nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_SMS_CODE' ? 'SMS_MFA' : 'SOFTWARE_TOKEN_MFA',
+                mfaType: nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_SMS_CODE' 
+                  ? 'SMS_MFA' 
+                  : 'SOFTWARE_TOKEN_MFA',
                 isLoading: false,
               });
-              
-              toast('Se requiere verificación adicional', {
-                icon: '🔐',
-                duration: 5000,
-              });
+            } else {
+              console.log('🔍 SIGNIN: Unexpected response - no isSignedIn and no nextStep');
             }
           } catch (error: any) {
-            const errorMessage = getErrorMessage(error);
-            const authError = createAuthError(errorMessage, error.name || 'SIGNIN_ERROR');
+            console.error('🔍 SIGNIN: ERROR occurred:', error);
+            console.error('🔍 SIGNIN: Error name:', error.name);
+            console.error('🔍 SIGNIN: Error message:', error.message);
+            console.error('🔍 SIGNIN: Error stack:', error.stack);
             
             authLogger.error('Sign in failed', error);
             
+            const authError = createAuthError(
+              getErrorMessage(error),
+              error.name || 'SignInError',
+              'AUTH_ERROR'
+            );
+            
             set({ 
-              error: errorMessage,
+              error: authError.message,
               lastError: authError,
-              isLoading: false 
+              isLoading: false,
+              isMfaRequired: false,
             });
             
-            toast.error(errorMessage);
-            throw error;
+            toast.error(authError.message);
           }
         },
 
