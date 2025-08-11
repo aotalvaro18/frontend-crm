@@ -32,6 +32,9 @@ import {
   authLogger 
 } from '@/types/auth.types';
 
+console.log('🆘 EMERGENCY DEBUG: authStore.ts loaded at:', new Date().toISOString());
+console.log('🆘 EMERGENCY DEBUG: Code version check');
+
 // ============================================
 // AUTH SERVICE CLIENT (Interno al store)
 // ============================================
@@ -40,8 +43,10 @@ class AuthServiceClient {
   private baseURL: string;
 
   constructor() {
+    console.log('🆘 EMERGENCY: AuthServiceClient constructor called');
     this.baseURL = import.meta.env['VITE_API_GATEWAY_URL'] || 'http://localhost:8080';
-    
+    console.log('🆘 EMERGENCY: baseURL set to:', this.baseURL);
+
     if (!this.baseURL || this.baseURL === 'http://localhost:8080') {
       authLogger.warn('VITE_API_GATEWAY_URL not configured properly, using fallback');
     }
@@ -233,6 +238,7 @@ export const useAuthStore = create<AuthStore>()(
         },
         
         signIn: async (credentials: SignInCredentials) => {
+          console.log('🆘 EMERGENCY: signIn called with email:', credentials.email);
           authLogger.info('Sign in attempt', { email: credentials.email });
           set({ isLoading: true, error: null, lastError: null });
           
