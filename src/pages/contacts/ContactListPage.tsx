@@ -142,18 +142,21 @@ const ContactListPage: React.FC = () => {
   // EFFECTS - RESPONSABILIDAD ÚNICA
   // ============================================
 
-  // ✅ REFINAMIENTO 2: Effect para search criteria (solo actualiza criterios)
+  // ✅ CORRECCIÓN: Un único effect para la lógica de búsqueda.
+  // Se dispara SOLO cuando el término de búsqueda (debounced) o la página cambian.
   useEffect(() => {
-    setSearchCriteria({
-      ...searchCriteria,
+    // Construimos los criterios aquí dentro, usando los últimos valores
+    const criteria = {
       search: debouncedSearchTerm || undefined,
-    });
-  }, [debouncedSearchTerm, setSearchCriteria]);
+    };
+    
+    // Llamamos a la API con los criterios actuales
+    searchContacts(criteria, currentPage);
 
-  // ✅ Effect para ejecutar búsqueda (solo ejecuta búsqueda)
-  useEffect(() => {
-    searchContacts(searchCriteria, currentPage);
-  }, [searchCriteria, currentPage, searchContacts]);
+    // Sincronizamos el estado de los filtros
+    setSearchCriteria(criteria);
+
+  }, [debouncedSearchTerm, currentPage, searchContacts, setSearchCriteria]);
 
   // Effect para stats (solo stats)
   useEffect(() => {
