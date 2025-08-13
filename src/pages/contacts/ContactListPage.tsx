@@ -1,646 +1,477 @@
 // src/pages/contacts/ContactListPage.tsx
-// ✅ CONTACT LIST PAGE OPTIMIZADO - ERROR HANDLING INTELIGENTE
-// Versión mejorada que no causa bucle de redirección
+// ✅ CONTACT LIST PAGE - VERSIÓN EXCEPCIONAL
+// Refinamientos arquitectónicos para código extraordinario
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { Plus, Search, Filter, Download, Users, RefreshCw } from 'lucide-react';
+import { 
+  Plus, 
+  Filter, 
+  RefreshCw, 
+  X,
+  FileDown,
+  Upload,
+  Users
+} from 'lucide-react';
 
-// Components
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import ContactTable from '@/components/contacts/ContactsTable';
+// ============================================
+// UI COMPONENTS
+// ============================================
+
+import { Button, IconButton } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Badge, CountBadge } from '@/components/ui/Badge';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import Dropdown from '@/components/ui/Dropdown';
+
+// ============================================
+// CONTACT COMPONENTS
+// ============================================
+
+import ContactsTable from '@/components/contacts/ContactsTable';
 import ContactsFilters from '@/components/contacts/ContactsFilters';
-import { ErrorBoundary } from '@/components/ui/ErrorMessage';
-
-// Services & Types
-import { useAuthStore } from '@/stores/authStore';
-import type { ContactDTO, ContactSearchCriteria, ContactSource, ContactStatus } from '@/types/contact.types';
-import type { PageResponse } from '@/types/common.types';
-import type { ApiError } from '@/services/api/baseApi';
-import { authLogger } from '@/types/auth.types';
-
-import { contactApi } from '@/services/api/contactApi';
-// ============================================
-// INTERFACES
-// ============================================
-
-interface ContactListState {
-  contacts: ContactDTO[];
-  isLoading: boolean;
-  error: string | null;
-  retryCount: number;
-  lastSuccessfulFetch: number | null;
-}
+import ContactsBulkActions from '@/components/contacts/ContactsBulkActions';
+import ContactsStatsCards from '@/components/contacts/ContactsStatsCards';
 
 // ============================================
-// CONTACT LIST PAGE COMPONENT
+// LAYOUT
+// ============================================
+
+import Page from '@/components/layout/Page';
+
+// ============================================
+// HOOKS - ÚNICA FUENTE DE VERDAD
+// ============================================
+
+import {
+  useContacts,
+  useBulkOperations,
+  useContactStats,
+  useImportExport,
+  useContactSearch,
+  useConnectionStatus
+} from '@/hooks/useContacts';
+
+import { useDebounce } from '@/hooks/useDebounce';
+import { usePagination } from '@/hooks/usePagination'; // ✅ ÚNICA fuente de verdad para paginación
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+
+// ============================================
+// TYPES
+// ============================================
+
+import type { ContactDTO, ContactStatus } from '@/types/contact.types';
+
+// ============================================
+// UTILS
+// ============================================
+
+import { cn } from '@/utils/cn';
+
+// ============================================
+// MAIN COMPONENT
 // ============================================
 
 const ContactListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // ✅ FIX 1: Auth state optimizado - CAMBIAR isInitialized por isReady
-  const { isAuthenticated, isReady, user, getAccessToken } = useAuthStore();
 
   // ============================================
-  // COMPONENT STATE
+  // HOOKS - RESPONSABILIDAD ÚNICA
   // ============================================
 
-  const [state, setState] = useState<ContactListState>({
-    contacts: [],
-    isLoading: true,
-    error: null,
-    retryCount: 0,
-    lastSuccessfulFetch: null,
+  // Core contact data
+  const {
+    totalContacts,
+    searchContacts,
+    refreshContacts,
+    error: contactsError // Solo errores catastróficos de red
+  } = useContacts();
+
+  // Search state
+  const {
+    searchCriteria,
+    setSearchCriteria,
+    hasActiveFilters
+  } = useContactSearch();
+
+  // Bulk operations
+  const {
+    hasSelection,
+    selectionCount,
+    bulkOperationLoading,
+    deselectAllContacts,
+    bulkUpdateContacts,
+    bulkDeleteContacts
+  } = useBulkOperations();
+
+  // Stats
+  const { stats, loadStats } = useContactStats();
+
+  // Import/Export
+  const { exportContacts } = useImportExport();
+
+  // Connection status
+  const { isOnline } = useConnectionStatus();
+
+  // Error handling
+  const { handleError } = useErrorHandler();
+
+  // ✅ REFINAMIENTO 1: usePagination como ÚNICA fuente de verdad
+  const {
+    currentPage,
+    setCurrentPage,
+    resetToFirstPage
+  } = usePagination({
+    totalItems: totalContacts,
+    defaultPageSize: 25
   });
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
-  const [totalElements, setTotalElements] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-
-  // Search & filter state
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-  const [showFilters, setShowFilters] = useState(false);
-  
-  // ✅ FIX 4: Tipos consistentes en searchCriteria - eliminar 'as any'
-  const [searchCriteria, setSearchCriteria] = useState<ContactSearchCriteria>({
-    search: searchParams.get('search') || undefined,
-    status: (searchParams.get('status') as ContactStatus) || undefined,
-    source: (searchParams.get('source') as ContactSource) || undefined,
-  });
-  
-  // ✅ FIX 2: selectedContactIds con funcionalidad real o simplificación
-  const [selectedContactIds, setSelectedContactIds] = useState<Set<number>>(new Set());
 
   // ============================================
-  // OPTIMIZED SEARCH FUNCTION
+  // LOCAL STATE - SOLO UI SIMPLE
   // ============================================
 
-  const searchContacts = useCallback(async (
-    criteria: ContactSearchCriteria = searchCriteria,
-    page: number = currentPage,
-    size: number = pageSize,
-    isRetry: boolean = false
-  ) => {
-    // ✅ FIX 1: Verificaciones previas optimizadas - usar isReady en lugar de isInitialized
-    if (!isAuthenticated || !isReady) {
-      authLogger.info('ContactList: Skipping search - user not authenticated');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return;
-    }
+  const [searchTerm, setSearchTerm] = React.useState(searchParams.get('search') || '');
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
-    // ✅ Evitar múltiples requests simultáneos
-    if (state.isLoading && !isRetry) {
-      authLogger.info('ContactList: Request already in progress, skipping');
-      return;
-    }
-
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-      authLogger.info('ContactList: Searching contacts', { 
-        criteria, 
-        page, 
-        size, 
-        isRetry,
-        user: user?.email 
-      });
-
-      // ✅ Verificación de token con manejo inteligente
-      const token = await getAccessToken();
-      if (!token) {
-        authLogger.warn('ContactList: No access token available');
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Sesión expirada. Inicia sesión nuevamente.',
-        }));
-        return;
-      }
-
-      // ✅ Request a la API con timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-      try {
-        const response: PageResponse<ContactDTO> = await contactApi.searchContacts(
-          criteria,
-          { page, size, sort: ['createdAt,desc'] }
-        );
-
-        clearTimeout(timeoutId);
-
-        authLogger.success('ContactList: Contacts loaded successfully', {
-          count: response.content.length,
-          totalElements: response.totalElements
-        });
-
-        setState(prev => ({
-          ...prev,
-          contacts: response.content,
-          isLoading: false,
-          error: null,
-          retryCount: 0,
-          lastSuccessfulFetch: Date.now(),
-        }));
-
-        setCurrentPage(response.number);
-        setTotalElements(response.totalElements);
-        setTotalPages(response.totalPages);
-
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-    } catch (error: unknown) {
-      authLogger.error('ContactList: Error loading contacts', error);
-      
-      // ✅ MANEJO INTELIGENTE DE ERRORES (MEJORADO)
-      const apiError = error as ApiError;
-      let errorMessage = 'Error al cargar contactos';
-      let shouldRetry = false;
-      let shouldShowToast = true;
-      
-      if (apiError.status === 401) {
-        authLogger.warn('ContactList: 401 Unauthorized - token handled by BaseApiClient');
-        errorMessage = 'Verificando autenticación...';
-        shouldShowToast = false; // No mostrar toast, BaseApiClient maneja esto
-        
-        } else if (apiError.status === 403) {
-          errorMessage = 'No tienes permisos para ver los contactos.';
-          
-        } else if (apiError.status === 404) {
-          setState(prev => ({ 
-            ...prev, 
-            contacts: [], 
-            isLoading: false,
-            error: null
-          }));
-          return;
-        
-        } else if (apiError.status >= 500) {
-          errorMessage = 'Error del servidor.';
-          shouldRetry = state.retryCount < 3;
-          
-          if (shouldRetry) {
-            const retryDelay = Math.pow(2, state.retryCount) * 1000;
-            authLogger.info(`ContactList: Retrying in ${retryDelay}ms (attempt ${state.retryCount + 1}/3)`);
-            
-            setTimeout(() => {
-              setState(prev => ({ ...prev, retryCount: prev.retryCount + 1 }));
-              searchContacts(criteria, page, size, true);
-            }, retryDelay);
-            
-            errorMessage = `Error del servidor. Reintentando en ${retryDelay / 1000}s...`;
-          } else {
-            errorMessage = 'Error del servidor persistente. Intenta recargar la página.';
-          }
-          
-        } else if (!navigator.onLine) {
-          errorMessage = 'Sin conexión a internet. Verifica tu conexión.';
-          
-        } else {
-          errorMessage = `Error inesperado: ${apiError.message || 'Desconocido'}`;
-        }
-
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
-
-      if (shouldShowToast) {
-        toast.error(errorMessage);
-      }
-    }
-  }, [
-    searchCriteria, 
-    currentPage, 
-    pageSize, 
-    isAuthenticated, 
-    isReady,  // ✅ FIX 3: Cambiar isInitialized por isReady en dependencias
-    user, 
-    getAccessToken,
-    state.isLoading,
-    state.retryCount
-  ]);
+  // Debounced search
+  const { debouncedValue: debouncedSearchTerm } = useDebounce(searchTerm, 300);
 
   // ============================================
-  // EFFECTS OPTIMIZADOS
+  // EFFECTS - RESPONSABILIDAD ÚNICA
   // ============================================
 
-  // ✅ FIX 3: Initial load effect - usar isReady en lugar de isInitialized
+  // ✅ REFINAMIENTO 2: Effect para search criteria (solo actualiza criterios)
   useEffect(() => {
-    if (isReady && isAuthenticated && user) {
-      authLogger.info('ContactList: Initializing with authenticated user', { 
-        user: user.email 
-      });
-      searchContacts();
-    } else if (isReady && !isAuthenticated) {
-      authLogger.info('ContactList: User not authenticated, showing auth required state');
-      setState(prev => ({ ...prev, isLoading: false }));
-    }
-  }, [isReady, isAuthenticated, user?.email]); // ✅ FIX 3: Dependencias corregidas
+    setSearchCriteria({
+      ...searchCriteria,
+      search: debouncedSearchTerm || undefined,
+    });
+  }, [debouncedSearchTerm, setSearchCriteria]);
 
-  // ✅ Search effect with optimized debounce
+  // ✅ Effect para ejecutar búsqueda (solo ejecuta búsqueda)
   useEffect(() => {
-    if (!isAuthenticated) return;
+    searchContacts(searchCriteria, currentPage);
+  }, [searchCriteria, currentPage, searchContacts]);
 
-    const timeoutId = setTimeout(() => {
-      if (searchTerm !== searchCriteria.search) {
-        const newCriteria = { ...searchCriteria, search: searchTerm || undefined };
-        setSearchCriteria(newCriteria);
-        setCurrentPage(0);
-        searchContacts(newCriteria, 0);
-      }
-    }, 300); // Reduced debounce time
+  // Effect para stats (solo stats)
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, isAuthenticated]); // Dependencias mínimas
-
-  // ✅ URL sync effect
+  // Effect para URL sync (solo URL)
   useEffect(() => {
     const params = new URLSearchParams();
-    if (searchCriteria.search) params.set('search', searchCriteria.search);
-    if (searchCriteria.status) params.set('status', searchCriteria.status);
-    if (searchCriteria.source) params.set('source', searchCriteria.source);
+    if (searchTerm) params.set('search', searchTerm);
+    if (currentPage > 0) params.set('page', currentPage.toString());
     
     setSearchParams(params, { replace: true });
-  }, [searchCriteria, setSearchParams]);
-
-  // ✅ Online/offline detection
-  useEffect(() => {
-    const handleOnline = () => {
-      if (state.error?.includes('Sin conexión')) {
-        authLogger.info('ContactList: Network restored, retrying...');
-        searchContacts();
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [state.error, searchContacts]);
+  }, [searchTerm, currentPage, setSearchParams]);
 
   // ============================================
-  // EVENT HANDLERS OPTIMIZADOS
+  // HANDLERS - CLEAN & FOCUSED
   // ============================================
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
+  const handleCreateContact = useCallback(() => {
+    navigate('/contacts/create');
+  }, [navigate]);
+
+  const handleContactClick = useCallback((contact: ContactDTO) => {
+    navigate(`/contacts/${contact.id}`);
+  }, [navigate]);
+
+  const handleContactEdit = useCallback((contact: ContactDTO) => {
+    navigate(`/contacts/${contact.id}/edit`);
+  }, [navigate]);
+
+  const handleContactDelete = useCallback((contact: ContactDTO) => {
+    // TODO: Implement delete confirmation modal
+    console.log('Delete contact:', contact.id);
   }, []);
 
-  const handleFilterChange = useCallback((newCriteria: ContactSearchCriteria) => {
-    setSearchCriteria(newCriteria);
-    setCurrentPage(0);
-    searchContacts(newCriteria, 0);
-  }, [searchContacts]);
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-    searchContacts(searchCriteria, page);
-  }, [searchCriteria, searchContacts]);
-
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(0);
-    searchContacts(searchCriteria, 0, size);
-  }, [searchCriteria, searchContacts]);
-
-  const handleContactCreate = useCallback(() => {
-    navigate('/contacts/new');
-  }, [navigate]);
-
-  const handleContactView = useCallback((contactId: number) => {
-    navigate(`/contacts/${contactId}`);
-  }, [navigate]);
-
-  const handleRefresh = useCallback(() => {
-    setState(prev => ({ ...prev, retryCount: 0, error: null }));
-    searchContacts();
-  }, [searchContacts]);
-
-  const handleExport = useCallback(async () => {
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      toast.loading('Preparando exportación...');
-      // TODO: Implementar exportación real
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.dismiss();
-      toast.success('Exportación completada');
-    } catch (error) {
-      toast.dismiss();
-      toast.error('Error al exportar contactos');
+      await Promise.all([
+        refreshContacts(),
+        loadStats()
+      ]);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, []);
+  }, [refreshContacts, loadStats]);
+
+  const handleExport = useCallback(async (format: 'csv' | 'excel') => {
+    try {
+      await exportContacts(format, searchCriteria);
+    } catch (error) {
+      handleError(error, 'Error al exportar contactos');
+    }
+  }, [exportContacts, searchCriteria, handleError]);
+
+  const handleBulkStatusUpdate = useCallback(async (status: ContactStatus) => {
+    try {
+      await bulkUpdateContacts({ status });
+    } catch (error) {
+      handleError(error, 'Error al actualizar contactos');
+    }
+  }, [bulkUpdateContacts, handleError]);
+
+  const handleBulkDelete = useCallback(async () => {
+    try {
+      await bulkDeleteContacts();
+    } catch (error) {
+      handleError(error, 'Error al eliminar contactos');
+    }
+  }, [bulkDeleteContacts, handleError]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+    resetToFirstPage();
+  }, [resetToFirstPage]);
 
   const handleClearFilters = useCallback(() => {
-    const resetCriteria: ContactSearchCriteria = {};
-    setSearchCriteria(resetCriteria);
     setSearchTerm('');
-    setCurrentPage(0);
-    searchContacts(resetCriteria, 0);
-  }, [searchContacts]);
+    setSearchCriteria({});
+    resetToFirstPage();
+    setShowFilters(false);
+  }, [setSearchCriteria, resetToFirstPage]);
 
-  // ✅ FIX 2: Handlers para selección múltiple (opcionales pero añadidos para completitud)
-  const handleSelectContact = useCallback((contactId: number) => {
-    setSelectedContactIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(contactId)) {
-        newSet.delete(contactId);
-      } else {
-        newSet.add(contactId);
-      }
-      return newSet;
-    });
-  }, []);
+  // ============================================
+  // DROPDOWN ITEMS
+  // ============================================
 
-  const handleSelectAll = useCallback((selected: boolean) => {
-    if (selected) {
-      setSelectedContactIds(new Set(state.contacts.map(c => c.id)));
-    } else {
-      setSelectedContactIds(new Set());
+  const exportDropdownItems = [
+    {
+      id: 'export-csv',
+      label: 'Exportar CSV',
+      icon: FileDown,
+      onClick: () => handleExport('csv'),
+    },
+    {
+      id: 'export-excel', 
+      label: 'Exportar Excel',
+      icon: FileDown,
+      onClick: () => handleExport('excel'),
+    },
+    {
+      type: 'separator' as const
+    },
+    {
+      id: 'import',
+      label: 'Importar contactos',
+      icon: Upload,
+      onClick: () => navigate('/contacts/import'),
     }
-  }, [state.contacts]);
+  ];
 
   // ============================================
-  // ESTADO COMPUTADO (Valores derivados del estado principal)
-  // ============================================
-  
-  // ✅ Volvemos a calcular 'hasActiveFilters'.
-  const hasActiveFilters = Object.values(searchCriteria).some(
-    value => value !== undefined && value !== null && value !== ''
-  );
-
-  // ============================================
-  // RENDER GUARDS OPTIMIZADOS
+  // RENDER HELPERS
   // ============================================
 
-  // ✅ FIX 1: Loading inicial - usar isReady en lugar de isInitialized
-  if (!isReady) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Inicializando...</p>
+  const renderHeader = () => (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      {stats && (
+        <ContactsStatsCards 
+          stats={stats}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+        />
+      )}
+
+      {/* Title and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-crm-contact-500/10 rounded-lg">
+            <Users className="h-5 w-5 sm:h-6 sm:w-6 text-crm-contact-500" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
+              Contactos
+            </h1>
+            <div className="flex items-center gap-2 text-sm text-app-gray-400">
+              <span>{totalContacts.toLocaleString()} contactos totales</span>
+              {!isOnline && (
+                <Badge variant="warning" size="sm">Sin conexión</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ REFINAMIENTO 4: Acciones consistentes y compactas */}
+        <div className="flex items-center gap-1">
+          {/* Refresh */}
+          <IconButton
+            variant="ghost"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            tooltip="Actualizar"
+            aria-label="Actualizar contactos"
+          >
+            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+          </IconButton>
+
+          {/* Export */}
+          <Dropdown
+            trigger={
+              <IconButton
+                variant="ghost"
+                tooltip="Exportar"
+                aria-label="Opciones de exportación"
+              >
+                <FileDown className="h-4 w-4" />
+              </IconButton>
+            }
+            items={exportDropdownItems}
+            align="end"
+            size="sm"
+          />
+
+          {/* Create - Único botón con texto */}
+          <Button
+            onClick={handleCreateContact}
+            size="sm"
+            leftIcon={<Plus className="h-4 w-4" />}
+            className="ml-2"
+          >
+            <span className="hidden sm:inline">Nuevo Contacto</span>
+            <span className="sm:hidden">Nuevo</span>
+          </Button>
         </div>
       </div>
-    );
-  }
 
-  // ✅ Usuario no autenticado
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-96 text-center">
-        <Users className="h-16 w-16 text-gray-400 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Acceso Requerido
-        </h2>
-        <p className="text-gray-600 mb-4 max-w-md">
-          Necesitas iniciar sesión para ver y gestionar los contactos.
-        </p>
-        <Button
-          onClick={() => navigate('/login')}
-          variant="default"
-        >
-          Iniciar Sesión
-        </Button>
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <SearchInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar contactos por nombre, email o teléfono..."
+            onClear={handleClearSearch}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'flex items-center gap-2',
+              hasActiveFilters && 'border-app-accent-500 text-app-accent-500'
+            )}
+            leftIcon={<Filter className="h-4 w-4" />}
+          >
+            Filtros
+            {hasActiveFilters && (
+              <CountBadge count={Object.keys(searchCriteria).length} variant="info" />
+            )}
+          </Button>
+
+          {hasActiveFilters && (
+            <IconButton
+              variant="ghost"
+              onClick={handleClearFilters}
+              tooltip="Limpiar filtros"
+              aria-label="Limpiar todos los filtros"
+            >
+              <X className="h-4 w-4" />
+            </IconButton>
+          )}
+        </div>
       </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <ContactsFilters
+          searchCriteria={searchCriteria}
+          onCriteriaChange={setSearchCriteria}
+          onClose={() => setShowFilters(false)}
+          className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800"
+        />
+      )}
+
+      {/* Bulk Actions */}
+      {hasSelection && (
+        <ContactsBulkActions
+          selectedCount={selectionCount}
+          onBulkDelete={handleBulkDelete}
+          onBulkStatusUpdate={handleBulkStatusUpdate}
+          onDeselectAll={deselectAllContacts}
+          isLoading={bulkOperationLoading}
+          className="bg-app-dark-800 border border-app-dark-600 rounded-lg p-3"
+        />
+      )}
+    </div>
+  );
+
+  // ✅ REFINAMIENTO 3: renderContent simplificado - SOLO errores catastróficos
+  const renderContent = () => {
+    // Solo manejamos errores de red catastróficos
+    // ContactsTable maneja sus propios estados (loading, empty, search results, etc.)
+    if (contactsError) {
+      return (
+        <ErrorMessage
+          title="Error de conexión"
+          message="No se pudo conectar con el servidor. Verifica tu conexión a internet."
+          onRetry={handleRefresh}
+          className="bg-app-dark-800 border border-app-dark-600 rounded-lg"
+          variant="destructive"
+        />
+      );
+    }
+
+    // ✅ ContactsTable maneja TODO su estado internamente
+    return (
+      <ContactsTable
+        onContactClick={handleContactClick}
+        onContactEdit={handleContactEdit}
+        onContactDelete={handleContactDelete}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        stickyHeader={false}
+        mobileView="cards"
+      />
     );
-  }
+  };
 
   // ============================================
   // MAIN RENDER
   // ============================================
 
   return (
-    <ErrorBoundary>
-      <div className="space-y-6">
-        {/* ✅ Header optimizado */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Contactos</h1>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              {totalElements > 0 && (
-                <span>
-                  {totalElements.toLocaleString()} contacto{totalElements !== 1 ? 's' : ''}
-                </span>
-              )}
-              {state.lastSuccessfulFetch && (
-                <span className="text-xs text-gray-400">
-                  • Actualizado {new Date(state.lastSuccessfulFetch).toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {/* ✅ Refresh button */}
-            <Button
-              onClick={handleRefresh}
-              variant="outline"
-              size="sm"
-              icon={RefreshCw}
-              disabled={state.isLoading}
-              className={state.isLoading ? 'animate-spin' : ''}
-            >
-              {state.isLoading ? 'Actualizando...' : 'Actualizar'}
-            </Button>
-            
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              size="sm"
-              icon={Download}
-              disabled={state.contacts.length === 0 || state.isLoading}
-            >
-              Exportar
-            </Button>
-            
-            <Button
-              onClick={handleContactCreate}
-              variant="default"
-              size="sm"
-              icon={Plus}
-            >
-              Nuevo Contacto
-            </Button>
+    <Page
+      title="Contactos"
+      breadcrumbs={[
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Contactos' }
+      ]}
+      className="space-y-6"
+    >
+      {renderHeader()}
+      {renderContent()}
+
+      {/* Development Debug Panel */}
+      {import.meta.env.DEV && (
+        <div className="mt-8 p-4 bg-app-dark-900 border border-app-dark-700 rounded-lg text-xs text-app-gray-500">
+          <div className="font-medium mb-2 text-app-gray-400">🔧 Debug Info:</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div>Online: {isOnline ? '✅' : '❌'}</div>
+            <div>Total: {totalContacts.toLocaleString()}</div>
+            <div>Selected: {selectionCount}</div>
+            <div>Page: {currentPage + 1}</div>
+            <div>Error: {contactsError || 'None'}</div>
+            <div>Search: {searchTerm || 'None'}</div>
+            <div>Filters: {hasActiveFilters ? '✅' : '❌'}</div>
+            <div>Refreshing: {isRefreshing ? '✅' : '❌'}</div>
+            <div>Stats: {stats ? '✅' : '❌'}</div>
+            <div>Bulk: {hasSelection ? `${selectionCount} selected` : 'None'}</div>
           </div>
         </div>
-
-        {/* ✅ Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Input
-              type="text"
-              placeholder="Buscar por nombre, email o teléfono..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              leftIcon={<Search className="h-5 w-5" />}
-              className="max-w-md"
-              disabled={state.isLoading}
-            />
-          </div>
-          
-          <Button
-            onClick={() => setShowFilters(!showFilters)}
-            variant="outline"
-            size="sm"
-            icon={Filter}
-            className={showFilters ? 'bg-primary-50 border-primary-200 text-primary-700' : ''}
-          >
-            Filtros
-            {Object.values(searchCriteria).some(v => v) && (
-              <span className="ml-1 bg-primary-600 text-white rounded-full px-1.5 py-0.5 text-xs">
-                {Object.values(searchCriteria).filter(v => v).length}
-              </span>
-            )}
-          </Button>
-        </div>
-
-        {/* ✅ Filters Panel */}
-        {showFilters && (
-          <ContactsFilters
-            searchCriteria={searchCriteria}
-            onApplyFilters={handleFilterChange}
-            hasActiveFilters={hasActiveFilters}
-          />
-        )}
-
-        {/* ✅ Error State mejorado */}
-        {state.error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error al cargar contactos
-                  </h3>
-                  <p className="mt-1 text-sm text-red-700">{state.error}</p>
-                  {state.retryCount > 0 && (
-                    <p className="mt-1 text-xs text-red-600">
-                      Reintento {state.retryCount} de 3...
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex-shrink-0">
-                <Button
-                  onClick={handleRefresh}
-                  variant="outline"
-                  size="sm"
-                  disabled={state.isLoading}
-                  className="border-red-300 text-red-700 hover:bg-red-50"
-                >
-                  {state.isLoading ? 'Reintentando...' : 'Reintentar'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ✅ Loading State para primera carga */}
-        {state.isLoading && state.contacts.length === 0 && !state.error && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <LoadingSpinner size="lg" />
-              <p className="mt-4 text-gray-600">Cargando contactos...</p>
-              <p className="mt-1 text-sm text-gray-400">
-                {searchCriteria.search ? 'Buscando...' : 'Obteniendo datos...'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ✅ Empty State mejorado */}
-        {!state.isLoading && !state.error && state.contacts.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchCriteria.search || searchCriteria.status || searchCriteria.source
-                ? 'No se encontraron contactos'
-                : 'Aún no tienes contactos'}
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              {searchCriteria.search || searchCriteria.status || searchCriteria.source
-                ? 'Intenta ajustar los filtros de búsqueda para encontrar lo que buscas.'
-                : 'Comienza creando tu primer contacto para gestionar tus relaciones de manera eficiente.'}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {searchCriteria.search || searchCriteria.status || searchCriteria.source ? (
-                <Button
-                  onClick={handleClearFilters}
-                  variant="outline"
-                >
-                  Limpiar Filtros
-                </Button>
-              ) : null}
-              
-              <Button
-                onClick={handleContactCreate}
-                variant="default"
-                icon={Plus}
-              >
-                Crear Primer Contacto
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ✅ FIX 2: Contacts Table con props corregidas y funcionalidad completa */}
-        {state.contacts.length > 0 && (
-          <div className="relative">
-            {/* Loading overlay para refreshes */}
-            {state.isLoading && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
-                <div className="text-center">
-                  <LoadingSpinner size="md" />
-                  <p className="mt-2 text-sm text-gray-600">Actualizando...</p>
-                </div>
-              </div>
-            )}
-            
-            <ContactTable
-              contacts={state.contacts}
-              onContactClick={handleContactView}
-              selectedIds={selectedContactIds}
-              updating={new Set()} // Set vacío si no manejas updating individual
-              deleting={new Set()} // Set vacío si no manejas deleting individual
-              onEditContact={(id) => navigate(`/contacts/${id}/edit`)}
-              onSelectContact={handleSelectContact}
-              onSelectAll={handleSelectAll}
-              // Opcional: Si tu ContactTable soporta más props
-              // onDeleteContact={handleDeleteContact}
-              // onBulkAction={handleBulkAction}
-            />
-          </div>
-        )}
-
-        {/* ✅ Debug info en desarrollo */}
-        {import.meta.env.DEV && (
-          <div className="bg-gray-100 border rounded-lg p-3 text-xs text-gray-600 space-y-1">
-            <div className="font-semibold">🔧 ContactList Debug:</div>
-            <div>Loading: {state.isLoading ? 'Yes' : 'No'}</div>
-            <div>Contacts: {state.contacts.length}</div>
-            <div>Error: {state.error || 'None'}</div>
-            <div>Retry Count: {state.retryCount}</div>
-            <div>Search Criteria: {JSON.stringify(searchCriteria)}</div>
-            <div>Last Fetch: {state.lastSuccessfulFetch ? new Date(state.lastSuccessfulFetch).toLocaleString() : 'None'}</div>
-            <div>Selected: {selectedContactIds.size} contacts</div>
-          </div>
-        )}
-      </div>
-    </ErrorBoundary>
+      )}
+    </Page>
   );
 };
 

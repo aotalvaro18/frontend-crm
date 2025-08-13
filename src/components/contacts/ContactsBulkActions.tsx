@@ -1,106 +1,143 @@
 // src/components/contacts/ContactsBulkActions.tsx
-// Bulk actions component especializado para contactos
+// ✅ CONTACTS BULK ACTIONS - REFACTORIZADO ENTERPRISE
+// Integración completa con hooks, components UI y types exactos
 
-import React, { useState } from 'react';
-import { Trash2, Download, Mail, UserCheck, X } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { 
+  Trash2, 
+  Download, 
+  UserCheck, 
+  X,
+  Users,
+  Edit3,
+  Archive,
+  AlertTriangle,
+  FileDown,
+  Send
+} from 'lucide-react';
+
+// ============================================
+// UI COMPONENTS - REUTILIZACIÓN TOTAL
+// ============================================
+
 import { Button } from '@/components/ui/Button';
+import { CountBadge } from '@/components/ui/Badge';
+import Dropdown from '@/components/ui/Dropdown';
+import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-// ============================================
-// TYPES
+// ===========================================
+// TYPES EXACTOS - REUTILIZACIÓN DE ARQUITECTURA
 // ============================================
 
-interface ContactsBulkActionsProps {
+import type { ContactStatus } from '@/types/contact.types';
+
+// ============================================
+// UTILS
+// ============================================
+
+import { cn } from '@/utils/cn';
+
+// ============================================
+// COMPONENT PROPS - ALIGNED CON HOOKS
+// ============================================
+
+export interface ContactsBulkActionsProps {
+  // Selection state (desde useBulkOperations hook)
   selectedCount: number;
-  selectedIds: Set<number>;
-  loading: boolean;
-  onBulkDelete?: () => void;
-  onBulkExport?: (format: 'csv' | 'excel') => void;
-  onBulkUpdateStatus?: (status: string) => void;
-  onBulkSendEmail?: () => void;
-  onDeselectAll?: () => void;
+  onDeselectAll: () => void;
+  
+  // Bulk operations (desde useBulkOperations hook)
+  onBulkDelete: () => Promise<void>;
+  onBulkStatusUpdate: (status: ContactStatus) => Promise<void>;
+  isLoading?: boolean;
+  
+  // Optional actions
+  onBulkExport?: (format: 'csv' | 'excel') => Promise<void>;
+  onBulkSendEmail?: () => Promise<void>;
+  
+  // Styling
+  className?: string;
+  variant?: 'default' | 'compact' | 'floating';
 }
 
 // ============================================
-// CONFIRMATION MODAL COMPONENT
+// BULK ACTION CONFIGURATIONS
 // ============================================
 
-interface ConfirmationModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  confirmText: string;
-  cancelText: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading?: boolean;
-  variant?: 'danger' | 'warning' | 'info';
-}
+const statusUpdateOptions = [
+  {
+    id: 'set-active',
+    value: 'ACTIVE' as ContactStatus,
+    label: 'Marcar como Activo',
+    description: 'Contactos activos en el sistema',
+    icon: UserCheck,
+    variant: 'success' as const,
+  },
+  {
+    id: 'set-inactive', 
+    value: 'INACTIVE' as ContactStatus,
+    label: 'Marcar como Inactivo',
+    description: 'Contactos temporalmente inactivos',
+    icon: Users,
+    variant: 'secondary' as const,
+  },
+  {
+    type: 'separator' as const,
+  },
+  {
+    id: 'set-prospect',
+    value: 'PROSPECT' as ContactStatus,
+    label: 'Marcar como Prospecto',
+    description: 'Prospectos potenciales',
+    icon: Edit3,
+    variant: 'info' as const,
+  },
+  {
+    id: 'set-lead',
+    value: 'LEAD' as ContactStatus,
+    label: 'Marcar como Lead',
+    description: 'Leads cualificados',
+    icon: Edit3,
+    variant: 'info' as const,
+  },
+  {
+    type: 'separator' as const,
+  },
+  {
+    id: 'set-archived',
+    value: 'ARCHIVED' as ContactStatus,
+    label: 'Archivar Contactos',
+    description: 'Mover a archivo',
+    icon: Archive,
+    variant: 'warning' as const,
+  },
+  {
+    id: 'set-do-not-contact',
+    value: 'DO_NOT_CONTACT' as ContactStatus,
+    label: 'No Contactar',
+    description: 'Marcar como no contactar',
+    icon: AlertTriangle,
+    variant: 'destructive' as const,
+  },
+];
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
-  isOpen,
-  title,
-  message,
-  confirmText,
-  cancelText,
-  onConfirm,
-  onCancel,
-  loading = false,
-  variant = 'info'
-}) => {
-  if (!isOpen) return null;
-
-  const variantStyles = {
-    danger: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
-    warning: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
-    info: 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500'
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onCancel}></div>
-
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div className="relative inline-block align-bottom bg-app-dark-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-app-dark-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 className="text-lg leading-6 font-medium text-app-gray-100" id="modal-title">
-                  {title}
-                </h3>
-                <div className="mt-2">
-                  <p className="text-sm text-app-gray-400">
-                    {message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-app-dark-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <Button
-              onClick={onConfirm}
-              disabled={loading}
-              className={`w-full justify-center sm:ml-3 sm:w-auto ${variantStyles[variant]}`}
-            >
-              {loading && <LoadingSpinner size="sm" className="mr-2" />}
-              {confirmText}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              disabled={loading}
-              className="mt-3 w-full justify-center sm:mt-0 sm:w-auto"
-            >
-              {cancelText}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+const exportOptions = [
+  {
+    id: 'export-csv',
+    format: 'csv' as const,
+    label: 'Exportar CSV',
+    description: 'Archivo separado por comas',
+    icon: FileDown,
+  },
+  {
+    id: 'export-excel',
+    format: 'excel' as const,
+    label: 'Exportar Excel',
+    description: 'Archivo .xlsx',
+    icon: FileDown,
+  },
+];
 
 // ============================================
 // MAIN COMPONENT
@@ -108,174 +145,317 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
 const ContactsBulkActions: React.FC<ContactsBulkActionsProps> = ({
   selectedCount,
-  loading,
+  onDeselectAll,
   onBulkDelete,
+  onBulkStatusUpdate,
+  isLoading = false,
   onBulkExport,
-  onBulkUpdateStatus,
   onBulkSendEmail,
-  onDeselectAll
+  className,
+  variant = 'default',
 }) => {
+  // ============================================
+  // LOCAL STATE
+  // ============================================
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showStatusUpdate, setShowStatusUpdate] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
-  const handleBulkDelete = () => {
-    setShowDeleteConfirm(true);
+  // ============================================
+  // HANDLERS
+  // ============================================
+
+  const handleBulkDelete = useCallback(async () => {
+    setDeleteLoading(true);
+    try {
+      await onBulkDelete();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      // Error ya manejado por el hook
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [onBulkDelete]);
+
+  const handleStatusUpdate = useCallback(async (status: ContactStatus) => {
+    setStatusUpdateLoading(true);
+    try {
+      await onBulkStatusUpdate(status);
+    } catch (error) {
+      // Error ya manejado por el hook
+    } finally {
+      setStatusUpdateLoading(false);
+    }
+  }, [onBulkStatusUpdate]);
+
+  const handleExport = useCallback(async (format: 'csv' | 'excel') => {
+    if (!onBulkExport) return;
+    
+    setExportLoading(true);
+    try {
+      await onBulkExport(format);
+    } catch (error) {
+      // Error ya manejado por el hook
+    } finally {
+      setExportLoading(false);
+    }
+  }, [onBulkExport]);
+
+  const handleSendEmail = useCallback(async () => {
+    if (!onBulkSendEmail) return;
+    
+    try {
+      await onBulkSendEmail();
+    } catch (error) {
+      // Error ya manejado por el hook
+    }
+  }, [onBulkSendEmail]);
+
+  // ============================================
+  // DROPDOWN ITEMS
+  // ============================================
+
+  const statusDropdownItems = statusUpdateOptions.map(option => {
+    if ('type' in option) return option;
+    
+    return {
+      ...option,
+      onClick: () => handleStatusUpdate(option.value),
+      disabled: statusUpdateLoading || isLoading,
+    };
+  });
+
+  const exportDropdownItems = exportOptions.map(option => ({
+    ...option,
+    onClick: () => handleExport(option.format),
+    disabled: exportLoading || isLoading,
+  }));
+
+  // ============================================
+  // VARIANT STYLES
+  // ============================================
+
+  const variantStyles = {
+    default: {
+      container: 'bg-app-accent-500/10 border-app-accent-500/30 border',
+      text: 'text-app-accent-200',
+      badge: 'text-app-accent-400',
+    },
+    compact: {
+      container: 'bg-app-dark-700 border-app-dark-600 border',
+      text: 'text-app-gray-200',
+      badge: 'text-app-gray-300',
+    },
+    floating: {
+      container: 'bg-app-dark-800 border-app-dark-600 border shadow-lg',
+      text: 'text-app-gray-100',
+      badge: 'text-app-accent-400',
+    },
   };
 
-  const confirmDelete = () => {
-    onBulkDelete?.();
-    setShowDeleteConfirm(false);
-  };
+  const styles = variantStyles[variant];
 
-  const handleStatusUpdate = (status: string) => {
-    onBulkUpdateStatus?.(status);
-    setShowStatusUpdate(false);
-  };
+  // ============================================
+  // RENDER HELPERS
+  // ============================================
+
+  const renderSelectionInfo = () => (
+    <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2">
+        <Users className="h-4 w-4 text-app-gray-400" />
+        <span className={cn('text-sm font-medium', styles.text)}>
+          <CountBadge 
+            count={selectedCount} 
+            variant="info" 
+            className="mr-2"
+          />
+          {selectedCount === 1 ? 'contacto seleccionado' : 'contactos seleccionados'}
+        </span>
+      </div>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onDeselectAll}
+        disabled={isLoading}
+        leftIcon={<X className="h-3 w-3" />}
+        className="text-app-gray-400 hover:text-app-gray-200"
+      >
+        <span className="hidden sm:inline">Deseleccionar</span>
+      </Button>
+    </div>
+  );
+
+  const renderActions = () => (
+    <div className="flex items-center gap-2">
+      {/* Export Actions */}
+      {onBulkExport && (
+        <Dropdown
+          trigger={
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading || exportLoading}
+              leftIcon={
+                exportLoading ? 
+                  <LoadingSpinner size="xs" /> : 
+                  <Download className="h-4 w-4" />
+              }
+              className="hidden sm:flex"
+            >
+              Exportar
+            </Button>
+          }
+          items={exportDropdownItems}
+          align="end"
+          size="sm"
+        />
+      )}
+
+      {/* Email Action */}
+      {onBulkSendEmail && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSendEmail}
+          disabled={isLoading}
+          leftIcon={<Send className="h-4 w-4" />}
+          className="hidden md:flex"
+        >
+          Email
+        </Button>
+      )}
+
+      {/* Status Update */}
+      <Dropdown
+        trigger={
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || statusUpdateLoading}
+            leftIcon={
+              statusUpdateLoading ? 
+                <LoadingSpinner size="xs" /> : 
+                <UserCheck className="h-4 w-4" />
+            }
+          >
+            <span className="hidden sm:inline">Estado</span>
+          </Button>
+        }
+        items={statusDropdownItems}
+        align="end"
+        size="sm"
+      />
+
+      {/* Delete Action */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowDeleteConfirm(true)}
+        disabled={isLoading || deleteLoading}
+        leftIcon={<Trash2 className="h-4 w-4" />}
+        className="text-red-400 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50"
+      >
+        <span className="hidden sm:inline">Eliminar</span>
+      </Button>
+    </div>
+  );
+
+  // ============================================
+  // MAIN RENDER
+  // ============================================
 
   return (
     <>
-      <div className="bg-primary-900/20 border border-primary-500/30 rounded-lg p-3 sm:p-4">
+      <div className={cn(
+        'rounded-lg p-3 sm:p-4 transition-all duration-200',
+        styles.container,
+        variant === 'floating' && 'fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-4xl',
+        className
+      )}>
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-primary-200">
-              {selectedCount} {selectedCount === 1 ? 'contacto seleccionado' : 'contactos seleccionados'}
-            </span>
-            {onDeselectAll && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onDeselectAll}
-                className="text-primary-300 hover:text-primary-200"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Deseleccionar
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Export Actions */}
-            {onBulkExport && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onBulkExport('csv')}
-                  disabled={loading}
-                  className="text-app-gray-300 border-app-dark-600 hover:bg-app-dark-700"
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  CSV
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onBulkExport('excel')}
-                  disabled={loading}
-                  className="text-app-gray-300 border-app-dark-600 hover:bg-app-dark-700"
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Excel
-                </Button>
-              </>
-            )}
-
-            {/* Email Action */}
-            {onBulkSendEmail && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onBulkSendEmail}
-                disabled={loading}
-                className="text-app-gray-300 border-app-dark-600 hover:bg-app-dark-700"
-              >
-                <Mail className="h-4 w-4 mr-1" />
-                Email
-              </Button>
-            )}
-
-            {/* Status Update */}
-            {onBulkUpdateStatus && (
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowStatusUpdate(!showStatusUpdate)}
-                  disabled={loading}
-                  className="text-app-gray-300 border-app-dark-600 hover:bg-app-dark-700"
-                >
-                  <UserCheck className="h-4 w-4 mr-1" />
-                  Estado
-                </Button>
-                
-                {showStatusUpdate && (
-                  <div className="absolute right-0 mt-2 w-48 bg-app-dark-800 border border-app-dark-600 rounded-md shadow-lg z-10">
-                    <div className="py-1">
-                      <button
-                        onClick={() => handleStatusUpdate('ACTIVE')}
-                        className="block w-full text-left px-4 py-2 text-sm text-app-gray-300 hover:bg-app-dark-700"
-                      >
-                        Marcar como Activo
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate('INACTIVE')}
-                        className="block w-full text-left px-4 py-2 text-sm text-app-gray-300 hover:bg-app-dark-700"
-                      >
-                        Marcar como Inactivo
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate('ARCHIVED')}
-                        className="block w-full text-left px-4 py-2 text-sm text-app-gray-300 hover:bg-app-dark-700"
-                      >
-                        Archivar
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate('DO_NOT_CONTACT')}
-                        className="block w-full text-left px-4 py-2 text-sm text-app-gray-300 hover:bg-app-dark-700"
-                      >
-                        No Contactar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Delete Action */}
-            {onBulkDelete && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={loading}
-                className="text-red-400 border-red-500/30 hover:bg-red-900/20"
-              >
-                {loading ? (
-                  <LoadingSpinner size="sm" className="mr-1" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-1" />
-                )}
-                Eliminar
-              </Button>
-            )}
-          </div>
+          {renderSelectionInfo()}
+          {renderActions()}
         </div>
+
+        {/* Loading overlay para operaciones bulk */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-app-dark-900/50 rounded-lg flex items-center justify-center">
+            <div className="flex items-center space-x-2 text-app-gray-200">
+              <LoadingSpinner size="sm" />
+              <span className="text-sm">Procesando...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}
-      <ConfirmationModal
+      <Modal
         isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
         title="Confirmar eliminación"
-        message={`¿Estás seguro de que quieres eliminar ${selectedCount} ${selectedCount === 1 ? 'contacto' : 'contactos'}? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        onConfirm={confirmDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
-        loading={loading}
-        variant="danger"
-      />
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-6 w-6 text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm text-app-gray-300">
+                ¿Estás seguro de que quieres eliminar{' '}
+                <span className="font-semibold text-app-gray-100">
+                  {selectedCount} {selectedCount === 1 ? 'contacto' : 'contactos'}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-app-gray-400 mt-2">
+                Esta acción no se puede deshacer. Los contactos serán eliminados permanentemente del sistema.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-app-dark-600">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={deleteLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={deleteLoading}
+              leftIcon={deleteLoading ? <LoadingSpinner size="xs" /> : <Trash2 className="h-4 w-4" />}
+            >
+              {deleteLoading ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };
+
+// ============================================
+// SPECIALIZED VARIANTS
+// ============================================
+
+/**
+ * Compact Bulk Actions - Para espacios reducidos
+ */
+export const CompactBulkActions: React.FC<Omit<ContactsBulkActionsProps, 'variant'>> = (props) => (
+  <ContactsBulkActions {...props} variant="compact" />
+);
+
+/**
+ * Floating Bulk Actions - Para selecciones persistentes
+ */
+export const FloatingBulkActions: React.FC<Omit<ContactsBulkActionsProps, 'variant'>> = (props) => (
+  <ContactsBulkActions {...props} variant="floating" />
+);
 
 export default ContactsBulkActions;

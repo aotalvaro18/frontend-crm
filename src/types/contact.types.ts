@@ -81,6 +81,7 @@ export interface Contact extends BaseEntity {
   status: ContactStatus;
   lifecycleStage?: LifecycleStage;
   engagementScore: number;        // 0-100
+  previousEngagementScore?: number;
   engagementLevel?: EngagementLevel;  // Computed field
   
   // Actividad y comunicación

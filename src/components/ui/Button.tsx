@@ -5,81 +5,71 @@ import React from 'react';
 import { cn } from '@/utils/cn';
 import { LoadingSpinner } from './LoadingSpinner';
 
+import { cva, type VariantProps } from 'class-variance-authority';
+
 // ============================================
 // BUTTON VARIANTS (Con tus colores exactos)
 // ============================================
 
-const buttonVariants = {
-  base: 'inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-app-dark-900 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95',
-  
-  variants: {
-    variant: {
-      default: 'bg-app-accent-500 text-white hover:bg-app-accent-600 active:bg-app-accent-700 shadow-soft',
-      destructive: 'bg-app-status-error text-white hover:bg-red-600 active:bg-red-700 shadow-soft',
-      outline: 'border border-app-dark-600 bg-app-dark-800 text-app-gray-200 hover:bg-app-dark-700 hover:text-white active:bg-app-dark-600',
-      secondary: 'bg-app-dark-700 text-app-gray-200 hover:bg-app-dark-600 active:bg-app-dark-600',
-      ghost: 'text-app-gray-300 hover:bg-app-dark-700 hover:text-white active:bg-app-dark-600',
-      link: 'text-app-accent-500 underline-offset-4 hover:underline active:text-app-accent-600',
-      success: 'bg-app-status-success text-white hover:bg-green-600 active:bg-green-700 shadow-soft',
-      warning: 'bg-app-status-warning text-white hover:bg-yellow-600 active:bg-yellow-700 shadow-soft',
-      
-      // CRM specific variants (siguiendo tu gu铆a)
-      contact: 'bg-crm-contact-500 text-white hover:bg-crm-contact-600 active:bg-crm-contact-700 shadow-soft',
-      deal: 'bg-crm-deal-500 text-white hover:bg-crm-deal-600 active:bg-crm-deal-700 shadow-soft',
-      pipeline: 'bg-crm-pipeline-500 text-white hover:bg-crm-pipeline-600 active:bg-crm-pipeline-700 shadow-soft',
-      portal: 'bg-crm-portal-500 text-white hover:bg-crm-portal-600 active:bg-crm-portal-700 shadow-soft',
+const buttonVariants = cva(
+  // Base classes
+  'inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-app-dark-900 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95',
+  {
+    variants: {
+      variant: {
+        default: 'bg-app-accent-500 text-white hover:bg-app-accent-600 active:bg-app-accent-700 shadow-soft',
+        destructive: 'bg-app-status-error text-white hover:bg-red-600 active:bg-red-700 shadow-soft',
+        outline: 'border border-app-dark-600 bg-app-dark-800 text-app-gray-200 hover:bg-app-dark-700 hover:text-white active:bg-app-dark-600',
+        secondary: 'bg-app-dark-700 text-app-gray-200 hover:bg-app-dark-600 active:bg-app-dark-600',
+        ghost: 'text-app-gray-300 hover:bg-app-dark-700 hover:text-white active:bg-app-dark-600',
+        link: 'text-app-accent-500 underline-offset-4 hover:underline active:text-app-accent-600',
+        success: 'bg-app-status-success text-white hover:bg-green-600 active:bg-green-700 shadow-soft',
+        warning: 'bg-app-status-warning text-white hover:bg-yellow-600 active:bg-yellow-700 shadow-soft',
+        contact: 'bg-crm-contact-500 text-white hover:bg-crm-contact-600 active:bg-crm-contact-700 shadow-soft',
+        deal: 'bg-crm-deal-500 text-white hover:bg-crm-deal-600 active:bg-crm-deal-700 shadow-soft',
+        pipeline: 'bg-crm-pipeline-500 text-white hover:bg-crm-pipeline-600 active:bg-crm-pipeline-700 shadow-soft',
+        portal: 'bg-crm-portal-500 text-white hover:bg-crm-portal-600 active:bg-crm-portal-700 shadow-soft',
+      },
+      size: {
+        default: 'h-10 px-4 py-2 text-sm',
+        sm: 'h-8 rounded-md px-3 text-xs',
+        lg: 'h-12 rounded-lg px-6 text-base',
+        xl: 'h-14 rounded-lg px-8 text-lg',
+        icon: 'h-10 w-10',
+        'icon-sm': 'h-8 w-8',
+        'icon-lg': 'h-12 w-12',
+        'icon-xl': 'h-14 w-14',
+      },
+      fullWidth: {
+        true: 'w-full',
+      },
+      rounded: {
+        full: 'rounded-full',
+        none: 'rounded-none',
+        default: '', // Mantener para que no aplique clases extra por defecto
+      },
     },
-    
-    size: {
-      default: 'h-10 px-4 py-2 text-sm',
-      sm: 'h-8 rounded-md px-3 text-xs',
-      lg: 'h-12 rounded-lg px-6 text-base',
-      xl: 'h-14 rounded-lg px-8 text-lg',
-      icon: 'h-10 w-10',
-      'icon-sm': 'h-8 w-8',
-      'icon-lg': 'h-12 w-12',
-      'icon-xl': 'h-14 w-14',
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+      fullWidth: false,
+      rounded: 'default',
     },
-    
-    fullWidth: {
-      true: 'w-full',
-      false: '',
-    },
-    
-    rounded: {
-      default: '',
-      full: 'rounded-full',
-      none: 'rounded-none',
-    },
-  },
-  
-  defaultVariants: {
-    variant: 'default',
-    size: 'default',
-    fullWidth: false,
-    rounded: 'default',
-  },
-};
+  }
+);
 
 // ============================================
 // TYPES
 // ============================================
 
-type ButtonVariant = keyof typeof buttonVariants.variants.variant;
-type ButtonSize = keyof typeof buttonVariants.variants.size;
-type ButtonRounded = keyof typeof buttonVariants.variants.rounded;
-
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  fullWidth?: boolean;
-  rounded?: ButtonRounded;
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   loading?: boolean;
   loadingText?: string;
-  icon?: React.ElementType;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  asChild?: boolean;
+  asChild?: boolean; // Mantener por si se usa en el futuro con Radix Slot
 }
 
 // ============================================
@@ -89,10 +79,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ 
     className, 
-    variant = 'default', 
-    size = 'default', 
-    fullWidth = false,
-    rounded = 'default',
+    variant, 
+    size, 
+    fullWidth,
+    rounded,
     loading = false,
     loadingText,
     leftIcon,
@@ -103,22 +93,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }, ref) => {
     const isDisabled = disabled || loading;
 
-    // Build classes using our variant system
-    const variantClass = buttonVariants.variants.variant[variant];
-    const sizeClass = buttonVariants.variants.size[size];
-    const fullWidthClass = fullWidth ? buttonVariants.variants.fullWidth.true : '';
-    const roundedClass = rounded !== 'default' ? buttonVariants.variants.rounded[rounded] : '';
-
-    const buttonClasses = cn(
-      buttonVariants.base,
-      variantClass,
-      sizeClass,
-      fullWidthClass,
-      roundedClass,
-      className
-    );
-
-    // Determinar tama帽o del spinner
     const getSpinnerSize = (): 'xs' | 'sm' | 'md' | 'lg' => {
       switch (size) {
         case 'sm': case 'icon-sm': return 'xs';
@@ -130,10 +104,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <button
-        className={buttonClasses}
+        className={cn(buttonVariants({ variant, size, fullWidth, rounded, className }))}
         ref={ref}
         disabled={isDisabled}
-        data-loading={loading}
         aria-busy={loading}
         {...props}
       >

@@ -1,401 +1,509 @@
- // src/hooks/usePagination.ts
-// Hook de paginaci贸n enterprise mobile-first
+// src/hooks/usePagination.ts
+// ✅ USE PAGINATION HOOK - ENTERPRISE GRADE
+// Type-safe + Mobile-optimized + Performance-focused + Backend-compatible
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { apiClient } from '@/services/api/baseApi';
-import { APP_CONFIG } from '@/utils/constants';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // ============================================
-// TYPES
+// TYPES - REUTILIZACIÓN DE ARQUITECTURA
 // ============================================
 
-interface PaginationOptions {
+import type { 
+  PageRequest, 
+  PageResponse, 
+  PaginationInfo 
+} from '@/types/common.types';
+
+/**
+ * Configuración del hook usePagination
+ */
+export interface PaginationConfig {
+  /**
+   * Número total de elementos
+   */
+  totalItems: number;
+  
+  /**
+   * Tamaño de página por defecto
+   * @default 25
+   */
+  defaultPageSize?: number;
+  
+  /**
+   * Página inicial (0-based para compatibilidad con backend)
+   * @default 0
+   */
   initialPage?: number;
-  initialPageSize?: number;
+  
+  /**
+   * Tamaños de página permitidos
+   * @default [10, 25, 50, 100]
+   */
   pageSizeOptions?: number[];
-  maxPages?: number;
-  // Mobile-specific
-  adaptivePageSize?: boolean;
-  prefetchNext?: boolean;
-  prefetchPrevious?: boolean;
-  infiniteScroll?: boolean;
-  // Performance
-  debouncePageChange?: number;
-  cachePages?: boolean;
+  
+  /**
+   * Máximo número de páginas a mostrar en navegación
+   * @default 7
+   */
+  maxVisiblePages?: number;
+  
+  /**
+   * Si debe resetear a página 1 cuando cambia totalItems
+   * @default true
+   */
+  resetOnTotalChange?: boolean;
+  
+  /**
+   * Callback cuando cambia la página
+   */
+  onPageChange?: (page: number) => void;
+  
+  /**
+   * Callback cuando cambia el tamaño de página
+   */
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
-interface PaginationState {
+/**
+ * Estado de paginación con información completa
+ */
+export interface PaginationState {
+  // Página actual (0-based para backend compatibility)
   currentPage: number;
+  
+  // Tamaño de página actual
   pageSize: number;
+  
+  // Total de elementos
   totalItems: number;
+  
+  // Total de páginas calculado
   totalPages: number;
+  
+  // Información para UI (1-based)
+  paginationInfo: PaginationInfo;
+  
+  // Navegación
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+  
+  // Páginas visibles para navegación
+  visiblePages: number[];
+  
+  // Range de elementos en página actual
+  startItem: number;
+  endItem: number;
+  
+  // Estados para UI
   isFirstPage: boolean;
   isLastPage: boolean;
-  startIndex: number;
-  endIndex: number;
 }
 
-interface UsePaginationReturn extends PaginationState {
-  // Navigation
-  goToPage: (page: number) => void;
-  nextPage: () => void;
-  previousPage: () => void;
-  firstPage: () => void;
-  lastPage: () => void;
-  
-  // Page size
+/**
+ * Acciones de paginación
+ */
+export interface PaginationActions {
+  // Navegación básica
+  setCurrentPage: (page: number) => void;
   setPageSize: (size: number) => void;
-  getOptimalPageSize: () => number;
   
-  // Utility
-  reset: () => void;
-  setTotalItems: (total: number) => void;
-  getPageNumbers: (delta?: number) => number[];
+  // Navegación por dirección
+  goToNextPage: () => void;
+  goToPreviousPage: () => void;
+  goToFirstPage: () => void;
+  goToLastPage: () => void;
   
-  // Mobile-specific
-  loadMore: () => void; // For infinite scroll
-  canLoadMore: boolean;
+  // Navegación relativa
+  goToPage: (page: number) => void; // 1-based para UI
   
-  // Performance
-  prefetchPage: (page: number) => void;
-  isPrefetching: boolean;
+  // Utilidades
+  resetToFirstPage: () => void;
+  canGoToPage: (page: number) => boolean;
+  
+  // Para integración con backend
+  getPageRequest: () => PageRequest;
+  updateFromPageResponse: (response: PageResponse<any>) => void;
+}
+
+/**
+ * Return completo del hook
+ */
+export interface UsePaginationReturn extends PaginationState, PaginationActions {}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Calcula páginas visibles para navegación
+ */
+function calculateVisiblePages(
+  currentPage: number,
+  totalPages: number,
+  maxVisible: number
+): number[] {
+  if (totalPages <= maxVisible) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const half = Math.floor(maxVisible / 2);
+  let start = Math.max(currentPage + 1 - half, 1);
+  let end = start + maxVisible - 1;
+
+  if (end > totalPages) {
+    end = totalPages;
+    start = Math.max(end - maxVisible + 1, 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
+/**
+ * Convierte PageResponse del backend a información de UI
+ */
+function pageResponseToPaginationInfo(response: PageResponse<any>): PaginationInfo {
+  return {
+    currentPage: response.number + 1, // Convert to 1-based
+    totalPages: response.totalPages,
+    totalItems: response.totalElements,
+    itemsPerPage: response.size,
+    hasNext: !response.last,
+    hasPrevious: !response.first,
+    startItem: response.number * response.size + 1,
+    endItem: response.number * response.size + response.numberOfElements,
+  };
+}
+
+/**
+ * Valida número de página
+ */
+function validatePageNumber(page: number, totalPages: number): number {
+  return Math.max(0, Math.min(page, totalPages - 1));
 }
 
 // ============================================
-// MAIN PAGINATION HOOK
+// MAIN HOOK
 // ============================================
 
-export function usePagination(
-  initialTotalItems: number = 0,
-  options: PaginationOptions = {}
-): UsePaginationReturn {
+/**
+ * Hook completo de paginación enterprise-grade
+ * Compatible con backend Spring Boot PageRequest/PageResponse
+ */
+export function usePagination(config: PaginationConfig): UsePaginationReturn {
+  // ============================================
+  // CONFIGURATION
+  // ============================================
+  
   const {
+    totalItems,
+    defaultPageSize = 25,
     initialPage = 0,
-    initialPageSize,
-    maxPages = 1000,
-    adaptivePageSize = true,
-    prefetchNext = true,
-    prefetchPrevious = false,
-    infiniteScroll = false,
-    debouncePageChange = 100,
-    cachePages = true,
-  } = options;
+    pageSizeOptions = [10, 25, 50, 100],
+    maxVisiblePages = 7,
+    resetOnTotalChange = true,
+    onPageChange,
+    onPageSizeChange,
+  } = config;
 
   // ============================================
   // STATE
   // ============================================
-
-  const [currentPage, setCurrentPage] = useState(initialPage);
+  
+  const [currentPage, setCurrentPageState] = useState(initialPage);
   const [pageSize, setPageSizeState] = useState(() => {
-    if (initialPageSize) return initialPageSize;
-    if (adaptivePageSize) return getAdaptivePageSize();
-    return APP_CONFIG.DEFAULT_PAGE_SIZE;
+    // Validar que defaultPageSize esté en las opciones
+    return pageSizeOptions.includes(defaultPageSize) 
+      ? defaultPageSize 
+      : pageSizeOptions[0];
   });
-  const [totalItems, setTotalItems] = useState(initialTotalItems);
-  const [isPrefetching, setIsPrefetching] = useState(false);
-  const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set([initialPage]));
-
-  // ============================================
-  // MOBILE-ADAPTIVE PAGE SIZE
-  // ============================================
-
-  function getAdaptivePageSize(): number {
-    const connection = apiClient.getConnectionInfo();
-    
-    // Mobile: Adjust page size based on connection
-    if (connection.isSlowConnection) {
-      return 10; // Smaller pages on slow connections
-    } else if (connection.isFastConnection) {
-      return 50; // Larger pages on fast connections
-    }
-    
-    // Screen size considerations
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      return 15; // Smaller pages on mobile for better scrolling
-    }
-    
-    return APP_CONFIG.DEFAULT_PAGE_SIZE;
-  }
 
   // ============================================
   // COMPUTED VALUES
   // ============================================
+  
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(totalItems / pageSize));
+  }, [totalItems, pageSize]);
 
-  const paginationState = useMemo((): PaginationState => {
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    const safePage = Math.min(currentPage, totalPages - 1);
-    
-    return {
-      currentPage: safePage,
-      pageSize,
-      totalItems,
-      totalPages: Math.min(totalPages, maxPages),
-      hasNextPage: safePage < totalPages - 1 && safePage < maxPages - 1,
-      hasPreviousPage: safePage > 0,
-      isFirstPage: safePage === 0,
-      isLastPage: safePage >= totalPages - 1 || safePage >= maxPages - 1,
-      startIndex: safePage * pageSize,
-      endIndex: Math.min((safePage + 1) * pageSize - 1, totalItems - 1),
-    };
-  }, [currentPage, pageSize, totalItems, maxPages]);
+  const validatedCurrentPage = useMemo(() => {
+    return validatePageNumber(currentPage, totalPages);
+  }, [currentPage, totalPages]);
+
+  const paginationInfo = useMemo((): PaginationInfo => ({
+    currentPage: validatedCurrentPage + 1, // Convert to 1-based for UI
+    totalPages,
+    totalItems,
+    itemsPerPage: pageSize,
+    hasNext: validatedCurrentPage < totalPages - 1,
+    hasPrevious: validatedCurrentPage > 0,
+    startItem: validatedCurrentPage * pageSize + 1,
+    endItem: Math.min((validatedCurrentPage + 1) * pageSize, totalItems),
+  }), [validatedCurrentPage, totalPages, totalItems, pageSize]);
+
+  const visiblePages = useMemo(() => {
+    return calculateVisiblePages(
+      validatedCurrentPage,
+      totalPages,
+      maxVisiblePages
+    );
+  }, [validatedCurrentPage, totalPages, maxVisiblePages]);
+
+  const startItem = useMemo(() => {
+    if (totalItems === 0) return 0;
+    return validatedCurrentPage * pageSize + 1;
+  }, [validatedCurrentPage, pageSize, totalItems]);
+
+  const endItem = useMemo(() => {
+    if (totalItems === 0) return 0;
+    return Math.min((validatedCurrentPage + 1) * pageSize, totalItems);
+  }, [validatedCurrentPage, pageSize, totalItems]);
 
   // ============================================
-  // NAVIGATION FUNCTIONS
+  // EFFECTS
   // ============================================
-
-  const goToPage = useCallback((page: number) => {
-    const { totalPages } = paginationState;
-    const targetPage = Math.max(0, Math.min(page, totalPages - 1));
-    
-    if (targetPage !== currentPage) {
-      setCurrentPage(targetPage);
-      setLoadedPages(prev => new Set([...prev, targetPage]));
-      
-      // Mobile: Prefetch adjacent pages
-      if (prefetchNext && targetPage < totalPages - 1) {
-        setTimeout(() => prefetchPage(targetPage + 1), debouncePageChange);
-      }
-      if (prefetchPrevious && targetPage > 0) {
-        setTimeout(() => prefetchPage(targetPage - 1), debouncePageChange);
-      }
+  
+  // Reset to first page when totalItems changes significantly
+  useEffect(() => {
+    if (resetOnTotalChange && validatedCurrentPage >= totalPages && totalPages > 0) {
+      setCurrentPageState(0);
     }
-  }, [currentPage, paginationState, prefetchNext, prefetchPrevious, debouncePageChange]);
+  }, [totalItems, totalPages, resetOnTotalChange, validatedCurrentPage]);
 
-  const nextPage = useCallback(() => {
-    if (paginationState.hasNextPage) {
-      goToPage(currentPage + 1);
+  // Sync with validated page
+  useEffect(() => {
+    if (currentPage !== validatedCurrentPage) {
+      setCurrentPageState(validatedCurrentPage);
     }
-  }, [currentPage, paginationState.hasNextPage, goToPage]);
-
-  const previousPage = useCallback(() => {
-    if (paginationState.hasPreviousPage) {
-      goToPage(currentPage - 1);
-    }
-  }, [currentPage, paginationState.hasPreviousPage, goToPage]);
-
-  const firstPage = useCallback(() => {
-    goToPage(0);
-  }, [goToPage]);
-
-  const lastPage = useCallback(() => {
-    goToPage(paginationState.totalPages - 1);
-  }, [paginationState.totalPages, goToPage]);
+  }, [validatedCurrentPage, currentPage]);
 
   // ============================================
-  // PAGE SIZE MANAGEMENT
+  // ACTIONS
   // ============================================
+  
+  const setCurrentPage = useCallback((page: number) => {
+    const newPage = validatePageNumber(page, totalPages);
+    if (newPage !== currentPage) {
+      setCurrentPageState(newPage);
+      onPageChange?.(newPage);
+    }
+  }, [currentPage, totalPages, onPageChange]);
 
   const setPageSize = useCallback((size: number) => {
-    const validSize = Math.min(size, APP_CONFIG.MAX_PAGE_SIZE);
-    const newPage = Math.floor((currentPage * pageSize) / validSize);
-    
-    setPageSizeState(validSize);
-    setCurrentPage(newPage);
-    setLoadedPages(new Set([newPage]));
-  }, [currentPage, pageSize]);
-
-  const getOptimalPageSize = useCallback(() => {
-    return getAdaptivePageSize();
-  }, []);
-
-  // ============================================
-  // INFINITE SCROLL SUPPORT
-  // ============================================
-
-  const loadMore = useCallback(() => {
-    if (infiniteScroll && paginationState.hasNextPage) {
-      nextPage();
-    }
-  }, [infiniteScroll, paginationState.hasNextPage, nextPage]);
-
-  const canLoadMore = useMemo(() => {
-    return infiniteScroll && paginationState.hasNextPage;
-  }, [infiniteScroll, paginationState.hasNextPage]);
-
-  // ============================================
-  // PREFETCHING
-  // ============================================
-
-  const prefetchPage = useCallback(async (page: number) => {
-    if (!cachePages || loadedPages.has(page) || isPrefetching) {
+    // Validar que el tamaño esté en las opciones permitidas
+    if (!pageSizeOptions.includes(size)) {
+      console.warn(`Page size ${size} not in allowed options:`, pageSizeOptions);
       return;
     }
 
-    const connection = apiClient.getConnectionInfo();
-    
-    // Mobile: Only prefetch on good connections
-    if (connection.isSlowConnection || !connection.isOnline) {
-      return;
-    }
-
-    setIsPrefetching(true);
-    
-    try {
-      // This would be implemented by the consuming component
-      // We just mark the page as being prefetched
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setLoadedPages(prev => new Set([...prev, page]));
-    } catch (error) {
-      console.warn('Prefetch failed for page:', page, error);
-    } finally {
-      setIsPrefetching(false);
-    }
-  }, [cachePages, loadedPages, isPrefetching]);
-
-  // ============================================
-  // UTILITY FUNCTIONS
-  // ============================================
-
-  const reset = useCallback(() => {
-    setCurrentPage(initialPage);
-    setTotalItems(0);
-    setLoadedPages(new Set([initialPage]));
-  }, [initialPage]);
-
-  const setTotalItemsCallback = useCallback((total: number) => {
-    setTotalItems(total);
-    
-    // Adjust current page if it's now out of bounds
-    const newTotalPages = Math.ceil(total / pageSize);
-    if (currentPage >= newTotalPages) {
-      setCurrentPage(Math.max(0, newTotalPages - 1));
-    }
-  }, [currentPage, pageSize]);
-
-  const getPageNumbers = useCallback((delta: number = 2): number[] => {
-    const { totalPages } = paginationState;
-    const start = Math.max(0, currentPage - delta);
-    const end = Math.min(totalPages - 1, currentPage + delta);
-    
-    const pages: number[] = [];
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    
-    return pages;
-  }, [currentPage, paginationState]);
-
-  // ============================================
-  // RESPONSIVE ADJUSTMENTS
-  // ============================================
-
-  useEffect(() => {
-    if (!adaptivePageSize) return;
-
-    const handleResize = () => {
-      const newOptimalSize = getAdaptivePageSize();
-      if (newOptimalSize !== pageSize) {
-        setPageSize(newOptimalSize);
+    if (size !== pageSize) {
+      setPageSizeState(size);
+      onPageSizeChange?.(size);
+      
+      // Calcular nueva página para mantener aproximadamente los mismos elementos visibles
+      const currentFirstItem = currentPage * pageSize;
+      const newPage = Math.floor(currentFirstItem / size);
+      const validatedNewPage = validatePageNumber(newPage, Math.ceil(totalItems / size));
+      
+      if (validatedNewPage !== currentPage) {
+        setCurrentPageState(validatedNewPage);
+        onPageChange?.(validatedNewPage);
       }
-    };
+    }
+  }, [pageSize, pageSizeOptions, currentPage, totalItems, onPageSizeChange, onPageChange]);
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [adaptivePageSize, pageSize, setPageSize]);
+  const goToNextPage = useCallback(() => {
+    if (paginationInfo.hasNext) {
+      setCurrentPage(currentPage + 1);
+    }
+  }, [currentPage, paginationInfo.hasNext, setCurrentPage]);
+
+  const goToPreviousPage = useCallback(() => {
+    if (paginationInfo.hasPrevious) {
+      setCurrentPage(currentPage - 1);
+    }
+  }, [currentPage, paginationInfo.hasPrevious, setCurrentPage]);
+
+  const goToFirstPage = useCallback(() => {
+    setCurrentPage(0);
+  }, [setCurrentPage]);
+
+  const goToLastPage = useCallback(() => {
+    setCurrentPage(totalPages - 1);
+  }, [totalPages, setCurrentPage]);
+
+  const goToPage = useCallback((page: number) => {
+    // Convert from 1-based (UI) to 0-based (internal)
+    setCurrentPage(page - 1);
+  }, [setCurrentPage]);
+
+  const resetToFirstPage = useCallback(() => {
+    setCurrentPage(0);
+  }, [setCurrentPage]);
+
+  const canGoToPage = useCallback((page: number): boolean => {
+    const zeroBasedPage = page - 1; // Convert from 1-based to 0-based
+    return zeroBasedPage >= 0 && zeroBasedPage < totalPages;
+  }, [totalPages]);
+
+  const getPageRequest = useCallback((): PageRequest => ({
+    page: validatedCurrentPage,
+    size: pageSize,
+    sort: [], // Can be extended to include sort parameters
+  }), [validatedCurrentPage, pageSize]);
+
+  const updateFromPageResponse = useCallback((response: PageResponse<any>) => {
+    // Update state from backend response
+    if (response.size !== pageSize) {
+      setPageSizeState(response.size);
+    }
+    
+    if (response.number !== validatedCurrentPage) {
+      setCurrentPageState(response.number);
+    }
+  }, [pageSize, validatedCurrentPage]);
 
   // ============================================
   // RETURN OBJECT
   // ============================================
-
-  return {
-    ...paginationState,
-    
-    // Navigation
-    goToPage,
-    nextPage,
-    previousPage,
-    firstPage,
-    lastPage,
-    
-    // Page size
-    setPageSize,
-    getOptimalPageSize,
-    
-    // Utility
-    reset,
-    setTotalItems: setTotalItemsCallback,
-    getPageNumbers,
-    
-    // Mobile-specific
-    loadMore,
-    canLoadMore,
-    
-    // Performance
-    prefetchPage,
-    isPrefetching,
-  };
-}
-
-// ============================================
-// SPECIALIZED PAGINATION HOOKS
-// ============================================
-
-/**
- * Hook para paginaci贸n con tabla
- */
-export function useTablePagination(initialTotalItems: number = 0) {
-  return usePagination(initialTotalItems, {
-    adaptivePageSize: true,
-    prefetchNext: true,
-    infiniteScroll: false,
-    cachePages: true,
-  });
-}
-
-/**
- * Hook para infinite scroll
- */
-export function useInfiniteScrollPagination(initialTotalItems: number = 0) {
-  const pagination = usePagination(initialTotalItems, {
-    adaptivePageSize: true,
-    infiniteScroll: true,
-    prefetchNext: true,
-    cachePages: true,
-  });
-
-  // Mobile: Intersection observer for auto-loading
-  const [loadMoreRef, setLoadMoreRef] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!loadMoreRef || !pagination.canLoadMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          pagination.loadMore();
-        }
-      },
-      { rootMargin: '100px' } // Load before actually reaching the bottom
-    );
-
-    observer.observe(loadMoreRef);
-    return () => observer.disconnect();
-  }, [loadMoreRef, pagination.canLoadMore, pagination.loadMore]);
-
-  return {
-    ...pagination,
-    setLoadMoreRef,
-    loadMoreRef,
-  };
-}
-
-/**
- * Hook para paginaci贸n mobile-optimizada
- */
-export function useMobilePagination(initialTotalItems: number = 0) {
-  const isMobile = window.innerWidth < 768;
   
-  return usePagination(initialTotalItems, {
-    adaptivePageSize: true,
-    prefetchNext: isMobile,
-    prefetchPrevious: false, // Less aggressive on mobile
-    infiniteScroll: isMobile, // Prefer infinite scroll on mobile
-    debouncePageChange: isMobile ? 200 : 100,
-    cachePages: true,
-  });
+  return {
+    // State
+    currentPage: validatedCurrentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginationInfo,
+    hasNextPage: paginationInfo.hasNext,
+    hasPreviousPage: paginationInfo.hasPrevious,
+    visiblePages,
+    startItem,
+    endItem,
+    isFirstPage: validatedCurrentPage === 0,
+    isLastPage: validatedCurrentPage === totalPages - 1,
+    
+    // Actions
+    setCurrentPage,
+    setPageSize,
+    goToNextPage,
+    goToPreviousPage,
+    goToFirstPage,
+    goToLastPage,
+    goToPage,
+    resetToFirstPage,
+    canGoToPage,
+    getPageRequest,
+    updateFromPageResponse,
+  };
 }
+
+// ============================================
+// SPECIALIZED HOOKS
+// ============================================
+
+/**
+ * Hook simplificado para paginación básica
+ */
+export function useSimplePagination(totalItems: number, pageSize: number = 25) {
+  const pagination = usePagination({
+    totalItems,
+    defaultPageSize: pageSize,
+    pageSizeOptions: [pageSize], // Solo un tamaño
+    maxVisiblePages: 5,
+  });
+
+  return {
+    currentPage: pagination.currentPage,
+    totalPages: pagination.totalPages,
+    hasNext: pagination.hasNextPage,
+    hasPrevious: pagination.hasPreviousPage,
+    goToNext: pagination.goToNextPage,
+    goToPrevious: pagination.goToPreviousPage,
+    goToPage: pagination.goToPage,
+    startItem: pagination.startItem,
+    endItem: pagination.endItem,
+    totalItems: pagination.totalItems,
+  };
+}
+
+/**
+ * Hook para paginación infinita (lazy loading)
+ */
+export function useInfinitePagination(
+  totalItems: number,
+  pageSize: number = 25,
+  onLoadMore?: () => void
+) {
+  const [loadedPages, setLoadedPages] = useState(1);
+  
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const hasMore = loadedPages < totalPages;
+  const itemsLoaded = Math.min(loadedPages * pageSize, totalItems);
+
+  const loadMore = useCallback(() => {
+    if (hasMore) {
+      setLoadedPages(prev => prev + 1);
+      onLoadMore?.();
+    }
+  }, [hasMore, onLoadMore]);
+
+  const reset = useCallback(() => {
+    setLoadedPages(1);
+  }, []);
+
+  return {
+    loadedPages,
+    totalPages,
+    hasMore,
+    itemsLoaded,
+    totalItems,
+    loadMore,
+    reset,
+    progress: totalItems > 0 ? (itemsLoaded / totalItems) * 100 : 0,
+  };
+}
+
+/**
+ * Hook para paginación con URL sync
+ */
+export function useUrlPagination(
+  totalItems: number,
+  searchParams: URLSearchParams,
+  setSearchParams: (params: URLSearchParams) => void,
+  config?: Omit<PaginationConfig, 'totalItems' | 'onPageChange' | 'onPageSizeChange'>
+) {
+  const initialPage = parseInt(searchParams.get('page') || '0', 10);
+  const initialPageSize = parseInt(searchParams.get('size') || '25', 10);
+
+  const pagination = usePagination({
+    ...config,
+    totalItems,
+    initialPage,
+    defaultPageSize: initialPageSize,
+    onPageChange: (page) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (page === 0) {
+        newParams.delete('page');
+      } else {
+        newParams.set('page', page.toString());
+      }
+      setSearchParams(newParams);
+    },
+    onPageSizeChange: (size) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (size === 25) {
+        newParams.delete('size');
+      } else {
+        newParams.set('size', size.toString());
+      }
+      setSearchParams(newParams);
+    },
+  });
+
+  return pagination;
+}
+
+// ============================================
+// EXPORT DEFAULT
+// ============================================
 
 export default usePagination;

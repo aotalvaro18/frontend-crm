@@ -58,7 +58,7 @@ class AuthServiceClient {
       authLogger.info('Fetching user profile from auth-service');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 2 segundos
       
       const response = await fetch(`${this.baseURL}/api/users/me`, {
         method: 'GET',

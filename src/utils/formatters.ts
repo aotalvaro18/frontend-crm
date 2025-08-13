@@ -262,6 +262,26 @@ export const formatNumberCompact = (num: number | null | undefined): string => {
   return formatNumber(num);
 };
 
+/**
+ * ✅ NUEVA FUNCIÓN AÑADIDA
+ * Format number with a specific number of decimal places
+ */
+export const formatDecimal = (
+  num: number | null | undefined,
+  decimals = 2
+): string => {
+  if (num === null || num === undefined) return '0';
+  
+  try {
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(num);
+  } catch {
+    return num.toFixed(decimals);
+  }
+};
+
 // ============================================
 // TEXT FORMATTERS
 // ============================================
@@ -456,42 +476,59 @@ export const formatDuration = (minutes: number | null | undefined): string => {
   return `${hours}h ${remainingMinutes}min`;
 };
 
-export default {
+export const formatters = {
   // Date formatters
-  formatDate,
-  formatDateRelative,
-  formatDateForInput,
-  formatTime,
-  formatDateTime,
+  date: formatDate,
+  relativeDate: formatDateRelative,
+  dateForInput: formatDateForInput,
+  time: formatTime,
+  dateTime: formatDateTime,
   
   // Phone formatters
-  formatPhone,
-  formatPhoneForLink,
+  phone: formatPhone,
+  phoneForLink: formatPhoneForLink,
   
   // Currency formatters
-  formatCurrency,
-  formatCurrencyCompact,
+  currency: formatCurrency,
+  currencyCompact: formatCurrencyCompact,
   
   // Number formatters
-  formatNumber,
-  formatPercentage,
-  formatFileSize,
-  formatNumberCompact,
+  number: formatNumber,
+  decimal: formatDecimal,
+  // ✅ CORRECCIÓN: Renombrar 'formatPercentage' a 'percentage' para que coincida con el uso.
+  // También ajustamos la lógica para que tome el valor como viene (ej. 85 para 85%)
+  percentage: (value: number | null | undefined, decimals = 0): string => {
+    if (value === null || value === undefined) return '0%';
+    try {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'percent',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(value / 100); // Se asume que el valor de entrada es un número entero (ej. 85 para 85%)
+    } catch {
+      return `${value.toFixed(decimals)}%`;
+    }
+  },
+  fileSize: formatFileSize,
+  numberCompact: formatNumberCompact,
   
   // Text formatters
-  formatCapitalize,
-  formatEmail,
-  formatTruncate,
-  formatInitials,
+  capitalize: formatCapitalize,
+  email: formatEmail,
+  truncate: formatTruncate,
+  initials: formatInitials,
   
   // ID formatters
-  formatColombianId,
-  formatNit,
+  colombianId: formatColombianId,
+  nit: formatNit,
   
   // Other formatters
-  formatAddress,
-  formatBoolean,
-  formatStatus,
-  formatList,
-  formatDuration,
+  address: formatAddress,
+  boolean: formatBoolean,
+  status: formatStatus,
+  list: formatList,
+  duration: formatDuration,
 };
+
+// Exportar el objeto unificado
+export default formatters;

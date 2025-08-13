@@ -9,6 +9,12 @@ import { Helmet } from 'react-helmet-async';
 // TYPES
 // ============================================
 
+// ✅ Definimos el tipo para un solo breadcrumb
+interface BreadcrumbItem {
+  label: string;
+  href?: string; // Opcional si es el último
+}
+
 interface PageProps extends React.HTMLAttributes<HTMLElement> {
   // --- TUS PROPS DE SEO (Están perfectas) ---
   children: React.ReactNode;
@@ -24,6 +30,7 @@ interface PageProps extends React.HTMLAttributes<HTMLElement> {
   /**
    * Controla si se muestra el header principal de la aplicación.
    */
+  breadcrumbs?: BreadcrumbItem[];
   showHeader?: boolean;
 }
 // ============================================

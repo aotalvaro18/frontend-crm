@@ -1,117 +1,484 @@
-// src/components/contacts/ContactsStatsCards.tsx
-// Stats cards component especializado para contactos
+// src/components/contacts/ContactStatsCards.tsx
+// ✅ CONTACT STATS CARDS - ENTERPRISE DASHBOARD COMPONENT
+// Reutilización total de types ContactStats + Mobile-first + Performance optimized
 
-import React from 'react';
-import { Users, CheckCircle, TrendingUp, Activity } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { 
+  Users, 
+  UserCheck, 
+  UserX, 
+  Globe,
+  Activity,
+  Calendar,
+  Target,
+  Award,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
+} from 'lucide-react';
+
+// ============================================
+// UI COMPONENTS - REUTILIZACIÓN TOTAL
+// ============================================
+
+import { Badge } from '@/components/ui/Badge';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Tooltip } from '@/components/ui/Tooltip';
+
+// ============================================
+// TYPES EXACTOS - REUTILIZACIÓN DE ARQUITECTURA
+// ============================================
+
 import type { ContactStats } from '@/types/contact.types';
 
 // ============================================
-// TYPES
+// UTILS
 // ============================================
 
-interface ContactsStatsCardsProps {
+import { cn } from '@/utils/cn';
+import formatters from '@/utils/formatters';
+
+// ============================================
+// COMPONENT PROPS
+// ============================================
+
+export interface ContactStatsCardsProps {
   stats: ContactStats;
+  isLoading?: boolean;
+  showTrends?: boolean;
+  showTooltips?: boolean;
+  variant?: 'default' | 'compact' | 'minimal';
+  className?: string;
+  cardClassName?: string;
+  onCardClick?: (statKey: keyof ContactStats) => void;
 }
+
+// ============================================
+// STAT CARD CONFIGURATION
+// ============================================
+
+interface StatCardConfig {
+  key: keyof ContactStats;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  variant: 'default' | 'success' | 'info' | 'warning' | 'accent';
+  format: 'number' | 'percentage' | 'decimal';
+  priority: number; // Para ordenamiento
+  category: 'overview' | 'engagement' | 'portal' | 'growth';
+}
+
+const statCardConfigs: StatCardConfig[] = [
+  // Overview Stats (Priority 1-3)
+  {
+    key: 'total',
+    title: 'Total Contactos',
+    description: 'Número total de contactos en el sistema',
+    icon: Users,
+    variant: 'default',
+    format: 'number',
+    priority: 1,
+    category: 'overview',
+  },
+  {
+    key: 'active',
+    title: 'Contactos Activos',
+    description: 'Contactos con estado activo',
+    icon: UserCheck,
+    variant: 'success',
+    format: 'number',
+    priority: 2,
+    category: 'overview',
+  },
+  {
+    key: 'inactive',
+    title: 'Contactos Inactivos',
+    description: 'Contactos temporalmente inactivos',
+    icon: UserX,
+    variant: 'warning',
+    format: 'number',
+    priority: 3,
+    category: 'overview',
+  },
+
+  // Portal Stats (Priority 4-5)
+  {
+    key: 'withPortal',
+    title: 'Con Portal Digital',
+    description: 'Contactos con acceso al portal digital',
+    icon: Globe,
+    variant: 'info',
+    format: 'number',
+    priority: 4,
+    category: 'portal',
+  },
+  {
+    key: 'adoptionRate',
+    title: 'Tasa de Adopción',
+    description: 'Porcentaje de contactos con portal activo',
+    icon: Target,
+    variant: 'accent',
+    format: 'percentage',
+    priority: 5,
+    category: 'portal',
+  },
+
+  // Extended Stats (Priority 6+) - Opcionales
+  {
+    key: 'averageEngagementScore',
+    title: 'Engagement Promedio',
+    description: 'Puntuación promedio de engagement',
+    icon: Activity,
+    variant: 'info',
+    format: 'decimal',
+    priority: 6,
+    category: 'engagement',
+  },
+  {
+    key: 'newContactsThisMonth',
+    title: 'Nuevos Este Mes',
+    description: 'Contactos agregados en el mes actual',
+    icon: Calendar,
+    variant: 'success',
+    format: 'number',
+    priority: 7,
+    category: 'growth',
+  },
+];
 
 // ============================================
 // STAT CARD COMPONENT
 // ============================================
 
 interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  iconBgColor: string;
-  iconColor: string;
-  subtitle?: string;
+  config: StatCardConfig;
+  value: number | undefined;
+  trend?: number; // Cambio porcentual respecto al período anterior
+  isLoading?: boolean;
+  showTrend?: boolean;
+  showTooltip?: boolean;
+  variant?: 'default' | 'compact' | 'minimal';
+  onClick?: () => void;
+  className?: string;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  title,
+  config,
   value,
-  icon,
-  iconBgColor,
-  iconColor,
-  subtitle
+  trend,
+  isLoading = false,
+  showTrend = false,
+  showTooltip = true,
+  variant = 'default',
+  onClick,
+  className,
 }) => {
-  return (
-    <div className="bg-app-dark-800 p-4 sm:p-6 rounded-lg shadow-sm border border-app-dark-700">
-      <div className="flex items-center">
-        <div className={`p-2 rounded-lg ${iconBgColor}`}>
-          <div className={iconColor}>
-            {icon}
-          </div>
+  // ============================================
+  // COMPUTED VALUES
+  // ============================================
+
+  const formattedValue = useMemo(() => {
+    if (value === undefined || value === null) return '-';
+    
+    switch (config.format) {
+      case 'percentage':
+        return formatters.percentage(value / 100); // ContactStats viene en formato 0-100
+      case 'decimal':
+        return formatters.decimal(value, 1);
+      case 'number':
+      default:
+        return formatters.number(value);
+    }
+  }, [value, config.format]);
+
+  const trendIcon = useMemo(() => {
+    if (!trend || trend === 0) return Minus;
+    return trend > 0 ? ArrowUpRight : ArrowDownRight;
+  }, [trend]);
+
+  const trendColor = useMemo(() => {
+    if (!trend || trend === 0) return 'text-app-gray-400';
+    return trend > 0 ? 'text-green-400' : 'text-red-400';
+  }, [trend]);
+
+  const isClickable = !!onClick;
+
+  // ============================================
+  // VARIANT STYLES
+  // ============================================
+
+  const variantStyles = {
+    default: {
+      card: 'p-4 sm:p-6',
+      icon: 'h-6 w-6 sm:h-8 sm:w-8',
+      title: 'text-xs sm:text-sm',
+      value: 'text-lg sm:text-2xl lg:text-3xl',
+      trend: 'text-xs sm:text-sm',
+    },
+    compact: {
+      card: 'p-3 sm:p-4',
+      icon: 'h-5 w-5 sm:h-6 sm:w-6',
+      title: 'text-xs',
+      value: 'text-base sm:text-lg lg:text-xl',
+      trend: 'text-xs',
+    },
+    minimal: {
+      card: 'p-2 sm:p-3',
+      icon: 'h-4 w-4 sm:h-5 sm:w-5',
+      title: 'text-xs',
+      value: 'text-sm sm:text-base lg:text-lg',
+      trend: 'text-xs',
+    },
+  };
+
+  const styles = variantStyles[variant];
+
+  // ============================================
+  // ICON COLORS BY VARIANT
+  // ============================================
+
+  const iconColors = {
+    default: 'text-app-gray-400',
+    success: 'text-green-400',
+    info: 'text-blue-400',
+    warning: 'text-yellow-400',
+    accent: 'text-app-accent-400',
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  const cardContent = (
+    <div className={cn(
+      'bg-app-dark-800 border border-app-dark-600 rounded-lg transition-all duration-200',
+      'hover:border-app-dark-500',
+      isClickable && 'cursor-pointer hover:bg-app-dark-750 active:scale-[0.98]',
+      styles.card,
+      className
+    )}
+    onClick={onClick}
+    role={isClickable ? 'button' : undefined}
+    tabIndex={isClickable ? 0 : undefined}
+    >
+      {/* Header con icono y título */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <p className={cn(
+            'font-medium text-app-gray-300 truncate',
+            styles.title
+          )}>
+            {config.title}
+          </p>
         </div>
-        <div className="ml-3 sm:ml-4">
-          <p className="text-xs sm:text-sm font-medium text-app-gray-400">
-            {title}
-          </p>
-          <p className="text-lg sm:text-2xl font-bold text-app-gray-100">
-            {value}
-          </p>
-          {subtitle && (
-            <p className="text-xs text-app-gray-500 mt-1">
-              {subtitle}
-            </p>
-          )}
+        
+        <div className={cn(
+          'flex-shrink-0 ml-2',
+          iconColors[config.variant]
+        )}>
+          <config.icon className={styles.icon} />
         </div>
       </div>
+
+      {/* Valor principal */}
+      <div className="mb-2">
+        {isLoading ? (
+          <div className="flex items-center">
+            <LoadingSpinner size="sm" className="mr-2" />
+            <div className={cn('h-6 bg-app-dark-600 rounded animate-pulse', styles.value.includes('text-lg') ? 'w-16' : 'w-12')} />
+          </div>
+        ) : (
+          <p className={cn(
+            'font-bold text-app-gray-100 tabular-nums',
+            styles.value
+          )}>
+            {formattedValue}
+          </p>
+        )}
+      </div>
+
+      {/* Trend indicator */}
+      {showTrend && !isLoading && trend !== undefined && (
+        <div className="flex items-center space-x-1">
+          <div className={cn('flex items-center space-x-1', trendColor)}>
+            {React.createElement(trendIcon, { 
+              className: cn('h-3 w-3', trendColor) 
+            })}
+            <span className={cn('font-medium tabular-nums', styles.trend)}>
+              {Math.abs(trend).toFixed(1)}%
+            </span>
+          </div>
+          <span className={cn('text-app-gray-500', styles.trend)}>
+            vs mes anterior
+          </span>
+        </div>
+      )}
+
+      {/* Badge indicator para valores especiales */}
+      {!isLoading && value !== undefined && (
+        <>
+          {config.key === 'adoptionRate' && value >= 80 && (
+            <Badge variant="success" size="sm" className="mt-2">
+              <Award className="h-3 w-3 mr-1" />
+              Excelente
+            </Badge>
+          )}
+          {config.key === 'averageEngagementScore' && value >= 70 && (
+            <Badge variant="success" size="sm" className="mt-2">
+              Alto Engagement
+            </Badge>
+          )}
+        </>
+      )}
     </div>
   );
+
+  // Con tooltip si está habilitado
+  if (showTooltip) {
+    return (
+      <Tooltip content={config.description}>
+        {cardContent}
+      </Tooltip>
+    );
+  }
+
+  return cardContent;
 };
 
 // ============================================
 // MAIN COMPONENT
 // ============================================
 
-const ContactsStatsCards: React.FC<ContactsStatsCardsProps> = ({ stats }) => {
-  // ✅ AGREGAR: Mapeo seguro para compatibilidad con ambos formatos
-  const totalContacts = stats.totalContacts ?? stats.total ?? 0;
-  const contactsWithPortal = stats.contactsWithPortal ?? stats.withPortal ?? 0;
-  const averageEngagementScore = stats.averageEngagementScore ?? 0;
-  const newContactsThisMonth = stats.newContactsThisMonth ?? 0;
-  
-  const adoptionRate = stats.adoptionRate || 
-    (totalContacts > 0 ? Math.round((contactsWithPortal / totalContacts) * 100) : 0);
+const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
+  stats,
+  isLoading = false,
+  showTrends = false,
+  showTooltips = true,
+  variant = 'default',
+  className,
+  cardClassName,
+  onCardClick,
+}) => {
+  // ============================================
+  // COMPUTED VALUES
+  // ============================================
+
+  // Filtrar configs basado en qué datos están disponibles
+  const availableConfigs = useMemo(() => {
+    return statCardConfigs
+      .filter(config => {
+        // Mostrar siempre las stats básicas
+        if (['total', 'active', 'inactive', 'withPortal', 'adoptionRate'].includes(config.key)) {
+          return true;
+        }
+        
+        // Mostrar stats extendidas solo si están disponibles
+        return stats[config.key] !== undefined && stats[config.key] !== null;
+      })
+      .sort((a, b) => a.priority - b.priority);
+  }, [stats]);
+
+  // Calcular trends simulados (en una app real vendrían del backend)
+  const trends = useMemo(() => {
+    // Simular trends basados en los valores actuales
+    // En producción, estos vendrían del backend
+    const trendMap: Record<string, number> = {};
+    
+    if (showTrends) {
+      // Simular trends realistas
+      trendMap['total'] = Math.random() * 10 - 2;
+      trendMap['active'] = Math.random() * 15 - 5;
+      trendMap['withPortal'] = Math.random() * 20;
+      trendMap['adoptionRate'] = Math.random() * 8 - 2;
+    }
+    
+    return trendMap;
+  }, [showTrends]);
+
+  // ============================================
+  // HANDLERS
+  // ============================================
+
+  const handleCardClick = (statKey: keyof ContactStats) => {
+    onCardClick?.(statKey);
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-      <StatCard
-        title="Total"
-        value={totalContacts.toLocaleString()}
-        icon={<Users className="h-5 w-5 sm:h-6 sm:w-6" />}
-        iconBgColor="bg-primary-900/20"
-        iconColor="text-primary-400"
-      />
-      
-      <StatCard
-        title="Con Portal"
-        value={contactsWithPortal.toLocaleString()}
-        icon={<CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
-        iconBgColor="bg-green-900/20"
-        iconColor="text-green-400"
-        subtitle={`${adoptionRate}% adopción`}
-      />
-      
-      <StatCard
-        title="Engagement"
-        value={`${Math.round(averageEngagementScore)}%`}
-        icon={<TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />}
-        iconBgColor="bg-purple-900/20"
-        iconColor="text-purple-400"
-        subtitle="Promedio"
-      />
-      
-      <StatCard
-        title="Nuevos"
-        value={newContactsThisMonth.toLocaleString()}
-        icon={<Activity className="h-5 w-5 sm:h-6 sm:w-6" />}
-        iconBgColor="bg-yellow-900/20"
-        iconColor="text-yellow-400"
-        subtitle="Este mes"
-      />
+    <div className={cn(
+      'grid gap-3 sm:gap-4',
+      // Responsive grid basado en número de cards disponibles
+      availableConfigs.length <= 2 && 'grid-cols-2',
+      availableConfigs.length === 3 && 'grid-cols-2 sm:grid-cols-3',
+      availableConfigs.length >= 4 && 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4',
+      className
+    )}>
+      {availableConfigs.map((config) => (
+        <StatCard
+          key={config.key}
+          config={config}
+          value={stats[config.key] as number}
+          trend={trends[config.key]}
+          isLoading={isLoading}
+          showTrend={showTrends}
+          showTooltip={showTooltips}
+          variant={variant}
+          onClick={() => handleCardClick(config.key)}
+          className={cardClassName}
+        />
+      ))}
+
+      {/* Loading skeleton para cards adicionales */}
+      {isLoading && availableConfigs.length < 4 && (
+        <>
+          {Array.from({ length: 4 - availableConfigs.length }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className={cn(
+                'bg-app-dark-800 border border-app-dark-600 rounded-lg animate-pulse',
+                variant === 'compact' ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
+              )}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="h-4 bg-app-dark-600 rounded w-20" />
+                <div className="h-6 w-6 bg-app-dark-600 rounded" />
+              </div>
+              <div className="h-8 bg-app-dark-600 rounded w-16 mb-2" />
+              <div className="h-3 bg-app-dark-600 rounded w-24" />
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 };
 
-export default ContactsStatsCards;
+// ============================================
+// SPECIALIZED VARIANTS
+// ============================================
+
+/**
+ * Compact Stats Cards - Para dashboards densos
+ */
+export const CompactStatsCards: React.FC<Omit<ContactStatsCardsProps, 'variant'>> = (props) => (
+  <ContactStatsCards {...props} variant="compact" />
+);
+
+/**
+ * Minimal Stats Cards - Para widgets pequeños
+ */
+export const MinimalStatsCards: React.FC<Omit<ContactStatsCardsProps, 'variant'>> = (props) => (
+  <ContactStatsCards {...props} variant="minimal" />
+);
+
+/**
+ * Trending Stats Cards - Con indicadores de tendencia
+ */
+export const TrendingStatsCards: React.FC<Omit<ContactStatsCardsProps, 'showTrends'>> = (props) => (
+  <ContactStatsCards {...props} showTrends={true} />
+);
+
+export default ContactStatsCards;

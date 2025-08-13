@@ -418,10 +418,10 @@ export type Optional<T> = {
   // ============================================
   
   /**
-   * Tag/Etiqueta
-   */
-  export interface Tag {
-    id: ID;
+ * Tag/Etiqueta
+ * ✅ CORRECCIÓN: Ahora extiende BaseEntity para ser una entidad completa del sistema.
+ */
+  export interface Tag extends BaseEntity { // <-- LA MODIFICACIÓN CLAVE
     name: string;
     color?: string;
     description?: string;
@@ -432,12 +432,7 @@ export type Optional<T> = {
   /**
    * Request para crear tag
    */
-  export interface CreateTagRequest {
-    name: string;
-    color?: string;
-    description?: string;
-    category?: string;
-  }
+  export type CreateTagRequest = CreateEntityRequest<Tag>;
   
   // ============================================
   // AUDIT & ACTIVITY TYPES

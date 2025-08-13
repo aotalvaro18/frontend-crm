@@ -6,6 +6,8 @@
 // APP CONFIGURATION
 // ============================================
 
+const ALLOWED_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp'];
+
 export const APP_CONFIG = {
     NAME: 'Eklesa CRM',
     VERSION: '3.0.0',
@@ -31,7 +33,7 @@ export const APP_CONFIG = {
     
     // File Upload
     MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+    ALLOWED_IMAGE_TYPES,
     ALLOWED_DOCUMENT_TYPES: ['application/pdf', 'text/csv', 'application/vnd.ms-excel'],
   } as const;
   
@@ -158,11 +160,22 @@ export const APP_CONFIG = {
   // ============================================
   
   export const CONTACT_STATUS = {
+    // --- Estados existentes ---
     ACTIVE: 'ACTIVE',
     INACTIVE: 'INACTIVE',
     DO_NOT_CONTACT: 'DO_NOT_CONTACT',
     DUPLICATE: 'DUPLICATE',
     ARCHIVED: 'ARCHIVED',
+    // --- ✅ Nuevos estados añadidos ---
+    PROSPECT: 'PROSPECT',
+    LEAD: 'LEAD',
+    MEMBER: 'MEMBER',
+    VISITOR: 'VISITOR',
+    FORMER_MEMBER: 'FORMER_MEMBER',
+    DECEASED: 'DECEASED',
+    MOVED: 'MOVED',
+    BOUNCED: 'BOUNCED',
+    BLOCKED: 'BLOCKED',
   } as const;
   
   export const CONTACT_STATUS_LABELS = {
@@ -171,6 +184,16 @@ export const APP_CONFIG = {
     [CONTACT_STATUS.DO_NOT_CONTACT]: 'No Contactar',
     [CONTACT_STATUS.DUPLICATE]: 'Duplicado',
     [CONTACT_STATUS.ARCHIVED]: 'Archivado',
+    // --- ✅ Nuevas etiquetas añadidas ---
+    [CONTACT_STATUS.PROSPECT]: 'Prospecto',
+    [CONTACT_STATUS.LEAD]: 'Lead',
+    [CONTACT_STATUS.MEMBER]: 'Miembro',
+    [CONTACT_STATUS.VISITOR]: 'Visitante',
+    [CONTACT_STATUS.FORMER_MEMBER]: 'Ex-Miembro',
+    [CONTACT_STATUS.DECEASED]: 'Fallecido',
+    [CONTACT_STATUS.MOVED]: 'Se Mudó',
+    [CONTACT_STATUS.BOUNCED]: 'Email Rebotado',
+    [CONTACT_STATUS.BLOCKED]: 'Bloqueado',
   } as const;
   
   export const CONTACT_STATUS_COLORS = {
@@ -179,6 +202,16 @@ export const APP_CONFIG = {
     [CONTACT_STATUS.DO_NOT_CONTACT]: 'bg-red-100 text-red-800 border-red-200',
     [CONTACT_STATUS.DUPLICATE]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     [CONTACT_STATUS.ARCHIVED]: 'bg-purple-100 text-purple-800 border-purple-200',
+    // --- ✅ Nuevos colores añadidos ---
+    [CONTACT_STATUS.PROSPECT]: 'bg-blue-100 text-blue-800 border-blue-200',
+    [CONTACT_STATUS.LEAD]: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    [CONTACT_STATUS.MEMBER]: 'bg-teal-100 text-teal-800 border-teal-200',
+    [CONTACT_STATUS.VISITOR]: 'bg-orange-100 text-orange-800 border-orange-200',
+    [CONTACT_STATUS.FORMER_MEMBER]: 'bg-gray-100 text-gray-800 border-gray-200',
+    [CONTACT_STATUS.DECEASED]: 'bg-black text-white border-gray-600',
+    [CONTACT_STATUS.MOVED]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    [CONTACT_STATUS.BOUNCED]: 'bg-red-100 text-red-800 border-red-200',
+    [CONTACT_STATUS.BLOCKED]: 'bg-gray-800 text-gray-300 border-gray-600',
   } as const;
   
   export const GENDER = {
@@ -196,29 +229,77 @@ export const APP_CONFIG = {
   } as const;
   
   export const CONTACT_SOURCES = {
-    EVENTO_EVANGELISTICO: 'EVENTO_EVANGELISTICO',
-    REFERIDO: 'REFERIDO',
-    WEB: 'WEB',
-    MANUAL: 'MANUAL',
-    TURNS_IMPORT: 'TURNS_IMPORT',
-    REDES_SOCIALES: 'REDES_SOCIALES',
-    CAMPANA_MARKETING: 'CAMPANA_MARKETING',
-    EVENTO_ESPECIAL: 'EVENTO_ESPECIAL',
-    VISITA_IGLESIA: 'VISITA_IGLESIA',
-    LLAMADA_DIRECTA: 'LLAMADA_DIRECTA',
+    // Digital sources
+    WEBSITE: 'WEBSITE',
+    SOCIAL_MEDIA: 'SOCIAL_MEDIA',
+    EMAIL_CAMPAIGN: 'EMAIL_CAMPAIGN',
+    ONLINE_AD: 'ONLINE_AD',
+    SEO: 'SEO',
+    CONTENT_MARKETING: 'CONTENT_MARKETING',
+    
+    // Traditional sources
+    REFERRAL: 'REFERRAL',
+    COLD_CALL: 'COLD_CALL',
+    COLD_EMAIL: 'COLD_EMAIL',
+    NETWORKING: 'NETWORKING',
+    TRADE_SHOW: 'TRADE_SHOW',
+    CONFERENCE: 'CONFERENCE',
+    
+    // Church-specific sources
+    CHURCH_SERVICE: 'CHURCH_SERVICE',
+    CHURCH_EVENT: 'CHURCH_EVENT',
+    SMALL_GROUP: 'SMALL_GROUP',
+    VOLUNTEER: 'VOLUNTEER',
+    MINISTRY: 'MINISTRY',
+    PASTORAL_VISIT: 'PASTORAL_VISIT',
+    
+    // Internal sources
+    MANUAL_ENTRY: 'MANUAL_ENTRY',
+    IMPORT: 'IMPORT',
+    API: 'API',
+    MOBILE_APP: 'MOBILE_APP',
+    
+    // Other
+    PARTNER: 'PARTNER',
+    VENDOR: 'VENDOR',
+    OTHER: 'OTHER',
   } as const;
-  
+    
   export const CONTACT_SOURCE_LABELS = {
-    [CONTACT_SOURCES.EVENTO_EVANGELISTICO]: 'Evento Evangelístico',
-    [CONTACT_SOURCES.REFERIDO]: 'Referido por Miembro',
-    [CONTACT_SOURCES.WEB]: 'Página Web',
-    [CONTACT_SOURCES.MANUAL]: 'Ingreso Manual',
-    [CONTACT_SOURCES.TURNS_IMPORT]: 'Importado de Turnos',
-    [CONTACT_SOURCES.REDES_SOCIALES]: 'Redes Sociales',
-    [CONTACT_SOURCES.CAMPANA_MARKETING]: 'Campana de Marketing',
-    [CONTACT_SOURCES.EVENTO_ESPECIAL]: 'Evento Especial',
-    [CONTACT_SOURCES.VISITA_IGLESIA]: 'Visita a la Iglesia',
-    [CONTACT_SOURCES.LLAMADA_DIRECTA]: 'Llamada Directa',
+    // Digital sources
+    [CONTACT_SOURCES.WEBSITE]: 'Sitio Web',
+    [CONTACT_SOURCES.SOCIAL_MEDIA]: 'Redes Sociales',
+    [CONTACT_SOURCES.EMAIL_CAMPAIGN]: 'Campaña de Email',
+    [CONTACT_SOURCES.ONLINE_AD]: 'Anuncio Online',
+    [CONTACT_SOURCES.SEO]: 'Búsqueda Orgánica (SEO)',
+    [CONTACT_SOURCES.CONTENT_MARKETING]: 'Marketing de Contenidos',
+    
+    // Traditional sources
+    [CONTACT_SOURCES.REFERRAL]: 'Referido',
+    [CONTACT_SOURCES.COLD_CALL]: 'Llamada en Frío',
+    [CONTACT_SOURCES.COLD_EMAIL]: 'Email en Frío',
+    [CONTACT_SOURCES.NETWORKING]: 'Networking',
+    [CONTACT_SOURCES.TRADE_SHOW]: 'Feria Comercial',
+    [CONTACT_SOURCES.CONFERENCE]: 'Conferencia',
+    
+    // Church-specific sources
+    [CONTACT_SOURCES.CHURCH_SERVICE]: 'Servicio Dominical',
+    [CONTACT_SOURCES.CHURCH_EVENT]: 'Evento de la Iglesia',
+    [CONTACT_SOURCES.SMALL_GROUP]: 'Grupo Pequeño',
+    [CONTACT_SOURCES.VOLUNTEER]: 'Voluntariado',
+    [CONTACT_SOURCES.MINISTRY]: 'Ministerio',
+    [CONTACT_SOURCES.PASTORAL_VISIT]: 'Visita Pastoral',
+    
+    // Internal sources
+    [CONTACT_SOURCES.MANUAL_ENTRY]: 'Entrada Manual',
+    [CONTACT_SOURCES.IMPORT]: 'Importación',
+    [CONTACT_SOURCES.API]: 'API',
+    [CONTACT_SOURCES.MOBILE_APP]: 'App Móvil',
+    
+    // Other
+    [CONTACT_SOURCES.PARTNER]: 'Socio',
+    [CONTACT_SOURCES.VENDOR]: 'Proveedor',
+    [CONTACT_SOURCES.OTHER]: 'Otro',
   } as const;
   
   // ============================================
