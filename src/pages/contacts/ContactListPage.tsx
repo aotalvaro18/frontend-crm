@@ -293,9 +293,10 @@ const ContactListPage: React.FC = () => {
               Contactos
             </h1>
             <div className="flex items-center gap-2 text-sm text-app-gray-400">
-              {/* ✅ CORRECCIÓN: Guardia añadido para el contador, previene el crash. */}
-              {stats ? (
-                <span>{stats.total.toLocaleString()} contactos totales</span>
+              {/* ✅ CORRECCIÓN CLAVE: Guardia añadido para el contador, previene el crash. */}
+              {/* Muestra un esqueleto de carga mientras los datos no están listos. */}
+              {typeof totalContacts === 'number' ? (
+                <span>{totalContacts.toLocaleString()} contactos totales</span>
               ) : (
                 <span className="h-4 bg-app-dark-700 rounded w-32 animate-pulse" />
               )}
