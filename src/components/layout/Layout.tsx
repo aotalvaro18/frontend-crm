@@ -388,7 +388,11 @@ const Header: React.FC<{
                 <User className="h-4 w-4 text-white" />
               </div>
               <span className="hidden sm:block text-sm font-medium">
-                {user?.nombre || user?.email}
+                {/* ✅ CORRECCIÓN: Comprobar que 'user' existe antes de usarlo */}
+                {user ? (user.nombre || user.email) : (
+                  // Mostrar un esqueleto de carga mientras el perfil del usuario carga
+                  <span className="h-4 bg-app-dark-600 rounded w-24 animate-pulse inline-block" />
+                )}
               </span>
             </button>
 
@@ -396,12 +400,21 @@ const Header: React.FC<{
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-app-dark-800 border border-app-dark-600 rounded-lg shadow-lg z-50">
                 <div className="p-3 border-b border-app-dark-600">
-                  <p className="text-sm font-medium text-white truncate">
-                    {user?.nombre || user?.email}
-                  </p>
-                  <p className="text-xs text-app-gray-400">
-                    {user?.roles?.join(', ') || 'Usuario'}
-                  </p>
+                  {user ? (
+                    <>
+                      <p className="text-sm font-medium text-white truncate">
+                        {user.nombre || user.email}
+                      </p>
+                      <p className="text-xs text-app-gray-400">
+                        {user.roles?.join(', ') || 'Usuario'}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-1.5 animate-pulse">
+                      <div className="h-4 bg-app-dark-600 rounded w-3/4" />
+                      <div className="h-3 bg-app-dark-600 rounded w-1/2" />
+                    </div>
+                  )}
                 </div>
                 <div className="p-2">
                   <button
