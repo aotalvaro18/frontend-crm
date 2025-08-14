@@ -157,8 +157,7 @@ export interface TokenRefreshResult {
 export interface ServiceUser {
   id: number;
   email: string;
-  firstName: string;
-  lastName: string;
+  nombre: string;
   cognitoSub: string;
   organizationId?: number;
   churchId?: number;
@@ -216,7 +215,7 @@ export const serviceUserToUser = (serviceUser: ServiceUser): User => {
   const user = {
     id: serviceUser.id.toString(),
     email: serviceUser.email,
-    nombre: `${serviceUser.firstName} ${serviceUser.lastName}`.trim(),
+    nombre: serviceUser.nombre.trim(),
     cognitoSub: serviceUser.cognitoSub,
     roles: serviceUser.roles,
     organizationId: serviceUser.organizationId,
