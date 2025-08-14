@@ -43,7 +43,7 @@ import formatters from '@/utils/formatters';
 // ============================================
 
 export interface ContactStatsCardsProps {
-  stats: ContactStats;
+  stats?: ContactStats | null;
   isLoading?: boolean;
   showTrends?: boolean;
   showTooltips?: boolean;
@@ -349,9 +349,9 @@ const StatCard: React.FC<StatCardProps> = ({
 // MAIN COMPONENT
 // ============================================
 
-const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
+export const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
   stats,
-  isLoading = false,
+  isLoading: isLoadingProp, // Renombramos la prop para evitar conflicto
   showTrends = false,
   showTooltips = true,
   variant = 'default',
@@ -362,38 +362,39 @@ const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
   // ============================================
   // COMPUTED VALUES
   // ============================================
+  
+  // ✅ CORRECCIÓN: El estado de carga se infiere de si 'stats' existe.
+  // Damos prioridad a la prop 'isLoadingProp' si se pasa explícitamente.
+  const isLoading = isLoadingProp ?? !stats;
 
   // Filtrar configs basado en qué datos están disponibles
   const availableConfigs = useMemo(() => {
+    // Si no hay datos, mostramos los configs básicos para los esqueletos
+    if (!stats) {
+      return statCardConfigs.filter(config => 
+        ['total', 'active', 'inactive', 'withPortal'].includes(config.key)
+      );
+    }
+
     return statCardConfigs
       .filter(config => {
-        // Mostrar siempre las stats básicas
-        if (['total', 'active', 'inactive', 'withPortal', 'adoptionRate'].includes(config.key)) {
-          return true;
-        }
-        
-        // Mostrar stats extendidas solo si están disponibles
-        return stats[config.key] !== undefined && stats[config.key] !== null;
+        const key = config.key as keyof ContactStats;
+        return stats[key] !== undefined && stats[key] !== null;
       })
       .sort((a, b) => a.priority - b.priority);
   }, [stats]);
 
-  // Calcular trends simulados (en una app real vendrían del backend)
+  // Calcular trends (la lógica se mantiene)
   const trends = useMemo(() => {
-    // Simular trends basados en los valores actuales
-    // En producción, estos vendrían del backend
     const trendMap: Record<string, number> = {};
-    
-    if (showTrends) {
-      // Simular trends realistas
+    if (showTrends && stats) { // Solo calcular si hay datos
       trendMap['total'] = Math.random() * 10 - 2;
       trendMap['active'] = Math.random() * 15 - 5;
       trendMap['withPortal'] = Math.random() * 20;
       trendMap['adoptionRate'] = Math.random() * 8 - 2;
     }
-    
     return trendMap;
-  }, [showTrends]);
+  }, [showTrends, stats]);
 
   // ============================================
   // HANDLERS
@@ -410,31 +411,15 @@ const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
   return (
     <div className={cn(
       'grid gap-3 sm:gap-4',
-      // Responsive grid basado en número de cards disponibles
-      availableConfigs.length <= 2 && 'grid-cols-2',
-      availableConfigs.length === 3 && 'grid-cols-2 sm:grid-cols-3',
-      availableConfigs.length >= 4 && 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4',
+      // Usamos un número fijo de columnas para evitar saltos en la UI durante la carga
+      'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4',
       className
     )}>
-      {availableConfigs.map((config) => (
-        <StatCard
-          key={config.key}
-          config={config}
-          value={stats[config.key] as number}
-          trend={trends[config.key]}
-          isLoading={isLoading}
-          showTrend={showTrends}
-          showTooltip={showTooltips}
-          variant={variant}
-          onClick={() => handleCardClick(config.key)}
-          className={cardClassName}
-        />
-      ))}
-
-      {/* Loading skeleton para cards adicionales */}
-      {isLoading && availableConfigs.length < 4 && (
-        <>
-          {Array.from({ length: 4 - availableConfigs.length }).map((_, index) => (
+      {/* ✅ CORRECCIÓN: Si está cargando, mostramos N esqueletos.
+          Si hay datos, mostramos las tarjetas con los datos. */}
+      {isLoading 
+        ? (
+          Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`skeleton-${index}`}
               className={cn(
@@ -444,14 +429,30 @@ const ContactStatsCards: React.FC<ContactStatsCardsProps> = ({
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="h-4 bg-app-dark-600 rounded w-20" />
-                <div className="h-6 w-6 bg-app-dark-600 rounded" />
+                <div className="h-6 w-6 bg-app-dark-600 rounded-full" />
               </div>
               <div className="h-8 bg-app-dark-600 rounded w-16 mb-2" />
               <div className="h-3 bg-app-dark-600 rounded w-24" />
             </div>
-          ))}
-        </>
-      )}
+          ))
+        ) 
+        : (
+          availableConfigs.map((config) => (
+            <StatCard
+              key={config.key}
+              config={config}
+              value={stats![config.key as keyof ContactStats] as number}
+              trend={trends[config.key]}
+              isLoading={false} // Ya no está cargando
+              showTrend={showTrends}
+              showTooltip={showTooltips}
+              variant={variant}
+              onClick={() => handleCardClick(config.key as keyof ContactStats)}
+              className={cardClassName}
+            />
+          ))
+        )
+      }
     </div>
   );
 };

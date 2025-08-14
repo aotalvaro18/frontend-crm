@@ -276,13 +276,12 @@ const ContactListPage: React.FC = () => {
   const renderHeader = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      {stats && (
-        <ContactsStatsCards 
-          stats={stats}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
-        />
-      )}
-
+      {/* ✅ CORRECCIÓN: Renderizamos siempre. El componente interno maneja su propio estado de carga. */}
+      <ContactsStatsCards 
+        stats={stats}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+      />
+  
       {/* Title and Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -294,15 +293,19 @@ const ContactListPage: React.FC = () => {
               Contactos
             </h1>
             <div className="flex items-center gap-2 text-sm text-app-gray-400">
-              <span>{totalContacts.toLocaleString()} contactos totales</span>
+              {/* ✅ CORRECCIÓN: Guardia añadido para el contador, previene el crash. */}
+              {stats ? (
+                <span>{stats.total.toLocaleString()} contactos totales</span>
+              ) : (
+                <span className="h-4 bg-app-dark-700 rounded w-32 animate-pulse" />
+              )}
               {!isOnline && (
                 <Badge variant="warning" size="sm">Sin conexión</Badge>
               )}
             </div>
           </div>
         </div>
-
-        {/* ✅ REFINAMIENTO 4: Acciones consistentes y compactas */}
+  
         <div className="flex items-center gap-1">
           {/* Refresh */}
           <IconButton
@@ -314,14 +317,14 @@ const ContactListPage: React.FC = () => {
           >
             <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
           </IconButton>
-
+  
           {/* Export */}
           <Dropdown
             trigger={
               <IconButton
                 variant="ghost"
-                tooltip="Exportar"
-                aria-label="Opciones de exportación"
+                tooltip="Exportar / Importar"
+                aria-label="Opciones de exportación e importación"
               >
                 <FileDown className="h-4 w-4" />
               </IconButton>
@@ -330,7 +333,7 @@ const ContactListPage: React.FC = () => {
             align="end"
             size="sm"
           />
-
+  
           {/* Create - Único botón con texto */}
           <Button
             onClick={handleCreateContact}
@@ -343,7 +346,7 @@ const ContactListPage: React.FC = () => {
           </Button>
         </div>
       </div>
-
+  
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
@@ -355,7 +358,7 @@ const ContactListPage: React.FC = () => {
             className="w-full"
           />
         </div>
-
+  
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -372,7 +375,7 @@ const ContactListPage: React.FC = () => {
               <CountBadge count={Object.keys(searchCriteria).length} variant="info" />
             )}
           </Button>
-
+  
           {hasActiveFilters && (
             <IconButton
               variant="ghost"
@@ -385,7 +388,7 @@ const ContactListPage: React.FC = () => {
           )}
         </div>
       </div>
-
+  
       {/* Filters Panel */}
       {showFilters && (
         <ContactsFilters
@@ -395,7 +398,7 @@ const ContactListPage: React.FC = () => {
           className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800"
         />
       )}
-
+  
       {/* Bulk Actions */}
       {hasSelection && (
         <ContactsBulkActions
