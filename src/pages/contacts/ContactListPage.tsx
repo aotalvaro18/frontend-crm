@@ -177,7 +177,7 @@ const ContactListPage: React.FC = () => {
   // ============================================
 
   const handleCreateContact = useCallback(() => {
-    navigate('/contacts/create');
+    navigate('/contacts/new');
   }, [navigate]);
 
   const handleContactClick = useCallback((contact: ContactDTO) => {

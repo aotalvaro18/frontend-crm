@@ -42,6 +42,13 @@ const ContactDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Validar que el ID sea un número válido
+  const contactId = React.useMemo(() => {
+    if (!id) return null;
+    const numericId = parseInt(id, 10);
+    return isNaN(numericId) || numericId <= 0 ? null : numericId;
+  }, [id]);
+
   // ============================================
   // HOOKS DESACOPLADOS
   // ============================================
@@ -73,10 +80,10 @@ const ContactDetailPage: React.FC = () => {
 
   // Cargar contacto al montar
   useEffect(() => {
-    if (id) {
-      getContactById(Number(id));
+    if (contactId) {
+      getContactById(contactId);
     }
-  }, [id, getContactById]);
+  }, [contactId, getContactById]);
 
   // ============================================
   // HANDLERS SIMPLES
