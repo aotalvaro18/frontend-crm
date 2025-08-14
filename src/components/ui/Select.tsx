@@ -354,18 +354,24 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(({
   
   // Close dropdown on outside click
   useEffect(() => {
+    // 1. La función que maneja el evento se mantiene igual.
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchQuery('');
       }
     };
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
+  
+    // 2. Añadimos el listener INCONDICIONALMENTE.
+    document.addEventListener('mousedown', handleClickOutside);
+  
+    // 3. Devolvemos la función de limpieza INCONDICIONALMENTE.
+    // React se encargará de llamarla solo cuando sea necesario (al desmontar).
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []); // ✅ CORRECCIÓN: El array de dependencias debe estar vacío.
+          // Este efecto solo debe correr una vez (al montar) y limpiarse una vez (al desmontar).
   
   // Reset highlighted index when options change
   useEffect(() => {

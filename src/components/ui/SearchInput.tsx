@@ -329,8 +329,7 @@ export const GlobalSearch = forwardRef<SearchInputRef, {
     variant="default"
     debounceMs={300}
     minSearchLength={2}
-    leftIcon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
-    hideSearchIcon={loading}
+    loading={loading}
     placeholder="Buscar en toda la aplicación..."
     {...props}
   />

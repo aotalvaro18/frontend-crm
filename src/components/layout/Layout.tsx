@@ -465,13 +465,26 @@ const Header: React.FC<{
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, logout, isLoading } = useAuthStore();
-  
+
+ 
   // UI state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Navigation items based on current path
   const navigationItems = getNavigationItems(location.pathname);
+
+  // ✅ =============================================================
+  // ✅ AÑADIR ESTE USEEFFECT DE DEPURACIÓN AQUÍ
+  // (Justo después de definir las variables y antes de la lógica principal)
+  useEffect(() => {
+    if (user) {
+      console.log('✅ USER OBJECT IN LAYOUT:', JSON.stringify(user, null, 2));
+    } else {
+      console.log('🟡 USER OBJECT IN LAYOUT is null or undefined');
+    }
+  }, [user]); // Se ejecuta cada vez que 'user' cambia
+  // ✅ =============================================================
 
   // Close mobile menu on route change
   useEffect(() => {

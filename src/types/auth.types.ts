@@ -212,7 +212,8 @@ export const isServiceUser = (obj: unknown): obj is ServiceUser => {
  * Convierte ServiceUser a User (formato interno)
  */
 export const serviceUserToUser = (serviceUser: ServiceUser): User => {
-  return {
+  // 1. Creamos el objeto 'user' y lo guardamos en una variable
+  const user = {
     id: serviceUser.id.toString(),
     email: serviceUser.email,
     nombre: `${serviceUser.firstName} ${serviceUser.lastName}`.trim(),
@@ -225,6 +226,15 @@ export const serviceUserToUser = (serviceUser: ServiceUser): User => {
     profilePicture: serviceUser.profilePicture,
     preferences: serviceUser.preferences,
   };
+  
+  // ✅ =============================================================
+  // ✅ AÑADIR ESTE LOG DE DEPURACIÓN AQUÍ
+  // (Justo después de crear el objeto y antes de devolverlo)
+  console.log('✅ CONVERTED FRONTEND USER OBJECT:', JSON.stringify(user, null, 2));
+  // ✅ =============================================================
+
+  // 3. Devolvemos la variable que creamos
+  return user;
 };
 
 /**
