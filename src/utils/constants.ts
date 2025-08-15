@@ -1,4 +1,4 @@
- // src/utils/constants.ts
+// src/utils/constants.ts
 // Constantes enterprise completas siguiendo tu guía arquitectónica
 // Matching exacto con tu backend Spring Boot
 
@@ -510,6 +510,7 @@ export const ERROR_MESSAGES = {
     
     // International
     INTERNATIONAL_PHONE: /^\+[1-9]\d{1,14}$/,
+    E164_PHONE: /^\+[1-9]\d{1,14}$/, // ✅ AGREGADO
     
     // Text patterns
     ONLY_LETTERS: /^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/,
@@ -582,82 +583,175 @@ export const ERROR_MESSAGES = {
   } as const;
   
   // ============================================
-  // NOTIFICATION TYPES
-  // ============================================
+ // NOTIFICATION TYPES
+ // ============================================
+ 
+ export const NOTIFICATION_TYPES = {
+  INFO: 'info',
+  SUCCESS: 'success',
+  WARNING: 'warning',
+  ERROR: 'error',
+} as const;
+
+export const NOTIFICATION_POSITIONS = {
+  TOP_LEFT: 'top-left',
+  TOP_CENTER: 'top-center',
+  TOP_RIGHT: 'top-right',
+  BOTTOM_LEFT: 'bottom-left',
+  BOTTOM_CENTER: 'bottom-center',
+  BOTTOM_RIGHT: 'bottom-right',
+} as const;
+
+// ============================================
+// PERMISSIONS & ROLES
+// ============================================
+
+export const USER_ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  ADMIN: 'ADMIN',
+  MANAGER: 'MANAGER',
+  USER: 'USER',
+  VIEWER: 'VIEWER',
+  MEMBER: 'MEMBER',
+} as const;
+
+export const PERMISSIONS = {
+  // Contact permissions
+  CONTACTS_READ: 'contacts:read',
+  CONTACTS_WRITE: 'contacts:write',
+  CONTACTS_DELETE: 'contacts:delete',
+  CONTACTS_EXPORT: 'contacts:export',
+  CONTACTS_IMPORT: 'contacts:import',
   
-  export const NOTIFICATION_TYPES = {
-    INFO: 'info',
-    SUCCESS: 'success',
-    WARNING: 'warning',
-    ERROR: 'error',
-  } as const;
+  // Deal permissions
+  DEALS_READ: 'deals:read',
+  DEALS_WRITE: 'deals:write',
+  DEALS_DELETE: 'deals:delete',
+  DEALS_MANAGE: 'deals:manage',
   
-  export const NOTIFICATION_POSITIONS = {
-    TOP_LEFT: 'top-left',
-    TOP_CENTER: 'top-center',
-    TOP_RIGHT: 'top-right',
-    BOTTOM_LEFT: 'bottom-left',
-    BOTTOM_CENTER: 'bottom-center',
-    BOTTOM_RIGHT: 'bottom-right',
-  } as const;
+  // Company permissions
+  COMPANIES_READ: 'companies:read',
+  COMPANIES_WRITE: 'companies:write',
+  COMPANIES_DELETE: 'companies:delete',
   
-  // ============================================
-  // PERMISSIONS & ROLES
-  // ============================================
+  // Report permissions
+  REPORTS_READ: 'reports:read',
+  REPORTS_CREATE: 'reports:create',
+  REPORTS_ADVANCED: 'reports:advanced',
   
-  export const USER_ROLES = {
-    SUPER_ADMIN: 'SUPER_ADMIN',
-    ADMIN: 'ADMIN',
-    MANAGER: 'MANAGER',
-    USER: 'USER',
-    VIEWER: 'VIEWER',
-    MEMBER: 'MEMBER',
-  } as const;
-  
-  export const PERMISSIONS = {
-    // Contact permissions
-    CONTACTS_READ: 'contacts:read',
-    CONTACTS_WRITE: 'contacts:write',
-    CONTACTS_DELETE: 'contacts:delete',
-    CONTACTS_EXPORT: 'contacts:export',
-    CONTACTS_IMPORT: 'contacts:import',
-    
-    // Deal permissions
-    DEALS_READ: 'deals:read',
-    DEALS_WRITE: 'deals:write',
-    DEALS_DELETE: 'deals:delete',
-    DEALS_MANAGE: 'deals:manage',
-    
-    // Company permissions
-    COMPANIES_READ: 'companies:read',
-    COMPANIES_WRITE: 'companies:write',
-    COMPANIES_DELETE: 'companies:delete',
-    
-    // Report permissions
-    REPORTS_READ: 'reports:read',
-    REPORTS_CREATE: 'reports:create',
-    REPORTS_ADVANCED: 'reports:advanced',
-    
-    // Admin permissions
-    SETTINGS_READ: 'settings:read',
-    SETTINGS_WRITE: 'settings:write',
-    USERS_MANAGE: 'users:manage',
-    ORGANIZATION_MANAGE: 'organization:manage',
-  } as const;
-  
-  // ============================================
-  // TYPE EXPORTS
-  // ============================================
-  
-  export type ContactStatus = keyof typeof CONTACT_STATUS;
-  export type Gender = keyof typeof GENDER;
-  export type ContactSource = keyof typeof CONTACT_SOURCES;
-  export type DealStatus = keyof typeof DEAL_STATUS;
-  export type DealPriority = keyof typeof DEAL_PRIORITY;
-  export type ActivityType = keyof typeof ACTIVITY_TYPE;
-  export type ActivityStatus = keyof typeof ACTIVITY_STATUS;
-  export type ErrorCode = keyof typeof ERROR_CODES;
-  export type UserRole = keyof typeof USER_ROLES;
-  export type Permission = keyof typeof PERMISSIONS;
-  export type NotificationType = keyof typeof NOTIFICATION_TYPES;
-  export type TimeRange = keyof typeof TIME_RANGES;
+  // Admin permissions
+  SETTINGS_READ: 'settings:read',
+  SETTINGS_WRITE: 'settings:write',
+  USERS_MANAGE: 'users:manage',
+  ORGANIZATION_MANAGE: 'organization:manage',
+} as const;
+
+// ============================================
+// PHONE & GEOGRAPHY CONSTANTS - ✅ AGREGADO
+// ============================================
+
+export interface CountryCodeInfo {
+  code: string;
+  name: string;
+  flag: string;
+  dialCode: string;
+  format: string;
+  minLength: number;
+  maxLength: number;
+}
+
+export const COUNTRY_CODES: CountryCodeInfo[] = [
+  { code: 'CO', name: 'Colombia', flag: '🇨🇴', dialCode: '+57', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', dialCode: '+1', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'ES', name: 'España', flag: '🇪🇸', dialCode: '+34', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'MX', name: 'México', flag: '🇲🇽', dialCode: '+52', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'AR', name: 'Argentina', flag: '🇦🇷', dialCode: '+54', format: '### ### ####', minLength: 10, maxLength: 11 },
+  { code: 'BR', name: 'Brasil', flag: '🇧🇷', dialCode: '+55', format: '### ### ####', minLength: 10, maxLength: 11 },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱', dialCode: '+56', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'PE', name: 'Perú', flag: '🇵🇪', dialCode: '+51', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'EC', name: 'Ecuador', flag: '🇪🇨', dialCode: '+593', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'VE', name: 'Venezuela', flag: '🇻🇪', dialCode: '+58', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'BO', name: 'Bolivia', flag: '🇧🇴', dialCode: '+591', format: '### ### ###', minLength: 8, maxLength: 8 },
+  { code: 'PY', name: 'Paraguay', flag: '🇵🇾', dialCode: '+595', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'UY', name: 'Uruguay', flag: '🇺🇾', dialCode: '+598', format: '### ### ###', minLength: 8, maxLength: 8 },
+  { code: 'CR', name: 'Costa Rica', flag: '🇨🇷', dialCode: '+506', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'PA', name: 'Panamá', flag: '🇵🇦', dialCode: '+507', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'GT', name: 'Guatemala', flag: '🇬🇹', dialCode: '+502', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'HN', name: 'Honduras', flag: '🇭🇳', dialCode: '+504', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'NI', name: 'Nicaragua', flag: '🇳🇮', dialCode: '+505', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'SV', name: 'El Salvador', flag: '🇸🇻', dialCode: '+503', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'BZ', name: 'Belice', flag: '🇧🇿', dialCode: '+501', format: '###-####', minLength: 7, maxLength: 7 },
+  { code: 'DO', name: 'República Dominicana', flag: '🇩🇴', dialCode: '+1809', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'PR', name: 'Puerto Rico', flag: '🇵🇷', dialCode: '+1787', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'CU', name: 'Cuba', flag: '🇨🇺', dialCode: '+53', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'HT', name: 'Haití', flag: '🇭🇹', dialCode: '+509', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'JM', name: 'Jamaica', flag: '🇯🇲', dialCode: '+1876', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'TT', name: 'Trinidad y Tobago', flag: '🇹🇹', dialCode: '+1868', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'BB', name: 'Barbados', flag: '🇧🇧', dialCode: '+1246', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'BS', name: 'Bahamas', flag: '🇧🇸', dialCode: '+1242', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'CA', name: 'Canadá', flag: '🇨🇦', dialCode: '+1', format: '(###) ###-####', minLength: 10, maxLength: 10 },
+  { code: 'FR', name: 'Francia', flag: '🇫🇷', dialCode: '+33', format: '## ## ## ## ##', minLength: 10, maxLength: 10 },
+  { code: 'DE', name: 'Alemania', flag: '🇩🇪', dialCode: '+49', format: '### ### ####', minLength: 10, maxLength: 12 },
+  { code: 'IT', name: 'Italia', flag: '🇮🇹', dialCode: '+39', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'GB', name: 'Reino Unido', flag: '🇬🇧', dialCode: '+44', format: '#### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'PT', name: 'Portugal', flag: '🇵🇹', dialCode: '+351', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'NL', name: 'Países Bajos', flag: '🇳🇱', dialCode: '+31', format: '## ### ####', minLength: 9, maxLength: 9 },
+  { code: 'BE', name: 'Bélgica', flag: '🇧🇪', dialCode: '+32', format: '### ## ## ##', minLength: 9, maxLength: 9 },
+  { code: 'CH', name: 'Suiza', flag: '🇨🇭', dialCode: '+41', format: '## ### ## ##', minLength: 9, maxLength: 9 },
+  { code: 'AT', name: 'Austria', flag: '🇦🇹', dialCode: '+43', format: '### ### ####', minLength: 10, maxLength: 13 },
+  { code: 'SE', name: 'Suecia', flag: '🇸🇪', dialCode: '+46', format: '## ### ## ##', minLength: 9, maxLength: 9 },
+  { code: 'NO', name: 'Noruega', flag: '🇳🇴', dialCode: '+47', format: '### ## ###', minLength: 8, maxLength: 8 },
+  { code: 'DK', name: 'Dinamarca', flag: '🇩🇰', dialCode: '+45', format: '## ## ## ##', minLength: 8, maxLength: 8 },
+  { code: 'FI', name: 'Finlandia', flag: '🇫🇮', dialCode: '+358', format: '## ### ####', minLength: 9, maxLength: 10 },
+  { code: 'IS', name: 'Islandia', flag: '🇮🇸', dialCode: '+354', format: '### ####', minLength: 7, maxLength: 7 },
+  { code: 'IE', name: 'Irlanda', flag: '🇮🇪', dialCode: '+353', format: '## ### ####', minLength: 9, maxLength: 9 },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺', dialCode: '+61', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'NZ', name: 'Nueva Zelanda', flag: '🇳🇿', dialCode: '+64', format: '## ### ####', minLength: 9, maxLength: 10 },
+  { code: 'JP', name: 'Japón', flag: '🇯🇵', dialCode: '+81', format: '### #### ####', minLength: 10, maxLength: 11 },
+  { code: 'KR', name: 'Corea del Sur', flag: '🇰🇷', dialCode: '+82', format: '### #### ####', minLength: 10, maxLength: 11 },
+  { code: 'CN', name: 'China', flag: '🇨🇳', dialCode: '+86', format: '### #### ####', minLength: 11, maxLength: 11 },
+  { code: 'IN', name: 'India', flag: '🇮🇳', dialCode: '+91', format: '##### #####', minLength: 10, maxLength: 10 },
+  { code: 'SG', name: 'Singapur', flag: '🇸🇬', dialCode: '+65', format: '#### ####', minLength: 8, maxLength: 8 },
+  { code: 'MY', name: 'Malasia', flag: '🇲🇾', dialCode: '+60', format: '### ### ####', minLength: 9, maxLength: 10 },
+  { code: 'TH', name: 'Tailandia', flag: '🇹🇭', dialCode: '+66', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'PH', name: 'Filipinas', flag: '🇵🇭', dialCode: '+63', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'ID', name: 'Indonesia', flag: '🇮🇩', dialCode: '+62', format: '### #### ####', minLength: 10, maxLength: 12 },
+  { code: 'VN', name: 'Vietnam', flag: '🇻🇳', dialCode: '+84', format: '### ### ####', minLength: 9, maxLength: 10 },
+  { code: 'ZA', name: 'Sudáfrica', flag: '🇿🇦', dialCode: '+27', format: '## ### ####', minLength: 9, maxLength: 9 },
+  { code: 'NG', name: 'Nigeria', flag: '🇳🇬', dialCode: '+234', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'EG', name: 'Egipto', flag: '🇪🇬', dialCode: '+20', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'MA', name: 'Marruecos', flag: '🇲🇦', dialCode: '+212', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'KE', name: 'Kenia', flag: '🇰🇪', dialCode: '+254', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭', dialCode: '+233', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'IL', name: 'Israel', flag: '🇮🇱', dialCode: '+972', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'AE', name: 'Emiratos Árabes Unidos', flag: '🇦🇪', dialCode: '+971', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'SA', name: 'Arabia Saudí', flag: '🇸🇦', dialCode: '+966', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'TR', name: 'Turquía', flag: '🇹🇷', dialCode: '+90', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'RU', name: 'Rusia', flag: '🇷🇺', dialCode: '+7', format: '### ### ####', minLength: 10, maxLength: 10 },
+  { code: 'UA', name: 'Ucrania', flag: '🇺🇦', dialCode: '+380', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'PL', name: 'Polonia', flag: '🇵🇱', dialCode: '+48', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'CZ', name: 'República Checa', flag: '🇨🇿', dialCode: '+420', format: '### ### ###', minLength: 9, maxLength: 9 },
+  { code: 'HU', name: 'Hungría', flag: '🇭🇺', dialCode: '+36', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'RO', name: 'Rumania', flag: '🇷🇴', dialCode: '+40', format: '### ### ####', minLength: 9, maxLength: 9 },
+  { code: 'BG', name: 'Bulgaria', flag: '🇧🇬', dialCode: '+359', format: '### ### ###', minLength: 8, maxLength: 9 },
+  { code: 'HR', name: 'Croacia', flag: '🇭🇷', dialCode: '+385', format: '### ### ####', minLength: 8, maxLength: 9 },
+  { code: 'RS', name: 'Serbia', flag: '🇷🇸', dialCode: '+381', format: '### ### ####', minLength: 8, maxLength: 9 },
+  { code: 'GR', name: 'Grecia', flag: '🇬🇷', dialCode: '+30', format: '### ### ####', minLength: 10, maxLength: 10 },
+];
+
+// ============================================
+// TYPE EXPORTS
+// ============================================
+
+export type ContactStatus = keyof typeof CONTACT_STATUS;
+export type Gender = keyof typeof GENDER;
+export type ContactSource = keyof typeof CONTACT_SOURCES;
+export type DealStatus = keyof typeof DEAL_STATUS;
+export type DealPriority = keyof typeof DEAL_PRIORITY;
+export type ActivityType = keyof typeof ACTIVITY_TYPE;
+export type ActivityStatus = keyof typeof ACTIVITY_STATUS;
+export type ErrorCode = keyof typeof ERROR_CODES;
+export type UserRole = keyof typeof USER_ROLES;
+export type Permission = keyof typeof PERMISSIONS;
+export type NotificationType = keyof typeof NOTIFICATION_TYPES;
+export type TimeRange = keyof typeof TIME_RANGES;

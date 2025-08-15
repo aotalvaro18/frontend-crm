@@ -5,12 +5,14 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { parsePhoneNumber, isValidPhoneNumber, getCountryCallingCode } from 'libphonenumber-js';
 import { 
   User, Mail, Phone, MapPin, 
   Save, X, AlertCircle, Check, Globe, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { COUNTRY_CODES, type CountryCodeInfo } from '@/utils/constants';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
@@ -22,7 +24,7 @@ import type {
   } from '@/types/contact.types';
 
 // ============================================
-// E164 PHONE UTILITIES
+// E164 PHONE UTILITIES (Mejorado con libphonenumber-js)
 // ============================================
 
 interface PhoneValidationResult {
@@ -32,103 +34,88 @@ interface PhoneValidationResult {
   errorMessage?: string;
 }
 
-interface CountryCode {
-  code: string;
-  name: string;
-  flag: string;
-  dialCode: string;
-  format: string; // Formato de display
-}
-
-const COUNTRY_CODES: CountryCode[] = [
-  { code: 'CO', name: 'Colombia', flag: '🇨🇴', dialCode: '+57', format: '### ### ####' },
-  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', dialCode: '+1', format: '(###) ###-####' },
-  { code: 'ES', name: 'España', flag: '🇪🇸', dialCode: '+34', format: '### ### ###' },
-  { code: 'MX', name: 'México', flag: '🇲🇽', dialCode: '+52', format: '### ### ####' },
-  { code: 'AR', name: 'Argentina', flag: '🇦🇷', dialCode: '+54', format: '### ### ####' },
-  { code: 'BR', name: 'Brasil', flag: '🇧🇷', dialCode: '+55', format: '### ### ####' },
-  { code: 'CL', name: 'Chile', flag: '🇨🇱', dialCode: '+56', format: '### ### ####' },
-  { code: 'PE', name: 'Perú', flag: '🇵🇪', dialCode: '+51', format: '### ### ###' },
-];
-
 /**
- * Extrae la región/país de un número E164
+ * Extrae la región/país de un número E164 usando libphonenumber-js
  */
 const getRegionFromE164 = (e164Phone?: string): string => {
-  if (!e164Phone || !e164Phone.startsWith('+')) return 'CO'; // Default a Colombia
+  if (!e164Phone) return 'CO';
   
-  // Ordenar por longitud de dialCode para manejar casos como +1 (US) y +1-XXX (Caribe)
-  const sortedCountries = [...COUNTRY_CODES].sort((a, b) => b.dialCode.length - a.dialCode.length);
-
-  for (const country of sortedCountries) {
-    if (e164Phone.startsWith(country.dialCode)) {
-      return country.code;
-    }
+  try {
+    const phoneNumber = parsePhoneNumber(e164Phone);
+    return phoneNumber?.country || 'CO';
+  } catch {
+    return 'CO';
   }
-  return 'CO'; // Default
 };
 
 /**
- * Formatea un número E164 para display amigable
+ * Formatea un número E164 para display amigable usando libphonenumber-js
  */
 const formatPhoneForDisplay = (e164Phone: string): string => {
   if (!e164Phone || !e164Phone.startsWith('+')) return e164Phone;
   
-  const region = getRegionFromE164(e164Phone);
-  const country = COUNTRY_CODES.find(c => c.code === region);
+  try {
+    const phoneNumber = parsePhoneNumber(e164Phone);
+    if (phoneNumber) {
+      const country = COUNTRY_CODES.find(c => c.code === phoneNumber.country);
+      const flag = country?.flag || '';
+      return `${flag} ${phoneNumber.formatInternational()}`;
+    }
+  } catch (error) {
+    console.warn('Error formatting phone:', error);
+  }
   
-  if (!country) return e164Phone;
-  
-  const localNumber = e164Phone.replace(country.dialCode, '');
-  
-  let formatted = localNumber;
-  const format = country.format;
-  
-  let formatIndex = 0;
-  formatted = format.replace(/#/g, () => {
-    return localNumber[formatIndex++] || '';
-  });
-  
-  return `${country.flag} ${country.dialCode} ${formatted.trim()}`;
+  return e164Phone;
 };
 
 /**
- * Valida teléfono con el backend y retorna E164
+ * Valida teléfono con libphonenumber-js - VALIDACIÓN PRECISA
  */
-const validatePhoneWithBackend = async (phone: string, region: string): Promise<PhoneValidationResult> => {
-  // 🔥 No validar si el input local está vacío
+const validatePhoneWithLibphonenumber = async (phone: string, region: string): Promise<PhoneValidationResult> => {
   const trimmedPhone = phone.trim();
+  
+  // ✅ FIX: Campo vacío es válido
   if (!trimmedPhone) {
-    return { isValid: true }; // Un campo de teléfono vacío es válido
+    return { isValid: true };
   }
-  if (trimmedPhone.length < 7) {
-    return { isValid: false, errorMessage: 'Teléfono muy corto' };
-  }
-
+  
   try {
-    // 🔥 Simulando llamada a API por ahora. Reemplazar con tu cliente API real.
-    // const result = await apiClient.post('/validate-phone', { phone, region });
-    // SIMULACIÓN:
     const country = COUNTRY_CODES.find(c => c.code === region);
-    const e164Phone = `${country?.dialCode}${trimmedPhone}`;
-    const result = { 
-        isValid: true, 
-        e164Phone, 
-        errorMessage: undefined // Añadimos la propiedad opcional
+    if (!country) {
+      return { isValid: false, errorMessage: 'País no soportado' };
+    }
+    
+    // Construir número completo
+    const fullNumber = `${country.dialCode}${trimmedPhone}`;
+    
+    // ✅ FIX: Validación precisa con libphonenumber-js
+    const isValid = isValidPhoneNumber(fullNumber, region as any);
+    
+    if (isValid) {
+      const phoneNumber = parsePhoneNumber(fullNumber, region as any);
+      return {
+        isValid: true,
+        e164Phone: phoneNumber?.number,
+        formattedDisplay: formatPhoneForDisplay(phoneNumber?.number || fullNumber)
       };
-    // FIN SIMULACIÓN
-
-    return {
-      isValid: result.isValid,
-      e164Phone: result.e164Phone,
-      formattedDisplay: result.e164Phone ? formatPhoneForDisplay(result.e164Phone) : undefined,
-      errorMessage: result.errorMessage
-    };
+    } else {
+      // ✅ FIX: Validación de longitud más precisa
+      if (trimmedPhone.length < country.minLength) {
+        return { 
+          isValid: false, 
+          errorMessage: `Mínimo ${country.minLength} dígitos para ${country.name}`
+        };
+      }
+      return { 
+        isValid: false, 
+        errorMessage: 'Formato de teléfono inválido'
+      };
+    }
   } catch (error) {
     console.error('Phone validation error:', error);
     return { 
       isValid: false, 
-      errorMessage: 'Error al validar teléfono. Verificar formato.' 
+      errorMessage: 'Error al validar teléfono'
     };
   }
 };
@@ -237,7 +224,7 @@ interface FormFieldProps {
       <label htmlFor={name} className="flex items-center text-sm font-medium text-app-gray-300">
         {icon && <span className="mr-2 text-app-gray-400">{icon}</span>}
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-red-400 ml-1 text-lg font-bold">*</span>}
       </label>
       {children}
       {description && (
@@ -287,7 +274,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const validatePhone = useCallback(async (phone: string, region: string) => {
     setIsValidating(true);
     try {
-      const result = await validatePhoneWithBackend(phone, region);
+      const result = await validatePhoneWithLibphonenumber(phone, region);
       setValidationResult(result);
       onValidationChange(result);
     } catch (error) {
@@ -303,7 +290,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       validatePhone(value, selectedRegion);
-    }, 800);
+    }, 500); // Reducido de 800ms a 500ms
 
     return () => clearTimeout(timer);
   }, [value, selectedRegion, validatePhone]);
@@ -553,7 +540,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           <FormField
             label="Nombre"
             name="firstName"
-            required
+            required={true}
             icon={<User className="h-4 w-4" />}
             error={errors.firstName?.message}
           >
@@ -568,7 +555,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           <FormField
             label="Apellido"
             name="lastName"
-            required
+            required={true}
             icon={<User className="h-4 w-4" />}
             error={errors.lastName?.message}
           >
@@ -633,7 +620,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           <FormField
             label="Fuente"
             name="source"
-            required
+            required={true}
             icon={<Globe className="h-4 w-4" />}
             error={errors.source?.message}
           >
