@@ -279,6 +279,7 @@ const ContactListPage: React.FC = () => {
       {/* ✅ CORRECCIÓN: Renderizamos siempre. El componente interno maneja su propio estado de carga. */}
       <ContactsStatsCards 
         stats={stats}
+        isLoading={!stats} // ✅ Simple: si no hay stats, está cargando
         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       />
   
