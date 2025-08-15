@@ -967,36 +967,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                 </FormField>
               </div>
 
-              {/* ✅ MANEJO SIN TELÉFONO: Mostrar selector manual de país */}
-              {!selectedCountryFromPhone && (
-                <div className="p-4 bg-app-dark-700/30 border border-app-dark-600 rounded-lg">
-                  <p className="text-sm text-app-gray-400 mb-3">
-                    💡 Agrega un teléfono para autodetectar el país, o selecciona manualmente:
-                  </p>
-                  <FormField
-                    label="País"
-                    name="address.country"
-                    error={errors.address?.country?.message}
-                  >
-                    <select
-                      {...register('address.country')}
-                      className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      onChange={(e) => {
-                        const countryName = e.target.value;
-                        setValue('address.country', countryName);
-                        // Resetear estado y ciudad cuando cambia país
-                        setValue('address.state', '');
-                        setValue('address.city', '');
-                      }}
-                    >
-                      <option value="">Seleccionar país...</option>
-                      <option value="Colombia">Colombia</option>
-                      <option value="Estados Unidos">Estados Unidos</option>
-                      <option value="España">España</option>
-                    </select>
-                  </FormField>
-                </div>
-              )}
+
             </div>
  
             {/* Communication Preferences */}
