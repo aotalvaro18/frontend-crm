@@ -890,10 +890,10 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                         selectedState={watch('address.state') || ''}
                         selectedCity={watch('address.city') || ''}
                         onStateChange={(state) => {
-                          setValue('address.state', state, { shouldValidate: true, shouldDirty: true });
-                          setValue('address.city', '', { shouldValidate: true, shouldDirty: true });
+                          setValue('address.state', state);
+                          setValue('address.city', ''); // Reset ciudad cuando cambia estado
                         }}
-                        onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
+                        onCityChange={(city) => setValue('address.city', city)}
                         disabled={loading}
                         layout="separate"
                         renderStateOnly
@@ -918,8 +918,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                         countryCode={selectedCountryFromPhone}
                         selectedState={watch('address.state') || ''}
                         selectedCity={watch('address.city') || ''}
-                        onStateChange={(state) => setValue('address.state', state, { shouldValidate: true, shouldDirty: true })}
-                        onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
+                        onStateChange={(state) => setValue('address.state', state)}
+                        onCityChange={(city) => setValue('address.city', city)}
                         disabled={loading}
                         layout="separate"
                         renderCityOnly
