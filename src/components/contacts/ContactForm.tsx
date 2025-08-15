@@ -546,6 +546,10 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
+
+    // ✅ DEBUG: Ver qué datos del formulario tenemos
+    console.log('🔍 Datos del formulario:', data);
+    console.log('🔍 Validación del teléfono:', phoneValidation);
  
     const baseSubmitData = {
       firstName: data.firstName,
@@ -570,6 +574,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         ...baseSubmitData,
         version: contact.version,
       };
+      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
       // En esta rama, TypeScript sabe que el objeto debe ser un CreateContactRequest
