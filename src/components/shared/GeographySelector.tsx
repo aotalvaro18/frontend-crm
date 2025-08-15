@@ -1,15 +1,10 @@
 // src/components/shared/GeographySelector.tsx
-// ✅ REFACTORIZACIÓN QUIRÚRGICA - Layout flexible sin perder robustez
-// Backward compatible - el uso actual sigue funcionando exactamente igual
+// ✅ VERSIÓN FINAL REFACTORIZADA - SIN EFECTOS SECUNDARIOS
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn';
-
-// --- UI Components ---
 import { Select, type SelectOption } from '@/components/ui/Select';
-
-// --- Lógica de Datos ---
 import {
   hasGeographyData,
   getCountryName,
@@ -18,11 +13,10 @@ import {
 } from '@/utils/geography';
 
 // ============================================
-// COMPONENT PROPS (✅ EXTENDIDAS SIN ROMPER LAS EXISTENTES)
+// COMPONENT PROPS (Mismas props, nueva implementación)
 // ============================================
 
 interface GeographySelectorProps {
-  // ✅ Props existentes - NO TOCAR
   countryCode: string;
   selectedState?: string;
   selectedCity?: string;
@@ -33,19 +27,16 @@ interface GeographySelectorProps {
   label?: string;
   errorState?: string;
   errorCity?: string;
-  
-  // ✅ NUEVAS PROPS para layout flexible
   layout?: 'default' | 'separate';
   renderStateOnly?: boolean;
   renderCityOnly?: boolean;
 }
 
 // ============================================
-// MAIN COMPONENT (✅ LÓGICA CONSERVADA 100%)
+// MAIN COMPONENT (✅ SIN useEffect - COMPONENTE "TONTO")
 // ============================================
 
 export const GeographySelector: React.FC<GeographySelectorProps> = ({
-  // ✅ Props existentes
   countryCode,
   selectedState,
   selectedCity,
@@ -56,25 +47,11 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   label = 'Ubicación Geográfica',
   errorState,
   errorCity,
-  
-  // ✅ Nuevas props con defaults seguros
   layout = 'default',
   renderStateOnly = false,
   renderCityOnly = false,
 }) => {
-  // ✅ LÓGICA EXISTENTE - SIN CAMBIOS
-  // Resetear selecciones cuando cambia el país
-  useEffect(() => {
-    onStateChange('');
-    onCityChange('');
-  }, [countryCode, onStateChange, onCityChange]);
-
-  // Resetear ciudad cuando cambia el estado
-  useEffect(() => {
-    onCityChange('');
-  }, [selectedState, onCityChange]);
-
-  // Obtener listas de opciones
+  // ✅ SOLO COMPUTACIÓN - SIN EFECTOS SECUNDARIOS
   const states = useMemo((): SelectOption[] => {
     return getStatesByCountry(countryCode).map(s => ({ value: s, label: s }));
   }, [countryCode]);
@@ -83,7 +60,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     return selectedState ? getCitiesByState(countryCode, selectedState).map(c => ({ value: c, label: c })) : [];
   }, [countryCode, selectedState]);
 
-  // ✅ VALIDACIÓN EXISTENTE - SIN CAMBIOS
+  // ✅ VALIDACIÓN SIN CAMBIOS
   if (!hasGeographyData(countryCode)) {
     return (
       <div className={cn('text-sm text-app-gray-500 flex items-center', className)}>
@@ -93,48 +70,43 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     );
   }
 
-  // ✅ NUEVO: Render condicional para layout 'separate'
-  if (layout === 'separate') {
-    // Render solo State
-    if (renderStateOnly) {
-      return (
-        <div className={className}>
-          <Select
-            label={label}
-            value={selectedState || ''}
-            onValueChange={(newState) => onStateChange(String(newState || ''))}
-            options={states}
-            placeholder="Seleccionar..."
-            disabled={disabled || states.length === 0}
-            searchable
-            emptyMessage="No se encontraron estados"
-            error={errorState}
-          />
-        </div>
-      );
-    }
-
-    // Render solo City
-    if (renderCityOnly) {
-      return (
-        <div className={className}>
-          <Select
-            label={label}
-            value={selectedCity || ''}
-            onValueChange={(newCity) => onCityChange(String(newCity || ''))}
-            options={cities}
-            placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
-            disabled={disabled || !selectedState || cities.length === 0}
-            searchable
-            emptyMessage="No se encontraron ciudades"
-            error={errorCity}
-          />
-        </div>
-      );
-    }
+  // ✅ RENDER SOLO ESTADO
+  if (layout === 'separate' && renderStateOnly) {
+    return (
+      <div className={className}>
+        <Select
+          value={selectedState || ''}
+          onValueChange={(newState) => onStateChange(String(newState || ''))}
+          options={states}
+          placeholder="Seleccionar..."
+          disabled={disabled || states.length === 0}
+          searchable
+          emptyMessage="No se encontraron estados"
+          error={errorState}
+        />
+      </div>
+    );
   }
 
-  // ✅ RENDER EXISTENTE - EXACTAMENTE IGUAL (default layout)
+  // ✅ RENDER SOLO CIUDAD
+  if (layout === 'separate' && renderCityOnly) {
+    return (
+      <div className={className}>
+        <Select
+          value={selectedCity || ''}
+          onValueChange={(newCity) => onCityChange(String(newCity || ''))}
+          options={cities}
+          placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
+          disabled={disabled || !selectedState || cities.length === 0}
+          searchable
+          emptyMessage="No se encontraron ciudades"
+          error={errorCity}
+        />
+      </div>
+    );
+  }
+
+  // ✅ LAYOUT POR DEFECTO (Ambos selectores juntos)
   return (
     <div className={cn('space-y-4', className)}>
       {label && <h3 className="text-sm font-medium text-app-gray-200">{label}</h3>}
@@ -144,7 +116,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
         <div>
           <Select
             label={countryCode === 'CO' ? 'Departamento' : 'Estado/Provincia'}
-            value={selectedState}
+            value={selectedState || ''}
             onValueChange={(newState) => onStateChange(String(newState || ''))}
             options={states}
             placeholder="Seleccionar..."
@@ -159,7 +131,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
         <div>
           <Select
             label="Ciudad"
-            value={selectedCity}
+            value={selectedCity || ''}
             onValueChange={(newCity) => onCityChange(String(newCity || ''))}
             options={cities}
             placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
