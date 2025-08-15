@@ -108,6 +108,13 @@ const ContactListPage: React.FC = () => {
   // Stats
   const { stats, loadStats } = useContactStats();
 
+  // ✅ DEBUG: Ver qué está pasando con stats
+console.log('🔧 ContactListPage Debug:', {
+  stats,
+  hasStats: !!stats,
+  statsKeys: stats ? Object.keys(stats) : 'no stats'
+});
+
   // Import/Export
   const { exportContacts } = useImportExport();
 
@@ -278,7 +285,15 @@ const ContactListPage: React.FC = () => {
       {/* Stats Cards */}
       {/* ✅ CORRECCIÓN: Renderizamos siempre. El componente interno maneja su propio estado de carga. */}
       <ContactsStatsCards 
-        stats={stats}
+        stats={stats || { 
+          total: totalContacts || 0, 
+          active: 0, 
+          inactive: 0, 
+          withPortal: 0,
+          adoptionRate: 0,
+          averageEngagementScore: 0,
+          newContactsThisMonth: 0
+        }}
         isLoading={!stats} // ✅ Simple: si no hay stats, está cargando
         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       />
