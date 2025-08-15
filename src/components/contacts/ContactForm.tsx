@@ -878,25 +878,28 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     />
                   </FormField>
 
-                  {/* Departamento/Estado - Sin label duplicado */}
+                  {/* Departamento/Estado usando GeographySelector en modo separate */}
                   <FormField
                     label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'}
                     name="address.state"
                     error={errors.address?.state?.message}
                   >
-                    <GeographySelector
-                      countryCode={selectedCountryFromPhone}
-                      selectedState={watch('address.state') || ''}
-                      selectedCity={watch('address.city') || ''}
-                      onStateChange={(state) => {
-                        setValue('address.state', state, { shouldValidate: true, shouldDirty: true });
-                        setValue('address.city', '', { shouldValidate: true, shouldDirty: true });
-                      }}
-                      onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
-                      disabled={loading}
-                      layout="separate"
-                      renderStateOnly
-                    />
+                    <div>
+                      <GeographySelector
+                        countryCode={selectedCountryFromPhone}
+                        selectedState={watch('address.state') || ''}
+                        selectedCity={watch('address.city') || ''}
+                        onStateChange={(state) => {
+                          setValue('address.state', state);
+                          setValue('address.city', ''); // Reset ciudad cuando cambia estado
+                        }}
+                        onCityChange={(city) => setValue('address.city', city)}
+                        disabled={loading}
+                        layout="separate"
+                        renderStateOnly
+                        className="[&>div]:!mb-0" // Quitar margin del label interno
+                      />
+                    </div>
                   </FormField>
                 </div>
               )}
@@ -904,22 +907,25 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
               {/* ✅ FILA 2: Ciudad y Código Postal */}
               {selectedCountryFromPhone && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Ciudad - Sin label duplicado */}
+                  {/* Ciudad usando GeographySelector en modo separate */}
                   <FormField
                     label="Ciudad"
                     name="address.city"
                     error={errors.address?.city?.message}
                   >
-                    <GeographySelector
-                      countryCode={selectedCountryFromPhone}
-                      selectedState={watch('address.state') || ''}
-                      selectedCity={watch('address.city') || ''}
-                      onStateChange={(state) => setValue('address.state', state, { shouldValidate: true, shouldDirty: true })}
-                      onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
-                      disabled={loading}
-                      layout="separate"
-                      renderCityOnly
-                    />
+                    <div>
+                      <GeographySelector
+                        countryCode={selectedCountryFromPhone}
+                        selectedState={watch('address.state') || ''}
+                        selectedCity={watch('address.city') || ''}
+                        onStateChange={(state) => setValue('address.state', state)}
+                        onCityChange={(city) => setValue('address.city', city)}
+                        disabled={loading}
+                        layout="separate"
+                        renderCityOnly
+                        className="[&>div]:!mb-0" // Quitar margin del label interno
+                      />
+                    </div>
                   </FormField>
 
                   {/* Código Postal */}
@@ -966,8 +972,6 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                   />
                 </FormField>
               </div>
-
-
             </div>
  
             {/* Communication Preferences */}
