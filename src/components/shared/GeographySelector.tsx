@@ -1,17 +1,15 @@
 // src/components/shared/GeographySelector.tsx
-// ✅ COMPONENTE GEOGRÁFICO - 100% ALINEADO CON LA ARQUITECTURA
-// Reutiliza Select.tsx para consistencia visual y funcional.
+// ✅ REFACTORIZACIÓN QUIRÚRGICA - Layout flexible sin perder robustez
+// Backward compatible - el uso actual sigue funcionando exactamente igual
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 // --- UI Components ---
-// ✅ Reutilizamos el componente Select que ya existe y es muy potente
 import { Select, type SelectOption } from '@/components/ui/Select';
 
 // --- Lógica de Datos ---
-// Asumimos que has creado este archivo con los datos y funciones
 import {
   hasGeographyData,
   getCountryName,
@@ -20,10 +18,11 @@ import {
 } from '@/utils/geography';
 
 // ============================================
-// COMPONENT PROPS
+// COMPONENT PROPS (✅ EXTENDIDAS SIN ROMPER LAS EXISTENTES)
 // ============================================
 
 interface GeographySelectorProps {
+  // ✅ Props existentes - NO TOCAR
   countryCode: string;
   selectedState?: string;
   selectedCity?: string;
@@ -34,13 +33,19 @@ interface GeographySelectorProps {
   label?: string;
   errorState?: string;
   errorCity?: string;
+  
+  // ✅ NUEVAS PROPS para layout flexible
+  layout?: 'default' | 'separate';
+  renderStateOnly?: boolean;
+  renderCityOnly?: boolean;
 }
 
 // ============================================
-// MAIN COMPONENT
+// MAIN COMPONENT (✅ LÓGICA CONSERVADA 100%)
 // ============================================
 
 export const GeographySelector: React.FC<GeographySelectorProps> = ({
+  // ✅ Props existentes
   countryCode,
   selectedState,
   selectedCity,
@@ -51,7 +56,13 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   label = 'Ubicación Geográfica',
   errorState,
   errorCity,
+  
+  // ✅ Nuevas props con defaults seguros
+  layout = 'default',
+  renderStateOnly = false,
+  renderCityOnly = false,
 }) => {
+  // ✅ LÓGICA EXISTENTE - SIN CAMBIOS
   // Resetear selecciones cuando cambia el país
   useEffect(() => {
     onStateChange('');
@@ -72,6 +83,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     return selectedState ? getCitiesByState(countryCode, selectedState).map(c => ({ value: c, label: c })) : [];
   }, [countryCode, selectedState]);
 
+  // ✅ VALIDACIÓN EXISTENTE - SIN CAMBIOS
   if (!hasGeographyData(countryCode)) {
     return (
       <div className={cn('text-sm text-app-gray-500 flex items-center', className)}>
@@ -81,6 +93,46 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     );
   }
 
+  // ✅ NUEVO: Render condicional para layout 'separate'
+  if (layout === 'separate') {
+    // Render solo State
+    if (renderStateOnly) {
+      return (
+        <Select
+          label={countryCode === 'CO' ? 'Departamento' : 'Estado/Provincia'}
+          value={selectedState}
+          onValueChange={(newState) => onStateChange(String(newState || ''))}
+          options={states}
+          placeholder="Seleccionar..."
+          disabled={disabled || states.length === 0}
+          searchable
+          emptyMessage="No se encontraron estados"
+          error={errorState}
+          className={className}
+        />
+      );
+    }
+
+    // Render solo City
+    if (renderCityOnly) {
+      return (
+        <Select
+          label="Ciudad"
+          value={selectedCity}
+          onValueChange={(newCity) => onCityChange(String(newCity || ''))}
+          options={cities}
+          placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
+          disabled={disabled || !selectedState || cities.length === 0}
+          searchable
+          emptyMessage="No se encontraron ciudades"
+          error={errorCity}
+          className={className}
+        />
+      );
+    }
+  }
+
+  // ✅ RENDER EXISTENTE - EXACTAMENTE IGUAL (default layout)
   return (
     <div className={cn('space-y-4', className)}>
       {label && <h3 className="text-sm font-medium text-app-gray-200">{label}</h3>}

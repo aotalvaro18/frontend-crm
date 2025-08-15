@@ -853,28 +853,98 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
               </FormField>
             </div>
  
-            {/* Address */}
+            {/* Address - ✅ NUEVO LAYOUT REORGANIZADO */}
             <div className="space-y-4">
               <h4 className="text-md font-medium text-app-gray-200 flex items-center">
                 <MapPin className="h-4 w-4 mr-2" />
                 Dirección
               </h4>
               
-              {/* Geografía Inteligente */}
+              {/* ✅ FILA 1: País y Departamento/Estado */}
               {selectedCountryFromPhone && (
-                <GeographySelector
-                  countryCode={selectedCountryFromPhone}
-                  selectedState={watch('address.state') || ''}
-                  selectedCity={watch('address.city') || ''}
-                  onStateChange={(state) => {
-                    setValue('address.state', state);
-                    setValue('address.city', ''); // Reset ciudad cuando cambia estado
-                  }}
-                  onCityChange={(city) => setValue('address.city', city)}
-                  disabled={loading}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Campo País (solo lectura, automático del teléfono) */}
+                  <FormField
+                    label="País"
+                    name="address.country"
+                    error={errors.address?.country?.message}
+                  >
+                    <input
+                      {...register('address.country')}
+                      type="text"
+                      readOnly
+                      className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed"
+                      placeholder="Automático desde teléfono"
+                    />
+                  </FormField>
+
+                  {/* Departamento/Estado usando GeographySelector en modo separate */}
+                  <FormField
+                    label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'}
+                    name="address.state"
+                    error={errors.address?.state?.message}
+                  >
+                    <div>
+                      <GeographySelector
+                        countryCode={selectedCountryFromPhone}
+                        selectedState={watch('address.state') || ''}
+                        selectedCity={watch('address.city') || ''}
+                        onStateChange={(state) => {
+                          setValue('address.state', state);
+                          setValue('address.city', ''); // Reset ciudad cuando cambia estado
+                        }}
+                        onCityChange={(city) => setValue('address.city', city)}
+                        disabled={loading}
+                        layout="separate"
+                        renderStateOnly
+                        className="[&>div]:!mb-0" // Quitar margin del label interno
+                      />
+                    </div>
+                  </FormField>
+                </div>
               )}
               
+              {/* ✅ FILA 2: Ciudad y Código Postal */}
+              {selectedCountryFromPhone && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Ciudad usando GeographySelector en modo separate */}
+                  <FormField
+                    label="Ciudad"
+                    name="address.city"
+                    error={errors.address?.city?.message}
+                  >
+                    <div>
+                      <GeographySelector
+                        countryCode={selectedCountryFromPhone}
+                        selectedState={watch('address.state') || ''}
+                        selectedCity={watch('address.city') || ''}
+                        onStateChange={(state) => setValue('address.state', state)}
+                        onCityChange={(city) => setValue('address.city', city)}
+                        disabled={loading}
+                        layout="separate"
+                        renderCityOnly
+                        className="[&>div]:!mb-0" // Quitar margin del label interno
+                      />
+                    </div>
+                  </FormField>
+
+                  {/* Código Postal */}
+                  <FormField
+                    label="Código postal"
+                    name="address.postalCode"
+                    error={errors.address?.postalCode?.message}
+                  >
+                    <input
+                      {...register('address.postalCode')}
+                      type="text"
+                      className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="760001"
+                    />
+                  </FormField>
+                </div>
+              )}
+              
+              {/* ✅ FILA 3: Direcciones Principal y Secundaria */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   label="Dirección principal"
@@ -899,34 +969,6 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     type="text"
                     className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Apartamento, suite, etc."
-                  />
-                </FormField>
-
-                <FormField
-                  label="Código postal"
-                  name="address.postalCode"
-                  error={errors.address?.postalCode?.message}
-                >
-                  <input
-                    {...register('address.postalCode')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="760001"
-                  />
-                </FormField>
-
-                {/* Campo País (solo lectura, automático del teléfono) */}
-                <FormField
-                  label="País"
-                  name="address.country"
-                  error={errors.address?.country?.message}
-                >
-                  <input
-                    {...register('address.country')}
-                    type="text"
-                    readOnly
-                    className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed"
-                    placeholder="Automático desde teléfono"
                   />
                 </FormField>
               </div>
