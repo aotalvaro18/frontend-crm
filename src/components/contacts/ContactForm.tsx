@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { COUNTRY_CODES } from '@/utils/constants';
+import { GeographySelector } from '@/components/shared/GeographySelector';
+import { getCountryName } from '@/utils/geography';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
@@ -508,6 +510,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
+  const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
  
   const {
     register,
@@ -650,13 +653,21 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
     
-    // Actualizar el error del formulario basado en el resultado de la validación
+    // ✅ NUEVO: Extraer país del teléfono para geografía
+    if (result.isValid && result.e164Phone) {
+      const region = getRegionFromE164(result.e164Phone);
+      setSelectedCountryFromPhone(region);
+      
+      // Auto-llenar campo país
+      setValue('address.country', getCountryName(region));
+    }
+    
     if (currentPhone && !result.isValid) {
       setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
     } else {
       clearErrors('phone');
     }
-  }, [currentPhone, setError, clearErrors]);
+  }, [currentPhone, setError, clearErrors, setValue]);
  
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
@@ -849,6 +860,21 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                 Dirección
               </h4>
               
+              {/* Geografía Inteligente */}
+              {selectedCountryFromPhone && (
+                <GeographySelector
+                  countryCode={selectedCountryFromPhone}
+                  selectedState={watch('address.state') || ''}
+                  selectedCity={watch('address.city') || ''}
+                  onStateChange={(state) => {
+                    setValue('address.state', state);
+                    setValue('address.city', ''); // Reset ciudad cuando cambia estado
+                  }}
+                  onCityChange={(city) => setValue('address.city', city)}
+                  disabled={loading}
+                />
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   label="Dirección principal"
@@ -862,7 +888,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     placeholder="Calle 123 #45-67"
                   />
                 </FormField>
- 
+
                 <FormField
                   label="Dirección secundaria"
                   name="address.addressLine2"
@@ -875,33 +901,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     placeholder="Apartamento, suite, etc."
                   />
                 </FormField>
- 
-                <FormField
-                  label="Ciudad"
-                  name="address.city"
-                  error={errors.address?.city?.message}
-                >
-                  <input
-                    {...register('address.city')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Cali"
-                  />
-                </FormField>
- 
-                <FormField
-                  label="Departamento/Estado"
-                  name="address.state"
-                  error={errors.address?.state?.message}
-                >
-                  <input
-                    {...register('address.state')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Valle del Cauca"
-                  />
-                </FormField>
- 
+
                 <FormField
                   label="Código postal"
                   name="address.postalCode"
@@ -914,7 +914,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     placeholder="760001"
                   />
                 </FormField>
- 
+
+                {/* Campo País (solo lectura, automático del teléfono) */}
                 <FormField
                   label="País"
                   name="address.country"
@@ -923,8 +924,9 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                   <input
                     {...register('address.country')}
                     type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Colombia"
+                    readOnly
+                    className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed"
+                    placeholder="Automático desde teléfono"
                   />
                 </FormField>
               </div>
