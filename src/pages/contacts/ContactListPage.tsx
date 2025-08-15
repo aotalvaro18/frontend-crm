@@ -1,6 +1,6 @@
 // src/pages/contacts/ContactListPage.tsx
-// ✅ CONTACT LIST PAGE - VERSIÓN REFACTORIZADA
-// JSX directo + Hook patterns modernos siguiendo guía arquitectónica
+// ✅ CONTACT LIST PAGE - VERSIÓN EXCEPCIONAL
+// Refinamientos arquitectónicos para código extraordinario
 
 import React, { useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -53,7 +53,7 @@ import {
 } from '@/hooks/useContacts';
 
 import { useDebounce } from '@/hooks/useDebounce';
-import { usePagination } from '@/hooks/usePagination';
+import { usePagination } from '@/hooks/usePagination'; // ✅ ÚNICA fuente de verdad para paginación
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
@@ -85,7 +85,7 @@ const ContactListPage: React.FC = () => {
     totalContacts,
     searchContacts,
     refreshContacts,
-    error: contactsError
+    error: contactsError // Solo errores catastróficos de red
   } = useContacts();
 
   // Search state
@@ -105,8 +105,8 @@ const ContactListPage: React.FC = () => {
     bulkDeleteContacts
   } = useBulkOperations();
 
-  // Stats - ✅ CON statsLoading agregado al hook
-  const { stats, loadStats, statsLoading } = useContactStats();
+  // Stats
+  const { stats, loadStats } = useContactStats();
 
   // Import/Export
   const { exportContacts } = useImportExport();
@@ -117,7 +117,7 @@ const ContactListPage: React.FC = () => {
   // Error handling
   const { handleError } = useErrorHandler();
 
-  // Pagination como ÚNICA fuente de verdad
+  // ✅ REFINAMIENTO 1: usePagination como ÚNICA fuente de verdad
   const {
     currentPage,
     setCurrentPage,
@@ -142,22 +142,28 @@ const ContactListPage: React.FC = () => {
   // EFFECTS - RESPONSABILIDAD ÚNICA
   // ============================================
 
-  // Effect para búsqueda
+  // ✅ CORRECCIÓN: Un único effect para la lógica de búsqueda.
+  // Se dispara SOLO cuando el término de búsqueda (debounced) o la página cambian.
   useEffect(() => {
+    // Construimos los criterios aquí dentro, usando los últimos valores
     const criteria = {
       search: debouncedSearchTerm || undefined,
     };
     
+    // Llamamos a la API con los criterios actuales
     searchContacts(criteria, currentPage);
+
+    // Sincronizamos el estado de los filtros
     setSearchCriteria(criteria);
+
   }, [debouncedSearchTerm, currentPage, searchContacts, setSearchCriteria]);
 
-  // Effect para stats
+  // Effect para stats (solo stats)
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
-  // Effect para URL sync
+  // Effect para URL sync (solo URL)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('search', searchTerm);
@@ -264,11 +270,154 @@ const ContactListPage: React.FC = () => {
   ];
 
   // ============================================
-  // RENDER CONTENT HELPER (Solo para contenido)
+  // RENDER HELPERS
   // ============================================
 
+  const renderHeader = () => (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      {/* ✅ CORRECCIÓN: Renderizamos siempre. El componente interno maneja su propio estado de carga. */}
+      <ContactsStatsCards 
+        stats={stats}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
+      />
+  
+      {/* Title and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-crm-contact-500/10 rounded-lg">
+            <Users className="h-5 w-5 sm:h-6 sm:w-6 text-crm-contact-500" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
+              Contactos
+            </h1>
+            <div className="flex items-center gap-2 text-sm text-app-gray-400">
+              {/* ✅ CORRECCIÓN CLAVE: Guardia añadido para el contador, previene el crash. */}
+              {/* Muestra un esqueleto de carga mientras los datos no están listos. */}
+              {typeof totalContacts === 'number' ? (
+                <span>{totalContacts.toLocaleString()} contactos totales</span>
+              ) : (
+                <span className="h-4 bg-app-dark-700 rounded w-32 animate-pulse" />
+              )}
+              {!isOnline && (
+                <Badge variant="warning" size="sm">Sin conexión</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+  
+        <div className="flex items-center gap-1">
+          {/* Refresh */}
+          <IconButton
+            variant="ghost"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            tooltip="Actualizar"
+            aria-label="Actualizar contactos"
+          >
+            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+          </IconButton>
+  
+          {/* Export */}
+          <Dropdown
+            trigger={
+              <IconButton
+                variant="ghost"
+                tooltip="Exportar / Importar"
+                aria-label="Opciones de exportación e importación"
+              >
+                <FileDown className="h-4 w-4" />
+              </IconButton>
+            }
+            items={exportDropdownItems}
+            align="end"
+            size="sm"
+          />
+  
+          {/* Create - Único botón con texto */}
+          <Button
+            onClick={handleCreateContact}
+            size="sm"
+            leftIcon={<Plus className="h-4 w-4" />}
+            className="ml-2"
+          >
+            <span className="hidden sm:inline">Nuevo Contacto</span>
+            <span className="sm:hidden">Nuevo</span>
+          </Button>
+        </div>
+      </div>
+  
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <SearchInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar contactos por nombre, email o teléfono..."
+            onClear={handleClearSearch}
+            className="w-full"
+          />
+        </div>
+  
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'flex items-center gap-2',
+              hasActiveFilters && 'border-app-accent-500 text-app-accent-500'
+            )}
+            leftIcon={<Filter className="h-4 w-4" />}
+          >
+            Filtros
+            {hasActiveFilters && (
+              <CountBadge count={Object.keys(searchCriteria).length} variant="info" />
+            )}
+          </Button>
+  
+          {hasActiveFilters && (
+            <IconButton
+              variant="ghost"
+              onClick={handleClearFilters}
+              tooltip="Limpiar filtros"
+              aria-label="Limpiar todos los filtros"
+            >
+              <X className="h-4 w-4" />
+            </IconButton>
+          )}
+        </div>
+      </div>
+  
+      {/* Filters Panel */}
+      {showFilters && (
+        <ContactsFilters
+          searchCriteria={searchCriteria}
+          onCriteriaChange={setSearchCriteria}
+          onClose={() => setShowFilters(false)}
+          className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800"
+        />
+      )}
+  
+      {/* Bulk Actions */}
+      {hasSelection && (
+        <ContactsBulkActions
+          selectedCount={selectionCount}
+          onBulkDelete={handleBulkDelete}
+          onBulkStatusUpdate={handleBulkStatusUpdate}
+          onDeselectAll={deselectAllContacts}
+          isLoading={bulkOperationLoading}
+          className="bg-app-dark-800 border border-app-dark-600 rounded-lg p-3"
+        />
+      )}
+    </div>
+  );
+
+  // ✅ REFINAMIENTO 3: renderContent simplificado - SOLO errores catastróficos
   const renderContent = () => {
     // Solo manejamos errores de red catastróficos
+    // ContactsTable maneja sus propios estados (loading, empty, search results, etc.)
     if (contactsError) {
       return (
         <ErrorMessage
@@ -281,6 +430,7 @@ const ContactListPage: React.FC = () => {
       );
     }
 
+    // ✅ ContactsTable maneja TODO su estado internamente
     return (
       <ContactsTable
         onContactClick={handleContactClick}
@@ -295,7 +445,7 @@ const ContactListPage: React.FC = () => {
   };
 
   // ============================================
-  // MAIN RENDER - JSX DIRECTO (MEJORES PRÁCTICAS)
+  // MAIN RENDER
   // ============================================
 
   return (
@@ -307,150 +457,7 @@ const ContactListPage: React.FC = () => {
       ]}
       className="space-y-6"
     >
-      {/* ============================================ */}
-      {/* HEADER SECTION - JSX DIRECTO */}
-      {/* ============================================ */}
-      <div className="space-y-6">
-        {/* Stats Cards */}
-        <ContactsStatsCards 
-          stats={stats}
-          isLoading={statsLoading}
-          showTrends={false}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
-        />
-
-        {/* Title and Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-crm-contact-500/10 rounded-lg">
-              <Users className="h-5 w-5 sm:h-6 sm:w-6 text-crm-contact-500" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
-                Contactos
-              </h1>
-              <div className="flex items-center gap-2 text-sm text-app-gray-400">
-                {typeof totalContacts === 'number' ? (
-                  <span>{totalContacts.toLocaleString()} contactos totales</span>
-                ) : (
-                  <span className="h-4 bg-app-dark-700 rounded w-32 animate-pulse" />
-                )}
-                {!isOnline && (
-                  <Badge variant="warning" size="sm">Sin conexión</Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {/* Refresh */}
-            <IconButton
-              variant="ghost"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              tooltip="Actualizar"
-              aria-label="Actualizar contactos"
-            >
-              <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-            </IconButton>
-
-            {/* Export */}
-            <Dropdown
-              trigger={
-                <IconButton
-                  variant="ghost"
-                  tooltip="Exportar / Importar"
-                  aria-label="Opciones de exportación e importación"
-                >
-                  <FileDown className="h-4 w-4" />
-                </IconButton>
-              }
-              items={exportDropdownItems}
-              align="end"
-              size="sm"
-            />
-
-            {/* Create */}
-            <Button
-              onClick={handleCreateContact}
-              size="sm"
-              leftIcon={<Plus className="h-4 w-4" />}
-              className="ml-2"
-            >
-              <span className="hidden sm:inline">Nuevo Contacto</span>
-              <span className="sm:hidden">Nuevo</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <SearchInput
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar contactos por nombre, email o teléfono..."
-              onClear={handleClearSearch}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={cn(
-                'flex items-center gap-2',
-                hasActiveFilters && 'border-app-accent-500 text-app-accent-500'
-              )}
-              leftIcon={<Filter className="h-4 w-4" />}
-            >
-              Filtros
-              {hasActiveFilters && (
-                <CountBadge count={Object.keys(searchCriteria).length} variant="info" />
-              )}
-            </Button>
-
-            {hasActiveFilters && (
-              <IconButton
-                variant="ghost"
-                onClick={handleClearFilters}
-                tooltip="Limpiar filtros"
-                aria-label="Limpiar todos los filtros"
-              >
-                <X className="h-4 w-4" />
-              </IconButton>
-            )}
-          </div>
-        </div>
-
-        {/* Filters Panel */}
-        {showFilters && (
-          <ContactsFilters
-            searchCriteria={searchCriteria}
-            onCriteriaChange={setSearchCriteria}
-            onClose={() => setShowFilters(false)}
-            className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800"
-          />
-        )}
-
-        {/* Bulk Actions */}
-        {hasSelection && (
-          <ContactsBulkActions
-            selectedCount={selectionCount}
-            onBulkDelete={handleBulkDelete}
-            onBulkStatusUpdate={handleBulkStatusUpdate}
-            onDeselectAll={deselectAllContacts}
-            isLoading={bulkOperationLoading}
-            className="bg-app-dark-800 border border-app-dark-600 rounded-lg p-3"
-          />
-        )}
-      </div>
-
-      {/* ============================================ */}
-      {/* CONTENT SECTION */}
-      {/* ============================================ */}
+      {renderHeader()}
       {renderContent()}
 
       {/* Development Debug Panel */}
