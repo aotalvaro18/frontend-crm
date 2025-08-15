@@ -253,24 +253,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   onValidationChange,
   disabled,
   initialE164
-}) => {
+ }) => {
   const [selectedRegion, setSelectedRegion] = useState(() => getRegionFromE164(initialE164));
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<PhoneValidationResult | null>(null);
-
-  // Efecto para inicializar el valor del input si estamos en modo edición
-  useEffect(() => {
-    if (initialE164) {
-      const region = getRegionFromE164(initialE164);
-      setSelectedRegion(region);
-      const country = COUNTRY_CODES.find(c => c.code === region);
-      if (country) {
-        const localNumber = initialE164.replace(country.dialCode, '');
-        onChange(localNumber);
-      }
-    }
-  }, [initialE164, onChange]);
-
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+ 
   const validatePhone = useCallback(async (phone: string, region: string) => {
     setIsValidating(true);
     try {
@@ -285,56 +274,120 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       setIsValidating(false);
     }
   }, [onValidationChange]);
-
+ 
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch) return COUNTRY_CODES;
+    const search = countrySearch.toLowerCase();
+    return COUNTRY_CODES.filter(country => 
+      country.name.toLowerCase().includes(search) ||
+      country.code.toLowerCase().includes(search) ||
+      country.dialCode.includes(search)
+    );
+  }, [countrySearch]);
+  
+  const handleCountrySelect = (countryCode: string) => {
+    setSelectedRegion(countryCode);
+    setIsCountryDropdownOpen(false);
+    setCountrySearch('');
+    validatePhone(value, countryCode);
+  };
+ 
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === selectedRegion);
+ 
+  // Efecto para inicializar el valor del input si estamos en modo edición
+  useEffect(() => {
+    if (initialE164) {
+      const region = getRegionFromE164(initialE164);
+      setSelectedRegion(region);
+      const country = COUNTRY_CODES.find(c => c.code === region);
+      if (country) {
+        const localNumber = initialE164.replace(country.dialCode, '');
+        onChange(localNumber);
+      }
+    }
+  }, [initialE164, onChange]);
+ 
   // Debounce validation
   useEffect(() => {
     const timer = setTimeout(() => {
       validatePhone(value, selectedRegion);
-    }, 500); // Reducido de 800ms a 500ms
-
+    }, 500);
+ 
     return () => clearTimeout(timer);
   }, [value, selectedRegion, validatePhone]);
-
-  const handleRegionChange = (newRegion: string) => {
-    setSelectedRegion(newRegion);
-    // Re-validar inmediatamente con la nueva región
-    validatePhone(value, newRegion);
-  };
-
-  const selectedCountry = COUNTRY_CODES.find(c => c.code === selectedRegion);
-
+ 
+  // useEffect para cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.relative')) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    
+    if (isCountryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isCountryDropdownOpen]);
+ 
   return (
     <div className="space-y-2">
       <div className="flex space-x-2">
-        {/* Country Selector mejorado con banderas visibles */}
+        {/* Country Selector personalizado */}
         <div className="relative">
-          <select
-            value={selectedRegion}
-            onChange={(e) => handleRegionChange(e.target.value)}
+          <button
+            type="button"
+            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
             disabled={disabled}
-            className="px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer min-w-[200px] pr-8"
+            className="flex items-center space-x-2 px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 hover:bg-app-dark-600 min-w-[200px]"
           >
-            {COUNTRY_CODES.map(country => (
-              <option key={country.code} value={country.code}>
-                {country.flag} {country.name} ({country.dialCode})
-              </option>
-            ))}
-          </select>
-          
-          {/* Indicador visual del país seleccionado */}
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
             <span className="text-lg">{selectedCountry?.flag}</span>
-          </div>
+            <span className="text-sm font-mono">{selectedCountry?.dialCode}</span>
+            <span className="text-sm truncate flex-1 text-left">{selectedCountry?.name}</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
           
-          {/* Flecha del dropdown */}
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <ChevronDown className="h-4 w-4 text-app-gray-400" />
-          </div>
-          
-          {/* Código de país visible */}
-          <div className="absolute inset-y-0 left-12 flex items-center pointer-events-none">
-            <span className="text-sm font-mono text-app-gray-300">{selectedCountry?.dialCode}</span>
-          </div>
+          {/* Dropdown personalizado */}
+          {isCountryDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-80 bg-app-dark-700 border border-app-dark-600 rounded-lg shadow-lg z-50 max-h-60 overflow-hidden">
+              {/* Campo de búsqueda */}
+              <div className="p-2 border-b border-app-dark-600">
+                <input
+                  type="text"
+                  placeholder="Buscar país..."
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-500 rounded text-app-gray-100 text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  autoFocus
+                />
+              </div>
+              
+              {/* Lista de países */}
+              <div className="overflow-y-auto max-h-48">
+                {filteredCountries.map((country) => (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => handleCountrySelect(country.code)}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-app-dark-600 ${
+                      selectedCountry?.code === country.code ? 'bg-app-dark-600' : ''
+                    }`}
+                  >
+                    <span className="text-lg">{country.flag}</span>
+                    <span className="font-mono text-sm w-12">{country.dialCode}</span>
+                    <span className="text-sm text-app-gray-200 truncate flex-1">{country.name}</span>
+                  </button>
+                ))}
+                
+                {filteredCountries.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-app-gray-500">
+                    No se encontraron países
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="relative flex-1">
@@ -359,15 +412,6 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         </div>
       </div>
       
-      {/* Display del país seleccionado */}
-      <div className="text-xs text-app-gray-400 flex items-center">
-        <Globe className="h-3 w-3 mr-1" />
-        País seleccionado: {selectedCountry?.flag} {selectedCountry?.name}
-        <span className="ml-2 text-app-gray-500">
-          (Busca escribiendo las primeras letras del país)
-        </span>
-      </div>
-      
       {validationResult && !validationResult.isValid && value && (
         <div className="text-xs text-red-400 flex items-center">
           <AlertCircle className="h-3 w-3 mr-1" />
@@ -383,13 +427,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       )}
     </div>
   );
-};
-
-// ============================================
-// CONSTANTS (Sin cambios)
-// ============================================
-
-const CONTACT_SOURCES = [
+ };
+ 
+ // ============================================
+ // CONSTANTS (Sin cambios)
+ // ============================================
+ 
+ const CONTACT_SOURCES = [
     { value: 'WEBSITE', label: 'Sitio Web' },
     { value: 'MANUAL_ENTRY', label: 'Entrada Manual' },
     { value: 'IMPORT', label: 'Importación' },
@@ -450,22 +494,22 @@ const CONTACT_SOURCES = [
       </div>
     );
   };
-
-// ============================================
-// MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
-// ============================================
-
-const ContactForm: React.FC<ContactFormProps> = ({
+ 
+ // ============================================
+ // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
+ // ============================================
+ 
+ const ContactForm: React.FC<ContactFormProps> = ({
   contact,
   onSubmit,
   onCancel,
   loading,
   error,
   mode
-}) => {
+ }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
-
+ 
   const {
     register,
     control,
@@ -494,15 +538,15 @@ const ContactForm: React.FC<ContactFormProps> = ({
       tags: contact?.tags?.map(tag => tag.id),
     }), [contact])
   });
-
+ 
   const currentPhone = watch('phone');
-
+ 
   const handleFormSubmit = async (data: ContactFormData) => {
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
-
+ 
     const baseSubmitData = {
       firstName: data.firstName,
       lastName: data.lastName,
@@ -518,7 +562,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       communicationPreferences: data.communicationPreferences as CommunicationPreferences,
       tags: data.tags,
     };
-
+ 
     // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
     if (mode === 'edit' && contact) {
       // En esta rama, TypeScript sabe que el objeto debe ser un UpdateContactRequest
@@ -533,7 +577,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       await onSubmit(createData);
     }
   };
-
+ 
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
     
@@ -544,7 +588,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       clearErrors('phone');
     }
   }, [currentPhone, setError, clearErrors]);
-
+ 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
       {/* Error Message */}
@@ -556,13 +600,13 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </div>
         </div>
       )}
-
+ 
       {/* Basic Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información Básica
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Nombre"
@@ -578,7 +622,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               placeholder="Ingresa el nombre"
             />
           </FormField>
-
+ 
           <FormField
             label="Apellido"
             name="lastName"
@@ -595,13 +639,13 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </FormField>
         </div>
       </div>
-
+ 
       {/* Contact Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información de Contacto
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Correo electrónico"
@@ -617,7 +661,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               placeholder="ejemplo@correo.com"
             />
           </FormField>
-
+ 
       {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
       <FormField
         label="Teléfono"
@@ -636,13 +680,13 @@ const ContactForm: React.FC<ContactFormProps> = ({
       </FormField>
       </div>
       </div>
-
+ 
       {/* Source Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Origen del Contacto
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Fuente"
@@ -662,7 +706,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               ))}
             </select>
           </FormField>
-
+ 
           <FormField
             label="Detalles de la fuente"
             name="sourceDetails"
@@ -678,7 +722,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </FormField>
         </div>
       </div>
-
+ 
       {/* Advanced Information */}
       <div className="space-y-6">
         <button
@@ -691,7 +735,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
             {showAdvanced ? '(ocultar)' : '(mostrar)'}
           </span>
         </button>
-
+ 
         {showAdvanced && (
           <div className="space-y-6 p-4 bg-app-dark-700/50 rounded-lg border border-app-dark-600">
             {/* Personal Information */}
@@ -708,7 +752,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                   className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </FormField>
-
+ 
               <FormField
                 label="Género"
                 name="gender"
@@ -728,7 +772,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                 </select>
               </FormField>
             </div>
-
+ 
             {/* Address */}
             <div className="space-y-4">
               <h4 className="text-md font-medium text-app-gray-200 flex items-center">
@@ -749,7 +793,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     placeholder="Calle 123 #45-67"
                   />
                 </FormField>
-
+ 
                 <FormField
                   label="Dirección secundaria"
                   name="address.addressLine2"
@@ -762,7 +806,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     placeholder="Apartamento, suite, etc."
                   />
                 </FormField>
-
+ 
                 <FormField
                   label="Ciudad"
                   name="address.city"
@@ -775,7 +819,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     placeholder="Cali"
                   />
                 </FormField>
-
+ 
                 <FormField
                   label="Departamento/Estado"
                   name="address.state"
@@ -788,7 +832,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     placeholder="Valle del Cauca"
                   />
                 </FormField>
-
+ 
                 <FormField
                   label="Código postal"
                   name="address.postalCode"
@@ -801,7 +845,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     placeholder="760001"
                   />
                 </FormField>
-
+ 
                 <FormField
                   label="País"
                   name="address.country"
@@ -816,7 +860,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                 </FormField>
               </div>
             </div>
-
+ 
             {/* Communication Preferences */}
             <FormField
               label="Preferencias de comunicación"
@@ -837,7 +881,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </div>
         )}
       </div>
-
+ 
       <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
           <Button
             type="button"
@@ -863,9 +907,9 @@ const ContactForm: React.FC<ContactFormProps> = ({
             {mode === 'create' ? 'Crear Contacto' : 'Actualizar Contacto'}
           </Button>
       </div>
-
+ 
     </form>
   );
-};
-
-export default ContactForm;
+ };
+ 
+ export default ContactForm;
