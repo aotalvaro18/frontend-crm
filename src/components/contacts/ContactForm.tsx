@@ -5,14 +5,14 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { parsePhoneNumber, isValidPhoneNumber, getCountryCallingCode } from 'libphonenumber-js';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { 
   User, Mail, Phone, MapPin, 
-  Save, X, AlertCircle, Check, Globe, CheckCircle2
+  Save, X, AlertCircle, Check, Globe, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { COUNTRY_CODES, type CountryCodeInfo } from '@/utils/constants';
+import { COUNTRY_CODES } from '@/utils/constants';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
@@ -168,7 +168,7 @@ const contactFormSchema = z.object({
   
   birthDate: z.string().optional().or(z.literal('')),
   
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
   
   source: z.string()
     .min(1, 'La fuente es requerida'),
@@ -306,18 +306,36 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex space-x-2">
-        <select
-          value={selectedRegion}
-          onChange={(e) => handleRegionChange(e.target.value)}
-          disabled={disabled}
-          className="px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-          {COUNTRY_CODES.map(country => (
-            <option key={country.code} value={country.code}>
-              {country.flag} {country.name} ({country.dialCode})
-            </option>
-          ))}
-        </select>
+        {/* Country Selector mejorado con banderas visibles */}
+        <div className="relative">
+          <select
+            value={selectedRegion}
+            onChange={(e) => handleRegionChange(e.target.value)}
+            disabled={disabled}
+            className="px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer min-w-[200px] pr-8"
+          >
+            {COUNTRY_CODES.map(country => (
+              <option key={country.code} value={country.code}>
+                {country.flag} {country.name} ({country.dialCode})
+              </option>
+            ))}
+          </select>
+          
+          {/* Indicador visual del país seleccionado */}
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <span className="text-lg">{selectedCountry?.flag}</span>
+          </div>
+          
+          {/* Flecha del dropdown */}
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <ChevronDown className="h-4 w-4 text-app-gray-400" />
+          </div>
+          
+          {/* Código de país visible */}
+          <div className="absolute inset-y-0 left-12 flex items-center pointer-events-none">
+            <span className="text-sm font-mono text-app-gray-300">{selectedCountry?.dialCode}</span>
+          </div>
+        </div>
         
         <div className="relative flex-1">
           <input
@@ -339,6 +357,15 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             ) : null}
           </div>
         </div>
+      </div>
+      
+      {/* Display del país seleccionado */}
+      <div className="text-xs text-app-gray-400 flex items-center">
+        <Globe className="h-3 w-3 mr-1" />
+        País seleccionado: {selectedCountry?.flag} {selectedCountry?.name}
+        <span className="ml-2 text-app-gray-500">
+          (Busca escribiendo las primeras letras del país)
+        </span>
       </div>
       
       {validationResult && !validationResult.isValid && value && (
