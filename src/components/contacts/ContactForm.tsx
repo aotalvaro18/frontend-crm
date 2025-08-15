@@ -891,7 +891,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                         selectedCity={watch('address.city') || ''}
                         onStateChange={(state) => {
                           setValue('address.state', state);
-                          setValue('address.city', ''); // Reset ciudad cuando cambia estado
+                          
                         }}
                         onCityChange={(city) => setValue('address.city', city)}
                         disabled={loading}
