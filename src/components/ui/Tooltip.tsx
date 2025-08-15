@@ -208,6 +208,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<TooltipPosition>({ x: 0, y: 0 });
   
+  const tooltipId = `tooltip-${React.useId()}`;
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const openTimeoutRef = useRef<NodeJS.Timeout>();
@@ -267,7 +268,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     onFocus: handleOpen,
     onBlur: handleClose,
     onClick: isTouch ? () => (isOpen ? handleClose() : handleOpen()) : undefined,
-    'aria-describedby': isOpen ? `tooltip-${React.useId()}` : undefined,
+    'aria-describedby': isOpen ? tooltipId : undefined,
   };
 
   const renderTooltipContent = () => {
@@ -275,7 +276,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
     const tooltipElement = (
       <div
-        ref={tooltipRef}
+      id={tooltipId}  
+      ref={tooltipRef}
         role="tooltip"
         className={cn(tooltipVariants({ variant, size, className: contentClassName }))}
         style={{ position: 'fixed', top: position.y, left: position.x, zIndex: 9999 }}
