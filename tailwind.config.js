@@ -19,14 +19,20 @@ export default {
             '800': '#1a1a1a',
             '700': '#2a2a2a',
             '600': '#3a3a3a',
+            '500': '#4a4a4a',
           },
           gray: {
             '300': '#c5c5c5',
             '200': '#e5e5e5',
+            '100': '#f5f5f5',
+            '400': '#a5a5a5',
+            '500': '#858585',
           },
           accent: {
             '500': '#6366f1',
-            '700': '#4338ca', // Añadido para consistencia
+            '700': '#4338ca',
+            '600': '#5b5bf6',
+            '50': '#eef2ff',
           },
         },
         // 2. Los colores semánticos que generan las clases como 'bg-background'.

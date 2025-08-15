@@ -805,6 +805,7 @@ export const useContactStats = () => {
   return useContactStore(state => ({
     stats: state.stats,
     loadStats: state.loadStats,
+    statsLoading: state.statsLoading,
   }));
 };
 
