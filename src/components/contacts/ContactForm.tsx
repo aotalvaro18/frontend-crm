@@ -878,28 +878,25 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                     />
                   </FormField>
 
-                  {/* Departamento/Estado usando GeographySelector en modo separate */}
+                  {/* Departamento/Estado - Sin label duplicado */}
                   <FormField
                     label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'}
                     name="address.state"
                     error={errors.address?.state?.message}
                   >
-                    <div>
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        selectedCity={watch('address.city') || ''}
-                        onStateChange={(state) => {
-                          setValue('address.state', state);
-                          setValue('address.city', ''); // Reset ciudad cuando cambia estado
-                        }}
-                        onCityChange={(city) => setValue('address.city', city)}
-                        disabled={loading}
-                        layout="separate"
-                        renderStateOnly
-                        className="[&>div]:!mb-0" // Quitar margin del label interno
-                      />
-                    </div>
+                    <GeographySelector
+                      countryCode={selectedCountryFromPhone}
+                      selectedState={watch('address.state') || ''}
+                      selectedCity={watch('address.city') || ''}
+                      onStateChange={(state) => {
+                        setValue('address.state', state, { shouldValidate: true, shouldDirty: true });
+                        setValue('address.city', '', { shouldValidate: true, shouldDirty: true });
+                      }}
+                      onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
+                      disabled={loading}
+                      layout="separate"
+                      renderStateOnly
+                    />
                   </FormField>
                 </div>
               )}
@@ -907,25 +904,22 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
               {/* ✅ FILA 2: Ciudad y Código Postal */}
               {selectedCountryFromPhone && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Ciudad usando GeographySelector en modo separate */}
+                  {/* Ciudad - Sin label duplicado */}
                   <FormField
                     label="Ciudad"
                     name="address.city"
                     error={errors.address?.city?.message}
                   >
-                    <div>
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        selectedCity={watch('address.city') || ''}
-                        onStateChange={(state) => setValue('address.state', state)}
-                        onCityChange={(city) => setValue('address.city', city)}
-                        disabled={loading}
-                        layout="separate"
-                        renderCityOnly
-                        className="[&>div]:!mb-0" // Quitar margin del label interno
-                      />
-                    </div>
+                    <GeographySelector
+                      countryCode={selectedCountryFromPhone}
+                      selectedState={watch('address.state') || ''}
+                      selectedCity={watch('address.city') || ''}
+                      onStateChange={(state) => setValue('address.state', state, { shouldValidate: true, shouldDirty: true })}
+                      onCityChange={(city) => setValue('address.city', city, { shouldValidate: true, shouldDirty: true })}
+                      disabled={loading}
+                      layout="separate"
+                      renderCityOnly
+                    />
                   </FormField>
 
                   {/* Código Postal */}
@@ -972,6 +966,37 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
                   />
                 </FormField>
               </div>
+
+              {/* ✅ MANEJO SIN TELÉFONO: Mostrar selector manual de país */}
+              {!selectedCountryFromPhone && (
+                <div className="p-4 bg-app-dark-700/30 border border-app-dark-600 rounded-lg">
+                  <p className="text-sm text-app-gray-400 mb-3">
+                    💡 Agrega un teléfono para autodetectar el país, o selecciona manualmente:
+                  </p>
+                  <FormField
+                    label="País"
+                    name="address.country"
+                    error={errors.address?.country?.message}
+                  >
+                    <select
+                      {...register('address.country')}
+                      className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      onChange={(e) => {
+                        const countryName = e.target.value;
+                        setValue('address.country', countryName);
+                        // Resetear estado y ciudad cuando cambia país
+                        setValue('address.state', '');
+                        setValue('address.city', '');
+                      }}
+                    >
+                      <option value="">Seleccionar país...</option>
+                      <option value="Colombia">Colombia</option>
+                      <option value="Estados Unidos">Estados Unidos</option>
+                      <option value="España">España</option>
+                    </select>
+                  </FormField>
+                </div>
+              )}
             </div>
  
             {/* Communication Preferences */}

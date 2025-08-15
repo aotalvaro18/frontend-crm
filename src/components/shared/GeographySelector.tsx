@@ -98,36 +98,36 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     // Render solo State
     if (renderStateOnly) {
       return (
-        <Select
-          label={countryCode === 'CO' ? 'Departamento' : 'Estado/Provincia'}
-          value={selectedState}
-          onValueChange={(newState) => onStateChange(String(newState || ''))}
-          options={states}
-          placeholder="Seleccionar..."
-          disabled={disabled || states.length === 0}
-          searchable
-          emptyMessage="No se encontraron estados"
-          error={errorState}
-          className={className}
-        />
+        <div className={className}>
+          <Select
+            value={selectedState || ''}
+            onValueChange={(newState) => onStateChange(String(newState || ''))}
+            options={states}
+            placeholder="Seleccionar..."
+            disabled={disabled || states.length === 0}
+            searchable
+            emptyMessage="No se encontraron estados"
+            error={errorState}
+          />
+        </div>
       );
     }
 
     // Render solo City
     if (renderCityOnly) {
       return (
-        <Select
-          label="Ciudad"
-          value={selectedCity}
-          onValueChange={(newCity) => onCityChange(String(newCity || ''))}
-          options={cities}
-          placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
-          disabled={disabled || !selectedState || cities.length === 0}
-          searchable
-          emptyMessage="No se encontraron ciudades"
-          error={errorCity}
-          className={className}
-        />
+        <div className={className}>
+          <Select
+            value={selectedCity || ''}
+            onValueChange={(newCity) => onCityChange(String(newCity || ''))}
+            options={cities}
+            placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
+            disabled={disabled || !selectedState || cities.length === 0}
+            searchable
+            emptyMessage="No se encontraron ciudades"
+            error={errorCity}
+          />
+        </div>
       );
     }
   }
