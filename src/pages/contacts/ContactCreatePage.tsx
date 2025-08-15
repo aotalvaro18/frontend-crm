@@ -62,8 +62,12 @@ const ContactCreatePage: React.FC = () => {
 
       toast.success(`Contacto "${newContact.firstName} ${newContact.lastName}" creado exitosamente.`);
       
+      setTimeout(() => {
+        navigate('/contacts');
+      }, 1500);
+      
       // Navegar al detalle del contacto creado
-      navigate(`/contacts/${newContact.id}`);
+      navigate('/contacts');
 
     } catch (error) {
       // El error ya es manejado por el store y se mostrará en el formulario
