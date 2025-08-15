@@ -19,7 +19,6 @@ import type {
     UpdateContactRequest, 
     ContactSource,
     Gender,
-    AddressDTO,               // <-- Este es el alias correcto para 'Address'
     CommunicationPreferences
   } from '@/types/contact.types';
 
@@ -551,21 +550,86 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     console.log('🔍 Datos del formulario:', data);
     console.log('🔍 Validación del teléfono:', phoneValidation);
  
-    const baseSubmitData = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email || undefined,
-      phone: phoneValidation.e164Phone || undefined,
-      companyId: data.companyId,
-      address: data.address as AddressDTO,
-      birthDate: data.birthDate || undefined,
-      gender: data.gender as Gender,
-      source: data.source as ContactSource,
-      sourceDetails: data.sourceDetails,
-      customFields: data.customFields,
-      communicationPreferences: data.communicationPreferences as CommunicationPreferences,
-      tags: data.tags,
+    // ✅ Crear datos según el DTO exacto del backend
+    const cleanedData: any = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      source: data.source as ContactSource, // Backend valida que sea string válido
     };
+
+    // ✅ OBLIGATORIO: email O teléfono (validación isValidContactInfo del backend)
+    if (data.email && data.email.trim()) {
+      cleanedData.email = data.email.trim();
+    }
+    
+    if (phoneValidation.e164Phone) {
+      cleanedData.phone = phoneValidation.e164Phone;
+    }
+
+    // ✅ Verificar que cumple validación del backend
+    if (!cleanedData.email && !cleanedData.phone) {
+      setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
+      setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
+      return;
+    }
+    
+    // ✅ Campos opcionales - solo si tienen valores
+    if (data.companyId) {
+      cleanedData.companyId = data.companyId;
+    }
+    
+    if (data.sourceDetails && data.sourceDetails.trim()) {
+      cleanedData.sourceDetails = data.sourceDetails.trim();
+    }
+    
+    if (data.birthDate && data.birthDate.trim()) {
+      cleanedData.birthDate = data.birthDate; // LocalDate en backend
+    }
+    
+    if (data.gender && data.gender.trim()) {
+      cleanedData.gender = data.gender as Gender;
+    }
+
+    // ✅ Address - solo si tiene datos (hasAnyField del backend)
+    if (data.address) {
+      const hasAddressData = Object.values(data.address).some(value => value && value.trim());
+      if (hasAddressData) {
+        const cleanAddress: any = {};
+        Object.entries(data.address).forEach(([key, value]) => {
+          if (value && value.trim()) {
+            cleanAddress[key] = value.trim();
+          }
+        });
+        cleanedData.address = cleanAddress;
+      }
+    }
+
+    // ✅ CommunicationPreferences - Map<String, Object> según backend
+    if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
+      const cleanPrefs: Record<string, any> = {};
+      Object.entries(data.communicationPreferences).forEach(([key, value]) => {
+        if (typeof value === 'boolean') {
+          cleanPrefs[key] = value;
+        }
+      });
+      if (Object.keys(cleanPrefs).length > 0) {
+        cleanedData.communicationPreferences = cleanPrefs;
+      }
+    }
+
+    // ✅ IMPORTANTE: Backend espera tagNames (strings), no tags (numbers)
+    if (data.tags && data.tags.length > 0) {
+      // Necesitarías convertir IDs a nombres, o mejor cambiar el formulario
+      // Por ahora lo omitimos hasta que tengas la conversión
+      console.warn('⚠️ Tags omitidos - backend espera tagNames (strings), no IDs');
+    }
+
+    // ✅ CustomFields - Map<String, Object> según backend
+    if (data.customFields && Object.keys(data.customFields).length > 0) {
+      cleanedData.customFields = data.customFields;
+    }
+
+    const baseSubmitData = cleanedData;
  
     // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
     if (mode === 'edit' && contact) {
