@@ -853,126 +853,121 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
               </FormField>
             </div>
  
-            {/* Address - ✅ NUEVO LAYOUT REORGANIZADO */}
-            <div className="space-y-4">
-              <h4 className="text-md font-medium text-app-gray-200 flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                Dirección
-              </h4>
-              
-              {/* ✅ FILA 1: País y Departamento/Estado */}
-              {selectedCountryFromPhone && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo País (solo lectura, automático del teléfono) */}
-                  <FormField
-                    label="País"
-                    name="address.country"
-                    error={errors.address?.country?.message}
-                  >
-                    <input
-                      {...register('address.country')}
-                      type="text"
-                      readOnly
-                      className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed"
-                      placeholder="Automático desde teléfono"
-                    />
-                  </FormField>
+            {/* Address - ✅ LAYOUT CORREGIDO Y FUNCIONAL */}
+<div className="space-y-4">
+  <h4 className="text-md font-medium text-app-gray-200 flex items-center">
+    <MapPin className="h-4 w-4 mr-2" />
+    Dirección
+  </h4>
+  
+  <h5 className="text-sm font-medium text-app-gray-300 pt-2">
+    Ubicación Geográfica
+  </h5>
 
-                  {/* Departamento/Estado usando GeographySelector en modo separate */}
-                  <FormField
-                    label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'}
-                    name="address.state"
-                    error={errors.address?.state?.message}
-                  >
-                    <div>
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        selectedCity={watch('address.city') || ''}
-                        onStateChange={(state) => {
-                          setValue('address.state', state);
-                          
-                        }}
-                        onCityChange={(city) => setValue('address.city', city)}
-                        disabled={loading}
-                        layout="separate"
-                        renderStateOnly
-                        className="[&>div]:!mb-0" // Quitar margin del label interno
-                      />
-                    </div>
-                  </FormField>
-                </div>
-              )}
-              
-              {/* ✅ FILA 2: Ciudad y Código Postal */}
-              {selectedCountryFromPhone && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Ciudad usando GeographySelector en modo separate */}
-                  <FormField
-                    label="Ciudad"
-                    name="address.city"
-                    error={errors.address?.city?.message}
-                  >
-                    <div>
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        selectedCity={watch('address.city') || ''}
-                        onStateChange={(state) => setValue('address.state', state)}
-                        onCityChange={(city) => setValue('address.city', city)}
-                        disabled={loading}
-                        layout="separate"
-                        renderCityOnly
-                        className="[&>div]:!mb-0" // Quitar margin del label interno
-                      />
-                    </div>
-                  </FormField>
+  {/* Contenedor de la cuadrícula para los campos */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+    
+    {/* --- Fila 1: País y Departamento/Estado --- */}
+    <div className="col-span-1">
+      <FormField
+        label="País"
+        name="address.country"
+        error={errors.address?.country?.message}
+      >
+        <input
+          {...register('address.country')}
+          type="text"
+          readOnly
+          className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed"
+          placeholder="Automático desde teléfono"
+        />
+      </FormField>
+    </div>
+    
+    <div className="col-span-1">
+      {/* ✅ CORRECCIÓN: Usar GeographySelector directamente, sin FormField */}
+      {/* react-hook-form controla los datos, nosotros solo los pasamos */}
+      <GeographySelector
+        countryCode={selectedCountryFromPhone}
+        selectedState={watch('address.state')}
+        onStateChange={(state) => {
+          setValue('address.state', state, { shouldValidate: true });
+          setValue('address.city', '', { shouldValidate: true }); // Reset ciudad
+        }}
+        onCityChange={() => {}} // No hace nada aquí
+        disabled={loading || !selectedCountryFromPhone}
+        layout="separate"
+        renderStateOnly
+        errorState={errors.address?.state?.message}
+        // Pasamos el label directamente al selector de estado/departamento
+        label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'}
+      />
+    </div>
 
-                  {/* Código Postal */}
-                  <FormField
-                    label="Código postal"
-                    name="address.postalCode"
-                    error={errors.address?.postalCode?.message}
-                  >
-                    <input
-                      {...register('address.postalCode')}
-                      type="text"
-                      className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="760001"
-                    />
-                  </FormField>
-                </div>
-              )}
-              
-              {/* ✅ FILA 3: Direcciones Principal y Secundaria */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Dirección principal"
-                  name="address.addressLine1"
-                  error={errors.address?.addressLine1?.message}
-                >
-                  <input
-                    {...register('address.addressLine1')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Calle 123 #45-67"
-                  />
-                </FormField>
+    {/* --- Fila 2: Ciudad y Código Postal --- */}
+    <div className="col-span-1">
+      {/* ✅ CORRECCIÓN: Usar GeographySelector directamente */}
+      <GeographySelector
+        countryCode={selectedCountryFromPhone}
+        selectedState={watch('address.state')}
+        selectedCity={watch('address.city')}
+        onStateChange={() => {}} // No hace nada aquí
+        onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
+        disabled={loading || !watch('address.state')}
+        layout="separate"
+        renderCityOnly
+        errorCity={errors.address?.city?.message}
+        label="Ciudad"
+      />
+    </div>
 
-                <FormField
-                  label="Dirección secundaria"
-                  name="address.addressLine2"
-                  error={errors.address?.addressLine2?.message}
-                >
-                  <input
-                    {...register('address.addressLine2')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Apartamento, suite, etc."
-                  />
-                </FormField>
-              </div>
-            </div>
+    <div className="col-span-1">
+      <FormField
+        label="Código postal"
+        name="address.postalCode"
+        error={errors.address?.postalCode?.message}
+      >
+        <input
+          {...register('address.postalCode')}
+          type="text"
+          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="760001"
+        />
+      </FormField>
+    </div>
+
+    {/* --- Fila 3: Direcciones Principal y Secundaria --- */}
+    <div className="col-span-1">
+      <FormField
+        label="Dirección principal"
+        name="address.addressLine1"
+        error={errors.address?.addressLine1?.message}
+      >
+        <input
+          {...register('address.addressLine1')}
+          type="text"
+          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Calle 123 #45-67"
+        />
+      </FormField>
+    </div>
+
+    <div className="col-span-1">
+       <FormField
+        label="Dirección secundaria"
+        name="address.addressLine2"
+        error={errors.address?.addressLine2?.message}
+      >
+        <input
+          {...register('address.addressLine2')}
+          type="text"
+          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Apartamento, suite, etc."
+        />
+      </FormField>
+    </div>
+  </div>
+</div>
  
             {/* Communication Preferences */}
             <FormField

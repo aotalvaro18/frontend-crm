@@ -100,6 +100,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
       return (
         <div className={className}>
           <Select
+            label={label}
             value={selectedState || ''}
             onValueChange={(newState) => onStateChange(String(newState || ''))}
             options={states}
@@ -118,6 +119,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
       return (
         <div className={className}>
           <Select
+            label={label}
             value={selectedCity || ''}
             onValueChange={(newCity) => onCityChange(String(newCity || ''))}
             options={cities}
