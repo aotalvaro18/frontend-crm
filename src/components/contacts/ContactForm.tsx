@@ -930,10 +930,15 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
               selectedCity={watch('address.city') || ''}
               onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
               onStateChange={() => {}} // No hace nada aquí
+              // ✅ NUEVO: Auto-llenar código postal
+              onPostalCodeAutoFill={(postalCode) => {
+                setValue('address.postalCode', postalCode, { shouldValidate: true });
+              }}
               disabled={loading || !watch('address.state')}
               layout="separate"
               renderCityOnly
               errorCity={errors.address?.city?.message}
+              showPostalCodeHint={true}
             />
           </FormField>
         </div>

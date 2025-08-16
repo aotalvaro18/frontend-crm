@@ -1,282 +1,278 @@
 // src/utils/geography.ts
-// ✅ SISTEMA GEOGRÁFICO INTELIGENTE - Colombia, US, España
-// Siguiendo "La Forma Eklesa" - Centralizados en constants
+// ✅ SISTEMA GEOGRÁFICO INTELIGENTE CON CÓDIGOS POSTALES
+// Colombia, US, España con códigos postales automáticos
 
-export interface GeographyData {
-    [countryCode: string]: {
-      name: string;
-      states: {
-        [stateName: string]: string[];
-      };
-    };
+export interface CityData {
+    name: string;
+    postalCodes: string[];
+    mainPostalCode?: string; // Código principal/más común
+  }
+  
+  export interface StateData {
+    name: string;
+    cities: Record<string, CityData>;
+  }
+  
+  export interface CountryData {
+    name: string;
+    states: Record<string, StateData>;
+  }
+  
+  export interface GeographyData {
+    [countryCode: string]: CountryData;
   }
   
   export const GEOGRAPHY_DATA: GeographyData = {
     // ============================================
-    // 🇨🇴 COLOMBIA - Departamentos y Ciudades
+    // 🇨🇴 COLOMBIA - Departamentos, Ciudades y Códigos Postales
     // ============================================
     CO: {
       name: 'Colombia',
       states: {
-        'Valle del Cauca': [
-          'Cali', 'Palmira', 'Buenaventura', 'Tuluá', 'Cartago', 'Buga', 'Jamundí', 
-          'Yumbo', 'Candelaria', 'Florida', 'Pradera', 'Dagua', 'La Cumbre'
-        ],
-        'Antioquia': [
-          'Medellín', 'Envigado', 'Itagüí', 'Bello', 'Sabaneta', 'La Estrella', 
-          'Caldas', 'Copacabana', 'Girardota', 'Barbosa', 'Rionegro', 'Apartadó'
-        ],
-        'Cundinamarca': [
-          'Bogotá', 'Soacha', 'Chía', 'Zipaquirá', 'Facatativá', 'Madrid', 
-          'Funza', 'Mosquera', 'Fusagasugá', 'Girardot', 'Villeta'
-        ],
-        'Atlántico': [
-          'Barranquilla', 'Soledad', 'Malambo', 'Sabanagrande', 'Galapa', 
-          'Puerto Colombia', 'Sabanalarga'
-        ],
-        'Bolívar': [
-          'Cartagena', 'Magangué', 'Turbaco', 'Arjona', 'San Jacinto', 
-          'El Carmen de Bolívar'
-        ],
-        'Santander': [
-          'Bucaramanga', 'Floridablanca', 'Girón', 'Piedecuesta', 'Barrancabermeja', 
-          'San Gil', 'Socorro', 'Málaga'
-        ],
-        'Norte de Santander': [
-          'Cúcuta', 'Villa del Rosario', 'Los Patios', 'Ocaña', 'Pamplona', 
-          'Villa Caro'
-        ],
-        'Risaralda': [
-          'Pereira', 'Dosquebradas', 'Santa Rosa de Cabal', 'La Virginia', 
-          'Marsella', 'Belén de Umbría'
-        ],
-        'Caldas': [
-          'Manizales', 'Villamaría', 'Chinchiná', 'La Dorada', 'Riosucio', 
-          'Anserma'
-        ],
-        'Quindío': [
-          'Armenia', 'Calarcá', 'La Tebaida', 'Montenegro', 'Quimbaya', 
-          'Circasia'
-        ],
-        'Tolima': [
-          'Ibagué', 'Espinal', 'Melgar', 'Honda', 'Chaparral', 'Líbano'
-        ],
-        'Huila': [
-          'Neiva', 'Pitalito', 'Garzón', 'La Plata', 'San Agustín', 'Isnos'
-        ],
-        'Nariño': [
-          'Pasto', 'Tumaco', 'Ipiales', 'Túquerres', 'Samaniego'
-        ],
-        'Cauca': [
-          'Popayán', 'Santander de Quilichao', 'Puerto Tejada', 'Patía'
-        ],
-        'Córdoba': [
-          'Montería', 'Cereté', 'Lorica', 'Sahagún', 'Planeta Rica'
-        ],
-        'Sucre': [
-          'Sincelejo', 'Corozal', 'Sampués', 'San Marcos'
-        ],
-        'Magdalena': [
-          'Santa Marta', 'Ciénaga', 'Fundación', 'Aracataca'
-        ],
-        'La Guajira': [
-          'Riohacha', 'Maicao', 'Uribia', 'Manaure'
-        ],
-        'Cesar': [
-          'Valledupar', 'Aguachica', 'Bosconia', 'Codazzi'
-        ],
-        'Boyacá': [
-          'Tunja', 'Duitama', 'Sogamoso', 'Chiquinquirá', 'Villa de Leyva'
-        ],
-        'Meta': [
-          'Villavicencio', 'Acacías', 'Granada', 'San Martín'
-        ],
-        'Casanare': [
-          'Yopal', 'Aguazul', 'Villanueva', 'Monterrey'
-        ],
-        'Putumayo': [
-          'Mocoa', 'Puerto Asís', 'Orito'
-        ],
-        'Caquetá': [
-          'Florencia', 'San Vicente del Caguán', 'La Montañita'
-        ],
-        'Arauca': [
-          'Arauca', 'Saravena', 'Fortul'
-        ],
-        'Amazonas': [
-          'Leticia', 'Puerto Nariño'
-        ],
-        'Chocó': [
-          'Quibdó', 'Istmina', 'Condoto'
-        ],
-        'San Andrés y Providencia': [
-          'San Andrés', 'Providencia'
-        ],
-        'Vichada': [
-          'Puerto Carreño', 'La Primavera'
-        ],
-        'Guainía': [
-          'Inírida'
-        ],
-        'Vaupés': [
-          'Mitú'
-        ],
-        'Guaviare': [
-          'San José del Guaviare'
-        ]
+        'Valle del Cauca': {
+          name: 'Valle del Cauca',
+          cities: {
+            'Cali': { 
+              name: 'Cali', 
+              postalCodes: ['760001', '760010', '760020', '760030', '760040', '760050'], 
+              mainPostalCode: '760001'
+            },
+            'Palmira': { 
+              name: 'Palmira', 
+              postalCodes: ['763533', '763534'], 
+              mainPostalCode: '763533'
+            },
+            'Buenaventura': { 
+              name: 'Buenaventura', 
+              postalCodes: ['765001', '765002'], 
+              mainPostalCode: '765001'
+            },
+            'Tuluá': { 
+              name: 'Tuluá', 
+              postalCodes: ['763041', '763042'], 
+              mainPostalCode: '763041'
+            },
+            'Cartago': { 
+              name: 'Cartago', 
+              postalCodes: ['762021', '762022'], 
+              mainPostalCode: '762021'
+            },
+            'Buga': { 
+              name: 'Buga', 
+              postalCodes: ['762001', '762002'], 
+              mainPostalCode: '762001'
+            },
+            'Jamundí': { 
+              name: 'Jamundí', 
+              postalCodes: ['763051'], 
+              mainPostalCode: '763051'
+            },
+            'Yumbo': { 
+              name: 'Yumbo', 
+              postalCodes: ['764001'], 
+              mainPostalCode: '764001'
+            }
+          }
+        },
+        'Cundinamarca': {
+          name: 'Cundinamarca',
+          cities: {
+            'Bogotá': { 
+              name: 'Bogotá', 
+              postalCodes: ['110111', '110121', '110131', '110141', '110211', '110221'], 
+              mainPostalCode: '110111'
+            },
+            'Soacha': { 
+              name: 'Soacha', 
+              postalCodes: ['250050', '250051'], 
+              mainPostalCode: '250050'
+            },
+            'Chía': { 
+              name: 'Chía', 
+              postalCodes: ['250001', '250002'], 
+              mainPostalCode: '250001'
+            },
+            'Zipaquirá': { 
+              name: 'Zipaquirá', 
+              postalCodes: ['250251', '250252'], 
+              mainPostalCode: '250251'
+            },
+            'Facatativá': { 
+              name: 'Facatativá', 
+              postalCodes: ['250040', '250041'], 
+              mainPostalCode: '250040'
+            }
+          }
+        },
+        'Antioquia': {
+          name: 'Antioquia',
+          cities: {
+            'Medellín': { 
+              name: 'Medellín', 
+              postalCodes: ['050001', '050010', '050020', '050030'], 
+              mainPostalCode: '050001'
+            },
+            'Envigado': { 
+              name: 'Envigado', 
+              postalCodes: ['055040'], 
+              mainPostalCode: '055040'
+            },
+            'Itagüí': { 
+              name: 'Itagüí', 
+              postalCodes: ['055010'], 
+              mainPostalCode: '055010'
+            },
+            'Bello': { 
+              name: 'Bello', 
+              postalCodes: ['051001'], 
+              mainPostalCode: '051001'
+            }
+          }
+        }
       }
     },
   
     // ============================================
-    // 🇺🇸 ESTADOS UNIDOS - Estados y Ciudades
+    // 🇺🇸 ESTADOS UNIDOS - Estados, Ciudades y ZIP Codes
     // ============================================
     US: {
       name: 'Estados Unidos',
       states: {
-        'California': [
-          'Los Angeles', 'San Francisco', 'San Diego', 'Sacramento', 'Oakland', 
-          'Fresno', 'Long Beach', 'Santa Ana', 'Riverside', 'Stockton', 'Irvine'
-        ],
-        'New York': [
-          'New York City', 'Buffalo', 'Rochester', 'Syracuse', 'Albany', 
-          'Yonkers', 'New Rochelle', 'Utica'
-        ],
-        'Texas': [
-          'Houston', 'San Antonio', 'Dallas', 'Austin', 'Fort Worth', 'El Paso', 
-          'Arlington', 'Corpus Christi', 'Plano', 'Lubbock'
-        ],
-        'Florida': [
-          'Miami', 'Orlando', 'Tampa', 'Jacksonville', 'St. Petersburg', 
-          'Hialeah', 'Tallahassee', 'Fort Lauderdale', 'Pembroke Pines'
-        ],
-        'Illinois': [
-          'Chicago', 'Aurora', 'Rockford', 'Joliet', 'Naperville', 'Springfield', 
-          'Peoria', 'Elgin'
-        ],
-        'Pennsylvania': [
-          'Philadelphia', 'Pittsburgh', 'Allentown', 'Erie', 'Reading', 
-          'Scranton', 'Bethlehem'
-        ],
-        'Ohio': [
-          'Columbus', 'Cleveland', 'Cincinnati', 'Toledo', 'Akron', 'Dayton'
-        ],
-        'Georgia': [
-          'Atlanta', 'Augusta', 'Columbus', 'Macon', 'Savannah', 'Athens'
-        ],
-        'North Carolina': [
-          'Charlotte', 'Raleigh', 'Greensboro', 'Durham', 'Winston-Salem', 'Fayetteville'
-        ],
-        'Michigan': [
-          'Detroit', 'Grand Rapids', 'Warren', 'Sterling Heights', 'Lansing', 'Ann Arbor'
-        ],
-        'New Jersey': [
-          'Newark', 'Jersey City', 'Paterson', 'Elizabeth', 'Edison', 'Woodbridge'
-        ],
-        'Virginia': [
-          'Virginia Beach', 'Norfolk', 'Chesapeake', 'Richmond', 'Newport News', 'Alexandria'
-        ],
-        'Washington': [
-          'Seattle', 'Spokane', 'Tacoma', 'Vancouver', 'Bellevue', 'Kent'
-        ],
-        'Arizona': [
-          'Phoenix', 'Tucson', 'Mesa', 'Chandler', 'Scottsdale', 'Glendale'
-        ],
-        'Massachusetts': [
-          'Boston', 'Worcester', 'Springfield', 'Cambridge', 'Lowell', 'Brockton'
-        ],
-        'Tennessee': [
-          'Nashville', 'Memphis', 'Knoxville', 'Chattanooga', 'Clarksville', 'Murfreesboro'
-        ],
-        'Indiana': [
-          'Indianapolis', 'Fort Wayne', 'Evansville', 'South Bend', 'Carmel', 'Fishers'
-        ],
-        'Missouri': [
-          'Kansas City', 'St. Louis', 'Springfield', 'Independence', 'Columbia'
-        ],
-        'Maryland': [
-          'Baltimore', 'Frederick', 'Rockville', 'Gaithersburg', 'Bowie', 'Hagerstown'
-        ],
-        'Wisconsin': [
-          'Milwaukee', 'Madison', 'Green Bay', 'Kenosha', 'Racine', 'Appleton'
-        ],
-        'Colorado': [
-          'Denver', 'Colorado Springs', 'Aurora', 'Fort Collins', 'Lakewood', 'Thornton'
-        ]
+        'California': {
+          name: 'California',
+          cities: {
+            'Los Angeles': { 
+              name: 'Los Angeles', 
+              postalCodes: ['90001', '90002', '90210', '90211', '90212'], 
+              mainPostalCode: '90001'
+            },
+            'San Francisco': { 
+              name: 'San Francisco', 
+              postalCodes: ['94102', '94103', '94104', '94105'], 
+              mainPostalCode: '94102'
+            },
+            'San Diego': { 
+              name: 'San Diego', 
+              postalCodes: ['92101', '92102', '92103'], 
+              mainPostalCode: '92101'
+            },
+            'Sacramento': { 
+              name: 'Sacramento', 
+              postalCodes: ['95814', '95815', '95816'], 
+              mainPostalCode: '95814'
+            }
+          }
+        },
+        'New York': {
+          name: 'New York',
+          cities: {
+            'New York City': { 
+              name: 'New York City', 
+              postalCodes: ['10001', '10002', '10003', '10004', '10005'], 
+              mainPostalCode: '10001'
+            },
+            'Buffalo': { 
+              name: 'Buffalo', 
+              postalCodes: ['14201', '14202', '14203'], 
+              mainPostalCode: '14201'
+            },
+            'Rochester': { 
+              name: 'Rochester', 
+              postalCodes: ['14604', '14605', '14606'], 
+              mainPostalCode: '14604'
+            }
+          }
+        },
+        'Florida': {
+          name: 'Florida',
+          cities: {
+            'Miami': { 
+              name: 'Miami', 
+              postalCodes: ['33101', '33102', '33109', '33125'], 
+              mainPostalCode: '33101'
+            },
+            'Orlando': { 
+              name: 'Orlando', 
+              postalCodes: ['32801', '32802', '32803'], 
+              mainPostalCode: '32801'
+            },
+            'Tampa': { 
+              name: 'Tampa', 
+              postalCodes: ['33601', '33602', '33603'], 
+              mainPostalCode: '33601'
+            }
+          }
+        }
       }
     },
   
     // ============================================
-    // 🇪🇸 ESPAÑA - Comunidades Autónomas y Ciudades
+    // 🇪🇸 ESPAÑA - Comunidades, Ciudades y Códigos Postales
     // ============================================
     ES: {
       name: 'España',
       states: {
-        'Madrid': [
-          'Madrid', 'Móstoles', 'Alcalá de Henares', 'Fuenlabrada', 'Leganés', 
-          'Getafe', 'Alcorcón', 'Torrejón de Ardoz', 'Parla', 'Alcobendas'
-        ],
-        'Cataluña': [
-          'Barcelona', 'Hospitalet de Llobregat', 'Badalona', 'Terrassa', 'Sabadell', 
-          'Lleida', 'Tarragona', 'Mataró', 'Santa Coloma de Gramenet', 'Reus'
-        ],
-        'Andalucía': [
-          'Sevilla', 'Málaga', 'Córdoba', 'Granada', 'Almería', 'Huelva', 
-          'Jaén', 'Cádiz', 'Algeciras', 'Marbella', 'Jerez de la Frontera'
-        ],
-        'Valencia': [
-          'Valencia', 'Alicante', 'Elche', 'Castellón de la Plana', 'Torrevieja', 
-          'Orihuela', 'Benidorm', 'Alcoy', 'Sagunto', 'Gandía'
-        ],
-        'País Vasco': [
-          'Bilbao', 'Vitoria-Gasteiz', 'San Sebastián', 'Barakaldo', 'Getxo', 
-          'Irun', 'Portugalete', 'Santurtzi'
-        ],
-        'Galicia': [
-          'Vigo', 'A Coruña', 'Santiago de Compostela', 'Ourense', 'Lugo', 
-          'Pontevedra', 'Ferrol', 'Narón'
-        ],
-        'Castilla y León': [
-          'Valladolid', 'Burgos', 'Salamanca', 'León', 'Palencia', 'Zamora', 
-          'Ávila', 'Segovia', 'Soria'
-        ],
-        'Canarias': [
-          'Las Palmas de Gran Canaria', 'Santa Cruz de Tenerife', 'Telde', 
-          'San Cristóbal de La Laguna', 'Arona', 'Santa Lucía de Tirajana'
-        ],
-        'Murcia': [
-          'Murcia', 'Cartagena', 'Lorca', 'Molina de Segura', 'Alcantarilla', 'Mazarrón'
-        ],
-        'Aragón': [
-          'Zaragoza', 'Huesca', 'Teruel', 'Calatayud', 'Ejea de los Caballeros'
-        ],
-        'Castilla-La Mancha': [
-          'Albacete', 'Toledo', 'Ciudad Real', 'Guadalajara', 'Cuenca', 
-          'Talavera de la Reina', 'Puertollano'
-        ],
-        'Asturias': [
-          'Oviedo', 'Gijón', 'Avilés', 'Siero', 'Langreo', 'Mieres'
-        ],
-        'Baleares': [
-          'Palma', 'Calvià', 'Ibiza', 'Llucmajor', 'Manacor', 'Inca'
-        ],
-        'Extremadura': [
-          'Badajoz', 'Cáceres', 'Mérida', 'Plasencia', 'Don Benito', 'Almendralejo'
-        ],
-        'Cantabria': [
-          'Santander', 'Torrelavega', 'Camargo', 'Piélagos', 'El Astillero'
-        ],
-        'Navarra': [
-          'Pamplona', 'Tudela', 'Barañáin', 'Burlada', 'Estella-Lizarra'
-        ],
-        'La Rioja': [
-          'Logroño', 'Calahorra', 'Arnedo', 'Haro', 'Santo Domingo de la Calzada'
-        ]
+        'Madrid': {
+          name: 'Madrid',
+          cities: {
+            'Madrid': { 
+              name: 'Madrid', 
+              postalCodes: ['28001', '28002', '28003', '28004', '28005'], 
+              mainPostalCode: '28001'
+            },
+            'Móstoles': { 
+              name: 'Móstoles', 
+              postalCodes: ['28931', '28932'], 
+              mainPostalCode: '28931'
+            },
+            'Alcalá de Henares': { 
+              name: 'Alcalá de Henares', 
+              postalCodes: ['28801', '28802'], 
+              mainPostalCode: '28801'
+            }
+          }
+        },
+        'Cataluña': {
+          name: 'Cataluña',
+          cities: {
+            'Barcelona': { 
+              name: 'Barcelona', 
+              postalCodes: ['08001', '08002', '08003', '08004'], 
+              mainPostalCode: '08001'
+            },
+            'Hospitalet de Llobregat': { 
+              name: 'Hospitalet de Llobregat', 
+              postalCodes: ['08901', '08902'], 
+              mainPostalCode: '08901'
+            },
+            'Badalona': { 
+              name: 'Badalona', 
+              postalCodes: ['08911', '08912'], 
+              mainPostalCode: '08911'
+            }
+          }
+        },
+        'Valencia': {
+          name: 'Valencia',
+          cities: {
+            'Valencia': { 
+              name: 'Valencia', 
+              postalCodes: ['46001', '46002', '46003'], 
+              mainPostalCode: '46001'
+            },
+            'Alicante': { 
+              name: 'Alicante', 
+              postalCodes: ['03001', '03002', '03003'], 
+              mainPostalCode: '03001'
+            }
+          }
+        }
       }
     }
   };
   
   // ============================================
-  // UTILITY FUNCTIONS
+  // UTILITY FUNCTIONS MEJORADAS
   // ============================================
   
   /**
@@ -292,7 +288,36 @@ export interface GeographyData {
    */
   export const getCitiesByState = (countryCode: string, stateName: string): string[] => {
     const country = GEOGRAPHY_DATA[countryCode];
-    return country?.states[stateName] || [];
+    const state = country?.states[stateName];
+    return state ? Object.keys(state.cities) : [];
+  };
+  
+  /**
+   * ✅ NUEVO: Obtiene los códigos postales de una ciudad específica
+   */
+  export const getPostalCodesByCity = (countryCode: string, stateName: string, cityName: string): string[] => {
+    const country = GEOGRAPHY_DATA[countryCode];
+    const state = country?.states[stateName];
+    const city = state?.cities[cityName];
+    return city?.postalCodes || [];
+  };
+  
+  /**
+   * ✅ NUEVO: Obtiene el código postal principal de una ciudad
+   */
+  export const getMainPostalCode = (countryCode: string, stateName: string, cityName: string): string => {
+    const country = GEOGRAPHY_DATA[countryCode];
+    const state = country?.states[stateName];
+    const city = state?.cities[cityName];
+    return city?.mainPostalCode || city?.postalCodes[0] || '';
+  };
+  
+  /**
+   * ✅ NUEVO: Verifica si una ciudad tiene códigos postales automáticos
+   */
+  export const hasCityPostalCodes = (countryCode: string, stateName: string, cityName: string): boolean => {
+    const postalCodes = getPostalCodesByCity(countryCode, stateName, cityName);
+    return postalCodes.length > 0;
   };
   
   /**
@@ -333,4 +358,22 @@ export interface GeographyData {
    */
   export const hasGeographyData = (countryCode: string): boolean => {
     return countryCode in GEOGRAPHY_DATA;
+  };
+  
+  /**
+   * ✅ NUEVO: Obtiene información completa de una ubicación
+   */
+  export const getLocationInfo = (countryCode: string, stateName: string, cityName: string) => {
+    const country = GEOGRAPHY_DATA[countryCode];
+    const state = country?.states[stateName];
+    const city = state?.cities[cityName];
+    
+    return {
+      country: country?.name || '',
+      state: state?.name || '',
+      city: city?.name || '',
+      postalCodes: city?.postalCodes || [],
+      mainPostalCode: city?.mainPostalCode || city?.postalCodes[0] || '',
+      hasPostalCodes: (city?.postalCodes?.length || 0) > 0
+    };
   };

@@ -1,5 +1,5 @@
 // src/components/shared/GeographySelector.tsx
-// ✅ VERSIÓN FINAL REFACTORIZADA - SIN EFECTOS SECUNDARIOS
+// ✅ VERSIÓN CON AUTO-LLENADO DE CÓDIGOS POSTALES
 
 import React, { useMemo } from 'react';
 import { MapPin } from 'lucide-react';
@@ -10,10 +10,12 @@ import {
   getCountryName,
   getStatesByCountry,
   getCitiesByState,
+  getMainPostalCode,
+  hasCityPostalCodes,
 } from '@/utils/geography';
 
 // ============================================
-// COMPONENT PROPS (Mismas props, nueva implementación)
+// COMPONENT PROPS (Extendidas para código postal)
 // ============================================
 
 interface GeographySelectorProps {
@@ -22,6 +24,8 @@ interface GeographySelectorProps {
   selectedCity?: string;
   onStateChange: (state: string) => void;
   onCityChange: (city: string) => void;
+  // ✅ NUEVO: Callback para auto-llenar código postal
+  onPostalCodeAutoFill?: (postalCode: string) => void;
   disabled?: boolean;
   className?: string;
   label?: string;
@@ -30,10 +34,12 @@ interface GeographySelectorProps {
   layout?: 'default' | 'separate';
   renderStateOnly?: boolean;
   renderCityOnly?: boolean;
+  // ✅ NUEVO: Opción para mostrar ayuda de código postal
+  showPostalCodeHint?: boolean;
 }
 
 // ============================================
-// MAIN COMPONENT (✅ SIN useEffect - COMPONENTE "TONTO")
+// MAIN COMPONENT
 // ============================================
 
 export const GeographySelector: React.FC<GeographySelectorProps> = ({
@@ -42,6 +48,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   selectedCity,
   onStateChange,
   onCityChange,
+  onPostalCodeAutoFill,
   disabled = false,
   className = '',
   label = 'Ubicación Geográfica',
@@ -50,15 +57,40 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   layout = 'default',
   renderStateOnly = false,
   renderCityOnly = false,
+  showPostalCodeHint = true,
 }) => {
-  // ✅ SOLO COMPUTACIÓN - SIN EFECTOS SECUNDARIOS
+  // ✅ COMPUTACIÓN DE OPCIONES
   const states = useMemo((): SelectOption[] => {
     return getStatesByCountry(countryCode).map(s => ({ value: s, label: s }));
   }, [countryCode]);
 
   const cities = useMemo((): SelectOption[] => {
-    return selectedState ? getCitiesByState(countryCode, selectedState).map(c => ({ value: c, label: c })) : [];
+    if (!selectedState) return [];
+    
+    return getCitiesByState(countryCode, selectedState).map(cityName => {
+      const hasPostal = hasCityPostalCodes(countryCode, selectedState, cityName);
+      const mainPostal = hasPostal ? getMainPostalCode(countryCode, selectedState, cityName) : '';
+      
+      return {
+        value: cityName,
+        label: cityName,
+        description: hasPostal ? `📮 CP: ${mainPostal}` : undefined
+      };
+    });
   }, [countryCode, selectedState]);
+
+  // ✅ HANDLER MEJORADO PARA CIUDAD CON AUTO-LLENADO
+  const handleCityChange = (city: string) => {
+    onCityChange(city);
+    
+    // Auto-llenar código postal si está disponible
+    if (city && selectedState && onPostalCodeAutoFill) {
+      const mainPostalCode = getMainPostalCode(countryCode, selectedState, city);
+      if (mainPostalCode) {
+        onPostalCodeAutoFill(mainPostalCode);
+      }
+    }
+  };
 
   // ✅ VALIDACIÓN SIN CAMBIOS
   if (!hasGeographyData(countryCode)) {
@@ -88,13 +120,15 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     );
   }
 
-  // ✅ RENDER SOLO CIUDAD
+  // ✅ RENDER SOLO CIUDAD (Con auto-llenado de código postal)
   if (layout === 'separate' && renderCityOnly) {
+    const hasAnyPostalCodes = cities.some(city => city.description);
+    
     return (
       <div className={className}>
         <Select
           value={selectedCity || ''}
-          onValueChange={(newCity) => onCityChange(String(newCity || ''))}
+          onValueChange={(newCity) => handleCityChange(String(newCity || ''))}
           options={cities}
           placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
           disabled={disabled || !selectedState || cities.length === 0}
@@ -102,11 +136,19 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
           emptyMessage="No se encontraron ciudades"
           error={errorCity}
         />
+        
+        {/* ✅ NUEVO: Hint sobre código postal automático */}
+        {showPostalCodeHint && hasAnyPostalCodes && selectedState && (
+          <p className="text-xs text-app-gray-500 mt-1 flex items-center">
+            <MapPin className="h-3 w-3 mr-1" />
+            El código postal se llenará automáticamente
+          </p>
+        )}
       </div>
     );
   }
 
-  // ✅ LAYOUT POR DEFECTO (Ambos selectores juntos)
+  // ✅ LAYOUT POR DEFECTO (Ambos selectores con auto-llenado)
   return (
     <div className={cn('space-y-4', className)}>
       {label && <h3 className="text-sm font-medium text-app-gray-200">{label}</h3>}
@@ -132,7 +174,7 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
           <Select
             label="Ciudad"
             value={selectedCity || ''}
-            onValueChange={(newCity) => onCityChange(String(newCity || ''))}
+            onValueChange={(newCity) => handleCityChange(String(newCity || ''))}
             options={cities}
             placeholder={selectedState ? 'Seleccionar ciudad...' : 'Selecciona un estado'}
             disabled={disabled || !selectedState || cities.length === 0}
@@ -140,6 +182,14 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
             emptyMessage="No se encontraron ciudades"
             error={errorCity}
           />
+          
+          {/* Hint sobre código postal */}
+          {showPostalCodeHint && cities.some(city => city.description) && selectedState && (
+            <p className="text-xs text-app-gray-500 mt-1 flex items-center">
+              <MapPin className="h-3 w-3 mr-1" />
+              El código postal se llenará automáticamente al seleccionar ciudad
+            </p>
+          )}
         </div>
       </div>
     </div>
