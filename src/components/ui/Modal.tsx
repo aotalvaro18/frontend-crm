@@ -543,6 +543,7 @@ export interface FormModalProps {
   loading?: boolean;
   size?: ModalSize;
   mobileDrawer?: boolean;
+  contentClassName?: string;
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -558,6 +559,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   loading = false,
   size = 'lg',
   mobileDrawer = true,
+  contentClassName,
 }) => {
   return (
     <Modal
@@ -570,7 +572,7 @@ export const FormModal: React.FC<FormModalProps> = ({
       mobileDrawer={mobileDrawer}
       closeOnOverlayClick={!loading}
       closeOnEscape={!loading}
-      contentClassName="pb-0"
+      contentClassName={cn("pb-0", contentClassName)}
     >
       <div className="space-y-6">
         {/* Form content */}

@@ -1,7 +1,7 @@
 // src/pages/contacts/ContactDetailPage.tsx
 // Contact detail page enterprise - Arquitectura limpia y desacoplada
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 //import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 
@@ -27,6 +27,7 @@ import ContactPortalSection from '../../components/contacts/ContactPortalSection
 import ContactActivityTimeline from '../../components/contacts/ContactActivityTimeline';
 import ContactCustomFields from '../../components/contacts/ContactCustomFields';
 import ContactNotes from '../../components/contacts/ContactNotes';
+import EditContactModal from './EditContactModal';
 
 // UI Components
 import { Button } from '@/components/ui/Button';
@@ -39,6 +40,7 @@ import Page from '@/components/layout/Page';
 // ============================================
 
 const ContactDetailPage: React.FC = () => {
+  const [showEditModal, setShowEditModal] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -94,9 +96,7 @@ const ContactDetailPage: React.FC = () => {
   };
 
   const handleEdit = () => {
-    if (contact) {
-      navigate(`/contacts/${contact.id}/edit`);
-    }
+    setShowEditModal(true);
   };
 
   const handleDelete = async () => {
@@ -239,6 +239,18 @@ const ContactDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Edit Modal */}
+      {contact && (
+        <EditContactModal
+          contact={contact}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            setShowEditModal(false);
+            getContactById(contact.id);
+          }}
+        />
+      )}
     </Page>
   );
 };
