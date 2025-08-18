@@ -196,6 +196,7 @@ interface ContactFormProps {
   loading: boolean;
   error?: string | null;
   mode: 'create' | 'edit';
+  showActions?: boolean; // Para controlar la visibilidad de los botones
 }
 
 // ============================================
@@ -500,14 +501,16 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
  // ============================================
  
- const ContactForm: React.FC<ContactFormProps> = ({
-  contact,
-  onSubmit,
-  onCancel,
-  loading,
-  error,
-  mode
- }) => {
+ const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
+  ({
+    contact,
+    onSubmit,
+    onCancel,
+    loading,
+    error,
+    mode,
+    showActions = true,
+  }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
@@ -683,7 +686,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   }, [currentPhone, setError, clearErrors, setValue]);
  
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+    <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
       {/* Error Message */}
       {error && (
         <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
@@ -822,7 +825,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="flex items-center text-app-gray-300 hover:text-app-gray-100 transition-colors"
-        >
+         >
           <span className="text-lg font-medium">Información Adicional</span>
           <span className="ml-2 text-sm text-app-gray-500">
             {showAdvanced ? '(ocultar)' : '(mostrar)'}
@@ -1014,7 +1017,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         )}
       </div>
  
-      <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
+      {showActions && (
+        <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
           <Button
             type="button"
             variant="outline"
@@ -1027,10 +1031,9 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           
           <Button
             type="submit"
-            // ✅ SOLUCIÓN: El '!!' convierte cualquier valor a su equivalente booleano.
-            disabled={loading || !!(currentPhone && !phoneValidation.isValid)}
+            disabled={loading || (!!currentPhone && !phoneValidation.isValid)}
             className="min-w-32"
-            >
+          >
             {loading ? (
               <LoadingSpinner size="sm" className="mr-2" />
             ) : (
@@ -1038,10 +1041,11 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             )}
             {mode === 'create' ? 'Crear Contacto' : 'Actualizar Contacto'}
           </Button>
-      </div>
+        </div>
+      )}
  
     </form>
   );
- };
+}); // ✅ CORRECCIÓN: El cierre correcto es '});' en lugar de '};'
  
- export default ContactForm;
+export default ContactForm;

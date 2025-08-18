@@ -5,24 +5,27 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { 
   User, Mail, Phone, MapPin, 
-  Save, X, AlertCircle, Check, Globe, CheckCircle2
+  Save, X, AlertCircle, Check, Globe, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { COUNTRY_CODES } from '@/utils/constants';
+import { GeographySelector } from '@/components/shared/GeographySelector';
+import { getCountryName } from '@/utils/geography';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
     UpdateContactRequest, 
     ContactSource,
     Gender,
-    AddressDTO,               // <-- Este es el alias correcto para 'Address'
     CommunicationPreferences
   } from '@/types/contact.types';
 
 // ============================================
-// E164 PHONE UTILITIES
+// E164 PHONE UTILITIES (Mejorado con libphonenumber-js)
 // ============================================
 
 interface PhoneValidationResult {
@@ -32,103 +35,88 @@ interface PhoneValidationResult {
   errorMessage?: string;
 }
 
-interface CountryCode {
-  code: string;
-  name: string;
-  flag: string;
-  dialCode: string;
-  format: string; // Formato de display
-}
-
-const COUNTRY_CODES: CountryCode[] = [
-  { code: 'CO', name: 'Colombia', flag: '🇨🇴', dialCode: '+57', format: '### ### ####' },
-  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', dialCode: '+1', format: '(###) ###-####' },
-  { code: 'ES', name: 'España', flag: '🇪🇸', dialCode: '+34', format: '### ### ###' },
-  { code: 'MX', name: 'México', flag: '🇲🇽', dialCode: '+52', format: '### ### ####' },
-  { code: 'AR', name: 'Argentina', flag: '🇦🇷', dialCode: '+54', format: '### ### ####' },
-  { code: 'BR', name: 'Brasil', flag: '🇧🇷', dialCode: '+55', format: '### ### ####' },
-  { code: 'CL', name: 'Chile', flag: '🇨🇱', dialCode: '+56', format: '### ### ####' },
-  { code: 'PE', name: 'Perú', flag: '🇵🇪', dialCode: '+51', format: '### ### ###' },
-];
-
 /**
- * Extrae la región/país de un número E164
+ * Extrae la región/país de un número E164 usando libphonenumber-js
  */
 const getRegionFromE164 = (e164Phone?: string): string => {
-  if (!e164Phone || !e164Phone.startsWith('+')) return 'CO'; // Default a Colombia
+  if (!e164Phone) return 'CO';
   
-  // Ordenar por longitud de dialCode para manejar casos como +1 (US) y +1-XXX (Caribe)
-  const sortedCountries = [...COUNTRY_CODES].sort((a, b) => b.dialCode.length - a.dialCode.length);
-
-  for (const country of sortedCountries) {
-    if (e164Phone.startsWith(country.dialCode)) {
-      return country.code;
-    }
+  try {
+    const phoneNumber = parsePhoneNumber(e164Phone);
+    return phoneNumber?.country || 'CO';
+  } catch {
+    return 'CO';
   }
-  return 'CO'; // Default
 };
 
 /**
- * Formatea un número E164 para display amigable
+ * Formatea un número E164 para display amigable usando libphonenumber-js
  */
 const formatPhoneForDisplay = (e164Phone: string): string => {
   if (!e164Phone || !e164Phone.startsWith('+')) return e164Phone;
   
-  const region = getRegionFromE164(e164Phone);
-  const country = COUNTRY_CODES.find(c => c.code === region);
+  try {
+    const phoneNumber = parsePhoneNumber(e164Phone);
+    if (phoneNumber) {
+      const country = COUNTRY_CODES.find(c => c.code === phoneNumber.country);
+      const flag = country?.flag || '';
+      return `${flag} ${phoneNumber.formatInternational()}`;
+    }
+  } catch (error) {
+    console.warn('Error formatting phone:', error);
+  }
   
-  if (!country) return e164Phone;
-  
-  const localNumber = e164Phone.replace(country.dialCode, '');
-  
-  let formatted = localNumber;
-  const format = country.format;
-  
-  let formatIndex = 0;
-  formatted = format.replace(/#/g, () => {
-    return localNumber[formatIndex++] || '';
-  });
-  
-  return `${country.flag} ${country.dialCode} ${formatted.trim()}`;
+  return e164Phone;
 };
 
 /**
- * Valida teléfono con el backend y retorna E164
+ * Valida teléfono con libphonenumber-js - VALIDACIÓN PRECISA
  */
-const validatePhoneWithBackend = async (phone: string, region: string): Promise<PhoneValidationResult> => {
-  // 🔥 No validar si el input local está vacío
+const validatePhoneWithLibphonenumber = async (phone: string, region: string): Promise<PhoneValidationResult> => {
   const trimmedPhone = phone.trim();
+  
+  // ✅ FIX: Campo vacío es válido
   if (!trimmedPhone) {
-    return { isValid: true }; // Un campo de teléfono vacío es válido
+    return { isValid: true };
   }
-  if (trimmedPhone.length < 7) {
-    return { isValid: false, errorMessage: 'Teléfono muy corto' };
-  }
-
+  
   try {
-    // 🔥 Simulando llamada a API por ahora. Reemplazar con tu cliente API real.
-    // const result = await apiClient.post('/validate-phone', { phone, region });
-    // SIMULACIÓN:
     const country = COUNTRY_CODES.find(c => c.code === region);
-    const e164Phone = `${country?.dialCode}${trimmedPhone}`;
-    const result = { 
-        isValid: true, 
-        e164Phone, 
-        errorMessage: undefined // Añadimos la propiedad opcional
+    if (!country) {
+      return { isValid: false, errorMessage: 'País no soportado' };
+    }
+    
+    // Construir número completo
+    const fullNumber = `${country.dialCode}${trimmedPhone}`;
+    
+    // ✅ FIX: Validación precisa con libphonenumber-js
+    const isValid = isValidPhoneNumber(fullNumber, region as any);
+    
+    if (isValid) {
+      const phoneNumber = parsePhoneNumber(fullNumber, region as any);
+      return {
+        isValid: true,
+        e164Phone: phoneNumber?.number,
+        formattedDisplay: formatPhoneForDisplay(phoneNumber?.number || fullNumber)
       };
-    // FIN SIMULACIÓN
-
-    return {
-      isValid: result.isValid,
-      e164Phone: result.e164Phone,
-      formattedDisplay: result.e164Phone ? formatPhoneForDisplay(result.e164Phone) : undefined,
-      errorMessage: result.errorMessage
-    };
+    } else {
+      // ✅ FIX: Validación de longitud más precisa
+      if (trimmedPhone.length < country.minLength) {
+        return { 
+          isValid: false, 
+          errorMessage: `Mínimo ${country.minLength} dígitos para ${country.name}`
+        };
+      }
+      return { 
+        isValid: false, 
+        errorMessage: 'Formato de teléfono inválido'
+      };
+    }
   } catch (error) {
     console.error('Phone validation error:', error);
     return { 
       isValid: false, 
-      errorMessage: 'Error al validar teléfono. Verificar formato.' 
+      errorMessage: 'Error al validar teléfono'
     };
   }
 };
@@ -181,7 +169,7 @@ const contactFormSchema = z.object({
   
   birthDate: z.string().optional().or(z.literal('')),
   
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
   
   source: z.string()
     .min(1, 'La fuente es requerida'),
@@ -208,6 +196,7 @@ interface ContactFormProps {
   loading: boolean;
   error?: string | null;
   mode: 'create' | 'edit';
+  showActions?: boolean; // Para controlar la visibilidad de los botones
 }
 
 // ============================================
@@ -237,7 +226,7 @@ interface FormFieldProps {
       <label htmlFor={name} className="flex items-center text-sm font-medium text-app-gray-300">
         {icon && <span className="mr-2 text-app-gray-400">{icon}</span>}
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-red-400 ml-1 text-lg font-bold">*</span>}
       </label>
       {children}
       {description && (
@@ -266,11 +255,47 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   onValidationChange,
   disabled,
   initialE164
-}) => {
+ }) => {
   const [selectedRegion, setSelectedRegion] = useState(() => getRegionFromE164(initialE164));
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<PhoneValidationResult | null>(null);
-
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+ 
+  const validatePhone = useCallback(async (phone: string, region: string) => {
+    setIsValidating(true);
+    try {
+      const result = await validatePhoneWithLibphonenumber(phone, region);
+      setValidationResult(result);
+      onValidationChange(result);
+    } catch (error) {
+      const errorResult = { isValid: false, errorMessage: 'Error de validación' };
+      setValidationResult(errorResult);
+      onValidationChange(errorResult);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [onValidationChange]);
+ 
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch) return COUNTRY_CODES;
+    const search = countrySearch.toLowerCase();
+    return COUNTRY_CODES.filter(country => 
+      country.name.toLowerCase().includes(search) ||
+      country.code.toLowerCase().includes(search) ||
+      country.dialCode.includes(search)
+    );
+  }, [countrySearch]);
+  
+  const handleCountrySelect = (countryCode: string) => {
+    setSelectedRegion(countryCode);
+    setIsCountryDropdownOpen(false);
+    setCountrySearch('');
+    validatePhone(value, countryCode);
+  };
+ 
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === selectedRegion);
+ 
   // Efecto para inicializar el valor del input si estamos en modo edición
   useEffect(() => {
     if (initialE164) {
@@ -283,54 +308,89 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       }
     }
   }, [initialE164, onChange]);
-
-  const validatePhone = useCallback(async (phone: string, region: string) => {
-    setIsValidating(true);
-    try {
-      const result = await validatePhoneWithBackend(phone, region);
-      setValidationResult(result);
-      onValidationChange(result);
-    } catch (error) {
-      const errorResult = { isValid: false, errorMessage: 'Error de validación' };
-      setValidationResult(errorResult);
-      onValidationChange(errorResult);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [onValidationChange]);
-
+ 
   // Debounce validation
   useEffect(() => {
     const timer = setTimeout(() => {
       validatePhone(value, selectedRegion);
-    }, 800);
-
+    }, 500);
+ 
     return () => clearTimeout(timer);
   }, [value, selectedRegion, validatePhone]);
-
-  const handleRegionChange = (newRegion: string) => {
-    setSelectedRegion(newRegion);
-    // Re-validar inmediatamente con la nueva región
-    validatePhone(value, newRegion);
-  };
-
-  const selectedCountry = COUNTRY_CODES.find(c => c.code === selectedRegion);
-
+ 
+  // useEffect para cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.relative')) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    
+    if (isCountryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isCountryDropdownOpen]);
+ 
   return (
     <div className="space-y-2">
       <div className="flex space-x-2">
-        <select
-          value={selectedRegion}
-          onChange={(e) => handleRegionChange(e.target.value)}
-          disabled={disabled}
-          className="px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-          {COUNTRY_CODES.map(country => (
-            <option key={country.code} value={country.code}>
-              {country.flag} {country.name} ({country.dialCode})
-            </option>
-          ))}
-        </select>
+        {/* Country Selector personalizado */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+            disabled={disabled}
+            className="flex items-center space-x-2 px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 hover:bg-app-dark-600 min-w-[200px]"
+          >
+            <span className="text-lg">{selectedCountry?.flag}</span>
+            <span className="text-sm font-mono">{selectedCountry?.dialCode}</span>
+            <span className="text-sm truncate flex-1 text-left">{selectedCountry?.name}</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {/* Dropdown personalizado */}
+          {isCountryDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-80 bg-app-dark-700 border border-app-dark-600 rounded-lg shadow-lg z-50 max-h-60 overflow-hidden">
+              {/* Campo de búsqueda */}
+              <div className="p-2 border-b border-app-dark-600">
+                <input
+                  type="text"
+                  placeholder="Buscar país..."
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-500 rounded text-app-gray-100 text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  autoFocus
+                />
+              </div>
+              
+              {/* Lista de países */}
+              <div className="overflow-y-auto max-h-48">
+                {filteredCountries.map((country) => (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => handleCountrySelect(country.code)}
+                    className={`w-full flex items-center space-x-3 px-4 py-2 text-left hover:bg-app-dark-600 ${
+                      selectedCountry?.code === country.code ? 'bg-app-dark-600' : ''
+                    }`}
+                  >
+                    <span className="text-lg">{country.flag}</span>
+                    <span className="font-mono text-sm w-12">{country.dialCode}</span>
+                    <span className="text-sm text-app-gray-200 truncate flex-1">{country.name}</span>
+                  </button>
+                ))}
+                
+                {filteredCountries.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-app-gray-500">
+                    No se encontraron países
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         
         <div className="relative flex-1">
           <input
@@ -369,13 +429,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       )}
     </div>
   );
-};
-
-// ============================================
-// CONSTANTS (Sin cambios)
-// ============================================
-
-const CONTACT_SOURCES = [
+ };
+ 
+ // ============================================
+ // CONSTANTS (Sin cambios)
+ // ============================================
+ 
+ const CONTACT_SOURCES = [
     { value: 'WEBSITE', label: 'Sitio Web' },
     { value: 'MANUAL_ENTRY', label: 'Entrada Manual' },
     { value: 'IMPORT', label: 'Importación' },
@@ -436,22 +496,24 @@ const CONTACT_SOURCES = [
       </div>
     );
   };
-
-// ============================================
-// MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
-// ============================================
-
-const ContactForm: React.FC<ContactFormProps> = ({
+ 
+ // ============================================
+ // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
+ // ============================================
+ 
+ const ContactForm: React.FC<ContactFormProps> = ({
   contact,
   onSubmit,
   onCancel,
   loading,
   error,
-  mode
-}) => {
+  mode,
+  showActions = true
+ }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
-
+  const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
+ 
   const {
     register,
     control,
@@ -481,30 +543,112 @@ const ContactForm: React.FC<ContactFormProps> = ({
     }), [contact])
   });
 
-  const currentPhone = watch('phone');
+  // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
+  useEffect(() => {
+    // Cuando el país del teléfono cambia, resetea el estado y la ciudad
+    setValue('address.state', '');
+    setValue('address.city', '');
+  }, [selectedCountryFromPhone, setValue]);
 
+  const watchedState = watch('address.state');
+  useEffect(() => {
+    // Cuando el estado/departamento cambia, resetea solo la ciudad
+    setValue('address.city', '');
+  }, [watchedState, setValue]);
+ 
+  const currentPhone = watch('phone');
+ 
   const handleFormSubmit = async (data: ContactFormData) => {
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
 
-    const baseSubmitData = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email || undefined,
-      phone: phoneValidation.e164Phone || undefined,
-      companyId: data.companyId,
-      address: data.address as AddressDTO,
-      birthDate: data.birthDate || undefined,
-      gender: data.gender as Gender,
-      source: data.source as ContactSource,
-      sourceDetails: data.sourceDetails,
-      customFields: data.customFields,
-      communicationPreferences: data.communicationPreferences as CommunicationPreferences,
-      tags: data.tags,
+    // ✅ DEBUG: Ver qué datos del formulario tenemos
+    console.log('🔍 Datos del formulario:', data);
+    console.log('🔍 Validación del teléfono:', phoneValidation);
+ 
+    // ✅ Crear datos según el DTO exacto del backend
+    const cleanedData: any = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      source: data.source as ContactSource, // Backend valida que sea string válido
     };
 
+    // ✅ OBLIGATORIO: email O teléfono (validación isValidContactInfo del backend)
+    if (data.email && data.email.trim()) {
+      cleanedData.email = data.email.trim();
+    }
+    
+    if (phoneValidation.e164Phone) {
+      cleanedData.phone = phoneValidation.e164Phone;
+    }
+
+    // ✅ Verificar que cumple validación del backend
+    if (!cleanedData.email && !cleanedData.phone) {
+      setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
+      setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
+      return;
+    }
+    
+    // ✅ Campos opcionales - solo si tienen valores
+    if (data.companyId) {
+      cleanedData.companyId = data.companyId;
+    }
+    
+    if (data.sourceDetails && data.sourceDetails.trim()) {
+      cleanedData.sourceDetails = data.sourceDetails.trim();
+    }
+    
+    if (data.birthDate && data.birthDate.trim()) {
+      cleanedData.birthDate = data.birthDate; // LocalDate en backend
+    }
+    
+    if (data.gender && data.gender.trim()) {
+      cleanedData.gender = data.gender as Gender;
+    }
+
+    // ✅ Address - solo si tiene datos (hasAnyField del backend)
+    if (data.address) {
+      const hasAddressData = Object.values(data.address).some(value => value && value.trim());
+      if (hasAddressData) {
+        const cleanAddress: any = {};
+        Object.entries(data.address).forEach(([key, value]) => {
+          if (value && value.trim()) {
+            cleanAddress[key] = value.trim();
+          }
+        });
+        cleanedData.address = cleanAddress;
+      }
+    }
+
+    // ✅ CommunicationPreferences - Map<String, Object> según backend
+    if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
+      const cleanPrefs: Record<string, any> = {};
+      Object.entries(data.communicationPreferences).forEach(([key, value]) => {
+        if (typeof value === 'boolean') {
+          cleanPrefs[key] = value;
+        }
+      });
+      if (Object.keys(cleanPrefs).length > 0) {
+        cleanedData.communicationPreferences = cleanPrefs;
+      }
+    }
+
+    // ✅ IMPORTANTE: Backend espera tagNames (strings), no tags (numbers)
+    if (data.tags && data.tags.length > 0) {
+      // Necesitarías convertir IDs a nombres, o mejor cambiar el formulario
+      // Por ahora lo omitimos hasta que tengas la conversión
+      console.warn('⚠️ Tags omitidos - backend espera tagNames (strings), no IDs');
+    }
+
+    // ✅ CustomFields - Map<String, Object> según backend
+    if (data.customFields && Object.keys(data.customFields).length > 0) {
+      cleanedData.customFields = data.customFields;
+    }
+
+    const baseSubmitData = cleanedData;
+ 
     // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
     if (mode === 'edit' && contact) {
       // En esta rama, TypeScript sabe que el objeto debe ser un UpdateContactRequest
@@ -512,6 +656,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
         ...baseSubmitData,
         version: contact.version,
       };
+      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
       // En esta rama, TypeScript sabe que el objeto debe ser un CreateContactRequest
@@ -519,18 +664,26 @@ const ContactForm: React.FC<ContactFormProps> = ({
       await onSubmit(createData);
     }
   };
-
+ 
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
     
-    // Actualizar el error del formulario basado en el resultado de la validación
+    // ✅ NUEVO: Extraer país del teléfono para geografía
+    if (result.isValid && result.e164Phone) {
+      const region = getRegionFromE164(result.e164Phone);
+      setSelectedCountryFromPhone(region);
+      
+      // Auto-llenar campo país
+      setValue('address.country', getCountryName(region));
+    }
+    
     if (currentPhone && !result.isValid) {
       setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
     } else {
       clearErrors('phone');
     }
-  }, [currentPhone, setError, clearErrors]);
-
+  }, [currentPhone, setError, clearErrors, setValue]);
+ 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
       {/* Error Message */}
@@ -542,18 +695,18 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </div>
         </div>
       )}
-
+ 
       {/* Basic Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información Básica
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Nombre"
             name="firstName"
-            required
+            required={true}
             icon={<User className="h-4 w-4" />}
             error={errors.firstName?.message}
           >
@@ -564,11 +717,11 @@ const ContactForm: React.FC<ContactFormProps> = ({
               placeholder="Ingresa el nombre"
             />
           </FormField>
-
+ 
           <FormField
             label="Apellido"
             name="lastName"
-            required
+            required={true}
             icon={<User className="h-4 w-4" />}
             error={errors.lastName?.message}
           >
@@ -581,13 +734,13 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </FormField>
         </div>
       </div>
-
+ 
       {/* Contact Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información de Contacto
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Correo electrónico"
@@ -603,7 +756,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               placeholder="ejemplo@correo.com"
             />
           </FormField>
-
+ 
       {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
       <FormField
         label="Teléfono"
@@ -622,18 +775,18 @@ const ContactForm: React.FC<ContactFormProps> = ({
       </FormField>
       </div>
       </div>
-
+ 
       {/* Source Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Origen del Contacto
         </h3>
-
+ 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             label="Fuente"
             name="source"
-            required
+            required={true}
             icon={<Globe className="h-4 w-4" />}
             error={errors.source?.message}
           >
@@ -648,7 +801,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
               ))}
             </select>
           </FormField>
-
+ 
           <FormField
             label="Detalles de la fuente"
             name="sourceDetails"
@@ -664,20 +817,20 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </FormField>
         </div>
       </div>
-
+ 
       {/* Advanced Information */}
       <div className="space-y-6">
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="flex items-center text-app-gray-300 hover:text-app-gray-100 transition-colors"
-        >
+         >
           <span className="text-lg font-medium">Información Adicional</span>
           <span className="ml-2 text-sm text-app-gray-500">
             {showAdvanced ? '(ocultar)' : '(mostrar)'}
           </span>
         </button>
-
+ 
         {showAdvanced && (
           <div className="space-y-6 p-4 bg-app-dark-700/50 rounded-lg border border-app-dark-600">
             {/* Personal Information */}
@@ -694,7 +847,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                   className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </FormField>
-
+ 
               <FormField
                 label="Género"
                 name="gender"
@@ -714,95 +867,134 @@ const ContactForm: React.FC<ContactFormProps> = ({
                 </select>
               </FormField>
             </div>
+ 
+            {/* Address - ✅ LAYOUT CORREGIDO Y SIN BUCLES */}
+<div className="space-y-4">
+  <h4 className="text-md font-medium text-app-gray-200 flex items-center">
+    <MapPin className="h-4 w-4 mr-2" />
+    Dirección
+  </h4>
+  
+  {selectedCountryFromPhone && (
+    <>
+      <h5 className="text-sm font-medium text-app-gray-300 pt-2">
+        Ubicación Geográfica
+      </h5>
 
-            {/* Address */}
-            <div className="space-y-4">
-              <h4 className="text-md font-medium text-app-gray-200 flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                Dirección
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Dirección principal"
-                  name="address.addressLine1"
-                  error={errors.address?.addressLine1?.message}
-                >
-                  <input
-                    {...register('address.addressLine1')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Calle 123 #45-67"
-                  />
-                </FormField>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        
+        {/* --- Fila 1: País y Departamento/Estado --- */}
+        <div className="col-span-1">
+          <FormField 
+            label="País" 
+            name="address.country" 
+            error={errors.address?.country?.message}
+          >
+            <input 
+              {...register('address.country')} 
+              type="text" 
+              readOnly 
+              className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed" 
+              placeholder="Automático desde teléfono"
+            />
+          </FormField>
+        </div>
+        
+        <div className="col-span-1">
+          <FormField 
+            label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
+            name="address.state" 
+            error={errors.address?.state?.message}
+          >
+            <GeographySelector
+              countryCode={selectedCountryFromPhone}
+              selectedState={watch('address.state') || ''}
+              onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
+              onCityChange={() => {}} // No hace nada aquí
+              disabled={loading || !selectedCountryFromPhone}
+              layout="separate"
+              renderStateOnly
+              errorState={errors.address?.state?.message}
+            />
+          </FormField>
+        </div>
 
-                <FormField
-                  label="Dirección secundaria"
-                  name="address.addressLine2"
-                  error={errors.address?.addressLine2?.message}
-                >
-                  <input
-                    {...register('address.addressLine2')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Apartamento, suite, etc."
-                  />
-                </FormField>
+        {/* --- Fila 2: Ciudad y Código Postal --- */}
+        <div className="col-span-1">
+          <FormField 
+            label="Ciudad" 
+            name="address.city" 
+            error={errors.address?.city?.message}
+          >
+            <GeographySelector
+              countryCode={selectedCountryFromPhone}
+              selectedState={watch('address.state') || ''}
+              selectedCity={watch('address.city') || ''}
+              onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
+              onStateChange={() => {}} // No hace nada aquí
+              // ✅ NUEVO: Auto-llenar código postal
+              onPostalCodeAutoFill={(postalCode) => {
+                setValue('address.postalCode', postalCode, { shouldValidate: true });
+              }}
+              disabled={loading || !watch('address.state')}
+              layout="separate"
+              renderCityOnly
+              errorCity={errors.address?.city?.message}
+              showPostalCodeHint={true}
+            />
+          </FormField>
+        </div>
 
-                <FormField
-                  label="Ciudad"
-                  name="address.city"
-                  error={errors.address?.city?.message}
-                >
-                  <input
-                    {...register('address.city')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Cali"
-                  />
-                </FormField>
+        <div className="col-span-1">
+          <FormField 
+            label="Código postal" 
+            name="address.postalCode" 
+            error={errors.address?.postalCode?.message}
+          >
+            <input 
+              {...register('address.postalCode')} 
+              type="text" 
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+              placeholder="760001"
+            />
+          </FormField>
+        </div>
 
-                <FormField
-                  label="Departamento/Estado"
-                  name="address.state"
-                  error={errors.address?.state?.message}
-                >
-                  <input
-                    {...register('address.state')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Valle del Cauca"
-                  />
-                </FormField>
+        {/* --- Fila 3: Direcciones --- */}
+        <div className="col-span-1">
+          <FormField 
+            label="Dirección principal" 
+            name="address.addressLine1" 
+            error={errors.address?.addressLine1?.message}
+          >
+            <input 
+              {...register('address.addressLine1')} 
+              type="text" 
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+              placeholder="Calle 123 #45-67"
+            />
+          </FormField>
+        </div>
 
-                <FormField
-                  label="Código postal"
-                  name="address.postalCode"
-                  error={errors.address?.postalCode?.message}
-                >
-                  <input
-                    {...register('address.postalCode')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="760001"
-                  />
-                </FormField>
-
-                <FormField
-                  label="País"
-                  name="address.country"
-                  error={errors.address?.country?.message}
-                >
-                  <input
-                    {...register('address.country')}
-                    type="text"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Colombia"
-                  />
-                </FormField>
-              </div>
-            </div>
-
+        <div className="col-span-1">
+          <FormField 
+            label="Dirección secundaria" 
+            name="address.addressLine2" 
+            error={errors.address?.addressLine2?.message}
+          >
+            <input 
+              {...register('address.addressLine2')} 
+              type="text" 
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+              placeholder="Apartamento, suite, etc."
+            />
+          </FormField>
+        </div>
+      </div>
+    </>
+  )}
+</div>
+ 
             {/* Communication Preferences */}
             <FormField
               label="Preferencias de comunicación"
@@ -823,7 +1015,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
           </div>
         )}
       </div>
-
+ 
       <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
           <Button
             type="button"
@@ -849,9 +1041,9 @@ const ContactForm: React.FC<ContactFormProps> = ({
             {mode === 'create' ? 'Crear Contacto' : 'Actualizar Contacto'}
           </Button>
       </div>
-
+ 
     </form>
   );
-};
-
-export default ContactForm;
+ };
+ 
+ export default ContactForm;
