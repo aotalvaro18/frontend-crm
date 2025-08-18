@@ -1,7 +1,7 @@
 // src/pages/contacts/ContactDetailPage.tsx
 // Contact detail page enterprise - Arquitectura limpia y desacoplada
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 //import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 
@@ -131,6 +131,17 @@ const ContactDetailPage: React.FC = () => {
     }
   };
 
+  // ✅ CORRECCIÓN: Handler para el evento de éxito del modal de edición
+const handleUpdateSuccess = useCallback(() => {
+  setShowEditModal(false); // Primero, cierra el modal
+  
+  // Segundo, pide los datos frescos del contacto para refrescar la página.
+  // Asegúrate de que contactId no sea nulo antes de llamar.
+  if (contactId) {
+    getContactById(contactId);
+  }
+}, [contactId, getContactById]); // Las dependencias son correctas
+
   // ============================================
   // ESTADOS CONDICIONALES
   // ============================================
@@ -245,10 +256,7 @@ const ContactDetailPage: React.FC = () => {
           contact={contact}
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          onSuccess={() => {
-            setShowEditModal(false);
-            getContactById(contact.id);
-          }}
+          onSuccess={handleUpdateSuccess}
         />
       )}
     </Page>
