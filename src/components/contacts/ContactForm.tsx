@@ -1046,6 +1046,6 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  
     </form>
   );
-}); // ✅ CORRECCIÓN: El cierre correcto es '});' en lugar de '};'
+});
  
 export default ContactForm;

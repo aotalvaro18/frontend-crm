@@ -1,6 +1,5 @@
 // src/pages/contacts/EditContactModal.tsx
-// ✅ SIGUIENDO "LA FORMA EKLESA" - Modal enterprise usando componente Modal reutilizable
-// Componente "tonto" que orquesta, ContactForm construye, Hook maneja lógica
+// ✅ VERSIÓN CORREGIDA - Sin botones duplicados, sin scroll interno
 
 import React from 'react';
 import { Save } from 'lucide-react';
@@ -17,7 +16,7 @@ import { useContactOperations } from '@/hooks/useContacts';
 // ============================================
 
 import ContactForm from '@/components/contacts/ContactForm';
-import { FormModal } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Modal';
 
 // ============================================
 // TYPES (Props explícitas)
@@ -82,27 +81,18 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
   };
 
   // ============================================
-  // RENDER USANDO COMPONENTE REUTILIZABLE
+  // RENDER USANDO COMPONENTE REUTILIZABLE - ✅ CORREGIDO
   // ============================================
 
   return (
-    <FormModal
+    <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      onSave={() => {
-        // El save se maneja desde el ContactForm directamente
-        // Este modal no necesita manejar el save porque ContactForm
-        // ya tiene su propio botón de submit
-      }}
       title="Editar Contacto"
       description={`${contact.firstName} ${contact.lastName}`}
       size="4xl"
       mobileDrawer={true}
-      loading={loading}
-      saveText="Actualizar Contacto"
-      cancelText="Cancelar"
-      // Ocultamos los botones del FormModal porque ContactForm maneja sus propios botones
-      contentClassName="pb-6"
+      contentClassName="pb-6 max-h-[80vh] overflow-y-auto"
     >
       {/* Error Message */}
       {error && (
@@ -122,8 +112,9 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
         loading={loading}
         error={error}
         mode="edit"
+        showActions={true}
       />
-    </FormModal>
+    </Modal>
   );
 };
 
