@@ -190,13 +190,14 @@ type ContactFormData = z.infer<typeof contactFormSchema>;
 // ============================================
 
 interface ContactFormProps {
-  contact?: ContactDTO;
+  initialContactForEdit?: ContactDTO; // Renombramos 'contact' y lo hacemos opcional
+  defaultValues: Record<string, any>; // Añadimos la nueva prop requerida
   onSubmit: (data: CreateContactRequest | UpdateContactRequest) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
   error?: string | null;
   mode: 'create' | 'edit';
-  showActions?: boolean; // Para controlar la visibilidad de los botones
+  showActions?: boolean;
 }
 
 // ============================================
@@ -503,7 +504,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  
  const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
   ({
-    contact,
+    initialContactForEdit, // Usamos la nueva prop
+    defaultValues,       // Usamos la nueva prop
     onSubmit,
     onCancel,
     loading,
@@ -526,22 +528,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     clearErrors
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    // 🔥 Lógica de defaultValues mejorada
-    defaultValues: useMemo(() => ({
-      firstName: contact?.firstName || '',
-      lastName: contact?.lastName || '',
-      email: contact?.email || '',
-      phone: '', // El input local del teléfono siempre empieza vacío. `SmartPhoneInput` lo llenará si hay `initialE164`.
-      companyId: contact?.companyId,
-      address: contact?.address,
-      birthDate: contact?.birthDate ? contact.birthDate.split('T')[0] : '', // Formatear para input[type=date]
-      gender: contact?.gender,
-      source: contact?.source || 'MANUAL_ENTRY',
-      sourceDetails: contact?.sourceDetails,
-      customFields: contact?.customFields,
-      communicationPreferences: contact?.communicationPreferences,
-      tags: contact?.tags?.map(tag => tag.id),
-    }), [contact])
+    // ✅ Ahora simplemente usamos los valores pre-procesados que nos llegan por props.
+    defaultValues: defaultValues,
   });
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
@@ -560,7 +548,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
-    // 1. Validaciones (sin cambios)
+    // 1. Validaciones
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
@@ -571,69 +559,44 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       return;
     }
   
-    // 2. "Traducción" Estructural para communicationPreferences
+    // 2. "Traducción" Estructural
     const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
   
     // 3. Lógica separada para CREAR y EDITAR
-    if (mode === 'edit' && contact) {
-      // --- MODO EDICIÓN ---
+    if (mode === 'edit' && initialContactForEdit) {
       const updateData: UpdateContactRequest = {
-        ...contact,
+        ...initialContactForEdit,
         ...data,
-        version: contact.version,
+        version: initialContactForEdit.version,
         phone: phoneValidation.e164Phone || undefined,
         gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
         birthDate: data.birthDate === '' ? undefined : data.birthDate,
         source: data.source as ContactSource,
         marketingConsent: marketingConsent,
         communicationPreferences: {
-          ...(contact.communicationPreferences),
+          ...(initialContactForEdit.communicationPreferences),
           ...restOfCommPrefs,
         },
-        // ✅ LA SOLUCIÓN FINAL: Transformamos los tags
-        // 'data.tags' ya es un `number[]` del formulario.
-        // Así nos aseguramos de que el tipo final sea `number[]` como espera la API.
         tags: data.tags,
       };
-  
-      console.log('🚀 Enviando UPDATE (FINALÍSIMO):', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
-  
     } else {
-      // --- MODO CREACIÓN ---
       const defaultCommPrefs: CommunicationPreferences = {
-        allowEmail: false,
-        allowSms: false,
-        allowPhone: false,
-        allowWhatsapp: false,
-        allowPostalMail: false,
-        preferredContactMethod: 'EMAIL',
-        preferredTime: 'ANYTIME',
-        language: 'es',
+          allowEmail: false, allowSms: false, allowPhone: false, allowWhatsapp: false,
+          allowPostalMail: false, preferredContactMethod: 'EMAIL', preferredTime: 'ANYTIME', language: 'es',
       };
-  
       const createData: CreateContactRequest = {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        email: data.email?.trim() || undefined,
-        companyId: data.companyId,
-        address: data.address,
-        sourceDetails: data.sourceDetails,
-        customFields: data.customFields,
-        phone: phoneValidation.e164Phone || undefined,
-        source: data.source as ContactSource,
-        birthDate: data.birthDate === '' ? undefined : data.birthDate,
-        gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
-        marketingConsent: marketingConsent,
-        communicationPreferences: {
-          ...defaultCommPrefs,
-          ...restOfCommPrefs,
-        },
-        // ✅ Aquí también, 'data.tags' del formulario ya es `number[]`
-        tags: data.tags,
+          firstName: data.firstName.trim(), lastName: data.lastName.trim(),
+          email: data.email?.trim() || undefined, companyId: data.companyId,
+          address: data.address, sourceDetails: data.sourceDetails,
+          customFields: data.customFields, phone: phoneValidation.e164Phone || undefined,
+          source: data.source as ContactSource,
+          birthDate: data.birthDate === '' ? undefined : data.birthDate,
+          gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+          marketingConsent: marketingConsent,
+          communicationPreferences: { ...defaultCommPrefs, ...restOfCommPrefs },
+          tags: data.tags,
       };
-  
-      console.log('🚀 Enviando CREATE (FINALÍSIMO):', JSON.stringify(createData, null, 2));
       await onSubmit(createData);
     }
   };
@@ -743,7 +706,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           onChange={(phone) => setValue('phone', phone, { shouldValidate: true, shouldDirty: true })}
           onValidationChange={handlePhoneValidation}
           disabled={loading}
-          initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
+          initialE164={initialContactForEdit?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
         />
       </FormField>
       </div>
