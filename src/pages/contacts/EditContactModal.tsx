@@ -1,12 +1,13 @@
 // En: src/pages/contacts/EditContactModal.tsx
 
-import React, { useMemo } from 'react';
+import React from 'react'; // Ya no se necesita `useMemo`
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useContactOperations } from '@/hooks/useContacts';
 import ContactForm from '@/components/contacts/ContactForm';
 import type { 
   ContactDTO, 
+  CreateContactRequest, // Aunque no se usa aquí, es parte del tipo `onSubmit`
   UpdateContactRequest 
 } from '@/types/contact.types';
 
@@ -25,44 +26,16 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
 }) => {
   const { updateContact, loading, error, clearError } = useContactOperations();
 
-  // ✅ 1. PRE-PROCESAMIENTO: Este componente prepara los datos para el formulario.
-  const formDefaultValues = useMemo(() => {
-    // Si el modal está abierto pero no hay contacto, devuelve un objeto vacío para seguridad.
-    if (!contact) return {};
-
-    // "Traduce" la estructura de la API a la estructura que el formulario necesita.
-    const formCommPrefs = {
-      ...(contact.communicationPreferences ?? {}),
-      marketingConsent: contact.marketingConsent ?? false,
-    };
-    const formTagIds = contact.tags?.map(tag => tag.id) || [];
-
-    return {
-      firstName: contact.firstName || '',
-      lastName: contact.lastName || '',
-      email: contact.email || '',
-      phone: '', // SmartPhoneInput se encarga de esto
-      companyId: contact.companyId,
-      address: contact.address,
-      birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
-      gender: contact.gender,
-      source: contact.source || 'MANUAL_ENTRY',
-      sourceDetails: contact.sourceDetails,
-      customFields: contact.customFields,
-      communicationPreferences: formCommPrefs,
-      tags: formTagIds,
-    };
-  }, [contact]);
-
   const handleClose = () => {
     clearError();
     onClose();
   };
 
-  const handleSubmit = async (data: UpdateContactRequest) => {
+  const handleSubmit = async (data: CreateContactRequest | UpdateContactRequest) => {
     try {
-      await updateContact(contact.id, data);
-      toast.success(`Contacto "${contact.firstName}" actualizado.`);
+      // TypeScript sabe que `data` aquí debe ser `UpdateContactRequest` por la lógica en ContactForm.
+      await updateContact(contact.id, data as UpdateContactRequest);
+      toast.success(`Contacto "${contact.firstName} ${contact.lastName}" actualizado exitosamente`);
       onSuccess();
     } catch (err) {
       console.error('Error al actualizar el contacto:', err);
@@ -100,12 +73,11 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
             </div>
           )}
           
-          {/* ✅ 2. PASAMOS LAS PROPS CORRECTAS: `initialContactForEdit` y los `defaultValues` ya limpios. */}
+          {/* ✅ Versión simple y original: solo pasa `contact` y `mode`. */}
           <ContactForm
+            contact={contact}
             mode="edit"
-            initialContactForEdit={contact}
-            defaultValues={formDefaultValues}
-            onSubmit={handleSubmit as any}
+            onSubmit={handleSubmit}
             onCancel={handleClose}
             loading={loading}
             error={error}

@@ -1,5 +1,5 @@
 // src/components/contacts/ContactForm.tsx
-// ✅ VERSIÓN FINAL: Contact form enterprise - E164 estándar y limpio
+// ✅ VERSIÓN FINAL Y SEGURA: Usa `useEffect` con `reset` para evitar el crash.
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -186,14 +186,11 @@ const contactFormSchema = z.object({
 type ContactFormData = z.infer<typeof contactFormSchema>;
 
 // ============================================
-// TYPES - ✅ ACTUALIZADA SEGÚN ARQUITECTURA LIMPIA
+// TYPES
 // ============================================
 
 interface ContactFormProps {
-  // ✅ CAMBIO 1: Renombrar contact a initialContactForEdit para mayor claridad
-  initialContactForEdit?: ContactDTO;
-  // ✅ CAMBIO 2: defaultValues ahora es requerido (el padre siempre los prepara)
-  defaultValues: Record<string, any>;
+  contact?: ContactDTO;
   onSubmit: (data: CreateContactRequest | UpdateContactRequest) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
@@ -501,25 +498,23 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   };
  
  // ============================================
- // MAIN COMPONENT - ✅ ARQUITECTURA LIMPIA IMPLEMENTADA
+ // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
  // ============================================
  
  const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
   ({
-    initialContactForEdit, // ✅ CAMBIO 3: Nombre más descriptivo
-    defaultValues,        // ✅ CAMBIO 4: Ahora requerido, preparado por el padre
+    contact,
     onSubmit,
     onCancel,
     loading,
     error,
     mode,
     showActions = true,
-  }, ref) => {
+  }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
  
-  // ✅ CAMBIO 5: SIMPLIFICAMOS useForm - Solo usa los defaultValues del padre
   const {
     register,
     control,
@@ -528,11 +523,47 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     watch,
     setValue,
     setError,
-    clearErrors
+    clearErrors,
+    reset // <-- Importante: obtenemos la función `reset` de useForm
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    defaultValues: defaultValues, // ✅ Sin useMemo, sin lógica compleja
+    // ✅ PASO CLAVE 1: Inicializamos el formulario VACÍO o con valores mínimos.
+    // Esto previene 100% el crash, porque no procesa datos complejos al inicio.
+    defaultValues: {
+      source: 'MANUAL_ENTRY',
+      // Provee valores iniciales vacíos para los campos controlados para evitar warnings de React
+      communicationPreferences: { marketingConsent: false },
+      tags: [],
+    }
   });
+
+  // ✅ PASO CLAVE 2: Usamos useEffect para CARGAR los datos DESPUÉS de que el formulario se haya inicializado.
+  useEffect(() => {
+    // Si estamos en modo 'edit' y tenemos un 'contact', cargamos sus datos.
+    if (mode === 'edit' && contact) {
+      // 1. Pre-procesamos los datos a la estructura que el formulario espera.
+      const formData = {
+        firstName: contact.firstName || '',
+        lastName: contact.lastName || '',
+        email: contact.email || '',
+        phone: '', // SmartPhoneInput se encarga de esto
+        companyId: contact.companyId,
+        address: contact.address,
+        birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+        gender: contact.gender,
+        source: contact.source || 'MANUAL_ENTRY',
+        sourceDetails: contact.sourceDetails,
+        customFields: contact.customFields,
+        communicationPreferences: {
+          ...(contact.communicationPreferences ?? {}),
+          marketingConsent: contact.marketingConsent ?? false,
+        },
+        tags: contact.tags?.map(tag => tag.id) || [],
+      };
+      // 2. Usamos `reset` para llenar el formulario con estos datos.
+      reset(formData);
+    }
+  }, [contact, mode, reset]); // Se ejecuta cuando el `contact` llega por primera vez.
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
@@ -549,9 +580,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  
   const currentPhone = watch('phone');
  
-  // ✅ CAMBIO 6: USAMOS LA VERSIÓN FINAL CORRECTA de handleFormSubmit
   const handleFormSubmit = async (data: ContactFormData) => {
-    // Validaciones
+    // 1. Validaciones
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
@@ -561,90 +591,45 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
       return;
     }
-
+  
+    // 2. "Traducción" Estructural para la API
     const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
-    
-    if (mode === 'edit' && initialContactForEdit) {
-      // ✅ CAMBIO 7: Usamos initialContactForEdit en lugar de contact
+  
+    // 3. Lógica separada para CREAR y EDITAR
+    if (mode === 'edit' && contact) {
       const updateData: UpdateContactRequest = {
-        ...initialContactForEdit,
+        ...contact,
         ...data,
-        version: initialContactForEdit.version,
+        version: contact.version,
         phone: phoneValidation.e164Phone || undefined,
         gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
         birthDate: data.birthDate === '' ? undefined : data.birthDate,
         source: data.source as ContactSource,
         marketingConsent: marketingConsent,
         communicationPreferences: {
-          ...(initialContactForEdit.communicationPreferences ?? {}),
+          ...(contact.communicationPreferences),
           ...restOfCommPrefs,
         },
         tags: data.tags,
       };
-      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
-      // Modo crear - lógica original sin cambios
-      const cleanedData: any = {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        source: data.source as ContactSource,
+      const defaultCommPrefs: CommunicationPreferences = {
+          allowEmail: false, allowSms: false, allowPhone: false, allowWhatsapp: false,
+          allowPostalMail: false, preferredContactMethod: 'EMAIL', preferredTime: 'ANYTIME', language: 'es',
       };
-
-      if (data.email && data.email.trim()) {
-        cleanedData.email = data.email.trim();
-      }
-      
-      if (phoneValidation.e164Phone) {
-        cleanedData.phone = phoneValidation.e164Phone;
-      }
-      
-      if (data.companyId) {
-        cleanedData.companyId = data.companyId;
-      }
-      
-      if (data.sourceDetails && data.sourceDetails.trim()) {
-        cleanedData.sourceDetails = data.sourceDetails.trim();
-      }
-      
-      if (data.birthDate && data.birthDate.trim()) {
-        cleanedData.birthDate = data.birthDate;
-      }
-      
-      if (data.gender && data.gender.trim()) {
-        cleanedData.gender = data.gender as Gender;
-      }
-
-      if (data.address) {
-        const hasAddressData = Object.values(data.address).some(value => value && value.trim());
-        if (hasAddressData) {
-          const cleanAddress: any = {};
-          Object.entries(data.address).forEach(([key, value]) => {
-            if (value && value.trim()) {
-              cleanAddress[key] = value.trim();
-            }
-          });
-          cleanedData.address = cleanAddress;
-        }
-      }
-
-      if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
-        const cleanPrefs: Record<string, any> = {};
-        Object.entries(data.communicationPreferences).forEach(([key, value]) => {
-          if (typeof value === 'boolean') {
-            cleanPrefs[key] = value;
-          }
-        });
-        if (Object.keys(cleanPrefs).length > 0) {
-          cleanedData.communicationPreferences = cleanPrefs;
-        }
-      }
-
-      if (data.customFields && Object.keys(data.customFields).length > 0) {
-        cleanedData.customFields = data.customFields;
-      }
-
-      const createData: CreateContactRequest = cleanedData;
+      const createData: CreateContactRequest = {
+          firstName: data.firstName.trim(), lastName: data.lastName.trim(),
+          email: data.email?.trim() || undefined, companyId: data.companyId,
+          address: data.address, sourceDetails: data.sourceDetails,
+          customFields: data.customFields, phone: phoneValidation.e164Phone || undefined,
+          source: data.source as ContactSource,
+          birthDate: data.birthDate === '' ? undefined : data.birthDate,
+          gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+          marketingConsent: marketingConsent,
+          communicationPreferences: { ...defaultCommPrefs, ...restOfCommPrefs },
+          tags: data.tags,
+      };
       await onSubmit(createData);
     }
   };
@@ -652,9 +637,12 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
     
+    // ✅ NUEVO: Extraer país del teléfono para geografía
     if (result.isValid && result.e164Phone) {
       const region = getRegionFromE164(result.e164Phone);
       setSelectedCountryFromPhone(region);
+      
+      // Auto-llenar campo país
       setValue('address.country', getCountryName(region));
     }
     
@@ -738,7 +726,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             />
           </FormField>
  
-      {/* ✅ CAMBIO 8: SmartPhoneInput usa initialContactForEdit?.phone */}
+      {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
       <FormField
         label="Teléfono"
         name="phone"
@@ -751,7 +739,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           onChange={(phone) => setValue('phone', phone, { shouldValidate: true, shouldDirty: true })}
           onValidationChange={handlePhoneValidation}
           disabled={loading}
-          initialE164={initialContactForEdit?.phone} // ✅ CAMBIO: usa initialContactForEdit
+          initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
         />
       </FormField>
       </div>
