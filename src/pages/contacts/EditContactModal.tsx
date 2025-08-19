@@ -25,26 +25,23 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
 }) => {
   const { updateContact, loading, error, clearError } = useContactOperations();
 
-  // ✅ SOLUCIÓN: Pre-procesamos los datos aquí para evitar el crash en el formulario.
+  // ✅ 1. PRE-PROCESAMIENTO: Este componente prepara los datos para el formulario.
   const formDefaultValues = useMemo(() => {
+    // Si el modal está abierto pero no hay contacto, devuelve un objeto vacío para seguridad.
     if (!contact) return {};
 
-    // 1. Tomamos las preferencias de comunicación y añadimos marketingConsent
-    //    para que coincida con la estructura del formulario.
+    // "Traduce" la estructura de la API a la estructura que el formulario necesita.
     const formCommPrefs = {
       ...(contact.communicationPreferences ?? {}),
       marketingConsent: contact.marketingConsent ?? false,
     };
-
-    // 2. Transformamos los tags de objetos a IDs.
     const formTagIds = contact.tags?.map(tag => tag.id) || [];
 
-    // 3. Creamos el objeto final de valores por defecto para el formulario.
     return {
       firstName: contact.firstName || '',
       lastName: contact.lastName || '',
       email: contact.email || '',
-      phone: '', // SmartPhoneInput se encarga de esto a partir del initialE164
+      phone: '', // SmartPhoneInput se encarga de esto
       companyId: contact.companyId,
       address: contact.address,
       birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
@@ -65,10 +62,9 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
   const handleSubmit = async (data: UpdateContactRequest) => {
     try {
       await updateContact(contact.id, data);
-      toast.success(`Contacto "${contact.firstName} ${contact.lastName}" actualizado exitosamente`);
+      toast.success(`Contacto "${contact.firstName}" actualizado.`);
       onSuccess();
     } catch (err) {
-      // El error ya lo maneja el hook y se muestra en el formulario
       console.error('Error al actualizar el contacto:', err);
     }
   };
@@ -95,23 +91,21 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
               <div className="flex items-center">
-                {/* Puedes usar cualquier icono, Save es una opción */}
                 <X className="h-4 w-4 text-red-400 mr-2" /> 
                 <span className="text-sm text-red-300">{error}</span>
               </div>
             </div>
           )}
           
+          {/* ✅ 2. PASAMOS LAS PROPS CORRECTAS: `initialContactForEdit` y los `defaultValues` ya limpios. */}
           <ContactForm
             mode="edit"
-            // ✅ Pasamos props claras y pre-procesadas
             initialContactForEdit={contact}
             defaultValues={formDefaultValues}
-            onSubmit={handleSubmit as any} // 'as any' es seguro aquí porque el modo 'edit' solo llama a handleSubmit con UpdateContactRequest
+            onSubmit={handleSubmit as any}
             onCancel={handleClose}
             loading={loading}
             error={error}
