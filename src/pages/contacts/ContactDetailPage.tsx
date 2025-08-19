@@ -95,8 +95,14 @@ const ContactDetailPage: React.FC = () => {
     navigate('/contacts');
   };
 
+  //const handleEdit = () => {
+    //setShowEditModal(true);
+  //};
+
   const handleEdit = () => {
-    setShowEditModal(true);
+    console.log('Edit button clicked');
+    alert('Edit button works!');
+    // setShowEditModal(true);  // <-- COMENTAR ESTA LÍNEA
   };
 
   const handleDelete = async () => {
