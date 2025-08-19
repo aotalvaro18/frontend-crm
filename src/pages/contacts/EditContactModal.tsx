@@ -93,7 +93,7 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
       size="4xl"
       mobileDrawer={true}
       contentClassName="pb-6 max-h-[80vh] overflow-y-auto"
-    >
+      >
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
