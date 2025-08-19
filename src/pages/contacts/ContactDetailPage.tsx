@@ -95,14 +95,8 @@ const ContactDetailPage: React.FC = () => {
     navigate('/contacts');
   };
 
-  //const handleEdit = () => {
-    //setShowEditModal(true);
-  //};
-
   const handleEdit = () => {
-    console.log('Edit button clicked');
-    alert('Edit button works!');
-    setShowEditModal(true);  // <-- COMENTAR ESTA LÍNEA temporal
+    setShowEditModal(true);
   };
 
   const handleDelete = async () => {
@@ -257,33 +251,14 @@ const handleUpdateSuccess = useCallback(() => {
         </div>
       </div>
       {/* Edit Modal */}
-      {contact && showEditModal && (
-  <div style={{ 
-    position: 'fixed', 
-    top: 0, 
-    left: 0, 
-    width: '100%', 
-    height: '100%', 
-    background: 'rgba(0,0,0,0.8)', 
-    zIndex: 9999 
-  }}>
-    <div style={{ 
-      background: 'white', 
-      margin: '50px auto', 
-      padding: '20px', 
-      maxWidth: '500px' 
-    }}>
-      <h2>MODAL TEST</h2>
-      <p>Contact: {contact.firstName} {contact.lastName}</p>
-      <button 
-        onClick={() => setShowEditModal(false)}
-        style={{ background: 'red', color: 'white', padding: '10px' }}
-      >
-        Cerrar
-      </button>
-    </div>
-  </div>
-)}
+      {contact && (
+        <EditContactModal
+          contact={contact}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={handleUpdateSuccess}
+        />
+      )}
     </Page>
   );
 };
