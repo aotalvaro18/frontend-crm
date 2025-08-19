@@ -498,10 +498,10 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   };
  
  // ============================================
- // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
- // ============================================
+// MAIN COMPONENT (Con la corrección para el crash y la carga de datos)
+// ============================================
  
- const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
+const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
   ({
     contact,
     onSubmit,
@@ -510,10 +510,55 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     error,
     mode,
     showActions = true,
-  }, ref) => { // <-- Se añade 'ref' aquí
+  }, ref) => {
+  
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
+ 
+  // ✅ SOLUCIÓN FINAL: Pre-procesamos los valores para `useForm` aquí mismo, de forma segura.
+  const formDefaultValues = useMemo(() => {
+    // Para el modo 'create', definimos valores iniciales simples y seguros.
+    if (mode === 'create' || !contact) {
+      return {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        source: 'MANUAL_ENTRY',
+        tags: [],
+        // Es importante inicializar esto para que el Controller no reciba `undefined`.
+        communicationPreferences: { marketingConsent: false },
+      };
+    }
+    
+    // Para el modo 'edit', hacemos la "traducción" para evitar el crash y cargar los datos.
+    // 1. Unimos `communicationPreferences` y `marketingConsent` en la estructura que el formulario espera.
+    const formCommPrefs = {
+      ...(contact.communicationPreferences ?? {}),
+      marketingConsent: contact.marketingConsent ?? false,
+    };
+
+    // 2. Transformamos el array de objetos `Tag[]` a un array de IDs `number[]`.
+    const formTagIds = contact.tags?.map(tag => tag.id) || [];
+
+    // 3. Devolvemos el objeto final, limpio y con la estructura correcta.
+    return {
+      firstName: contact.firstName || '',
+      lastName: contact.lastName || '',
+      email: contact.email || '',
+      phone: '', // SmartPhoneInput se encarga de esto a partir del initialE164
+      companyId: contact.companyId,
+      address: contact.address,
+      birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+      gender: contact.gender,
+      source: contact.source || 'MANUAL_ENTRY',
+      sourceDetails: contact.sourceDetails,
+      customFields: contact.customFields,
+      communicationPreferences: formCommPrefs, // Usamos el objeto traducido
+      tags: formTagIds,                     // Usamos el array de IDs
+    };
+  }, [contact, mode]); // Se recalcula si cambia el contacto o el modo.
  
   const {
     register,
@@ -526,158 +571,86 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     clearErrors
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    // 🔥 Lógica de defaultValues mejorada
-    defaultValues: useMemo(() => ({
-      firstName: contact?.firstName || '',
-      lastName: contact?.lastName || '',
-      email: contact?.email || '',
-      phone: '', // El input local del teléfono siempre empieza vacío. `SmartPhoneInput` lo llenará si hay `initialE164`.
-      companyId: contact?.companyId,
-      address: contact?.address,
-      birthDate: contact?.birthDate ? contact.birthDate.split('T')[0] : '', // Formatear para input[type=date]
-      gender: contact?.gender,
-      source: contact?.source || 'MANUAL_ENTRY',
-      sourceDetails: contact?.sourceDetails,
-      customFields: contact?.customFields,
-      communicationPreferences: contact?.communicationPreferences,
-      tags: contact?.tags?.map(tag => tag.id),
-    }), [contact])
+    // Usamos los valores pre-procesados y seguros que acabamos de crear.
+    defaultValues: formDefaultValues,
   });
 
-  // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
+  // El resto de tu código (useEffect, handleFormSubmit, JSX) puede quedar como lo tenías.
+  // Pero para máxima seguridad, te paso la versión final y correcta de handleFormSubmit.
+
   useEffect(() => {
-    // Cuando el país del teléfono cambia, resetea el estado y la ciudad
     setValue('address.state', '');
     setValue('address.city', '');
   }, [selectedCountryFromPhone, setValue]);
 
   const watchedState = watch('address.state');
   useEffect(() => {
-    // Cuando el estado/departamento cambia, resetea solo la ciudad
     setValue('address.city', '');
   }, [watchedState, setValue]);
  
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
+    // 1. Validaciones
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
-
-    // ✅ DEBUG: Ver qué datos del formulario tenemos
-    console.log('🔍 Datos del formulario:', data);
-    console.log('🔍 Validación del teléfono:', phoneValidation);
- 
-    // ✅ Crear datos según el DTO exacto del backend
-    const cleanedData: any = {
-      firstName: data.firstName.trim(),
-      lastName: data.lastName.trim(),
-      source: data.source as ContactSource, // Backend valida que sea string válido
-    };
-
-    // ✅ OBLIGATORIO: email O teléfono (validación isValidContactInfo del backend)
-    if (data.email && data.email.trim()) {
-      cleanedData.email = data.email.trim();
-    }
-    
-    if (phoneValidation.e164Phone) {
-      cleanedData.phone = phoneValidation.e164Phone;
-    }
-
-    // ✅ Verificar que cumple validación del backend
-    if (!cleanedData.email && !cleanedData.phone) {
+    if (!data.email?.trim() && !phoneValidation.e164Phone) {
       setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
       setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
       return;
     }
-    
-    // ✅ Campos opcionales - solo si tienen valores
-    if (data.companyId) {
-      cleanedData.companyId = data.companyId;
-    }
-    
-    if (data.sourceDetails && data.sourceDetails.trim()) {
-      cleanedData.sourceDetails = data.sourceDetails.trim();
-    }
-    
-    if (data.birthDate && data.birthDate.trim()) {
-      cleanedData.birthDate = data.birthDate; // LocalDate en backend
-    }
-    
-    if (data.gender && data.gender.trim()) {
-      cleanedData.gender = data.gender as Gender;
-    }
 
-    // ✅ Address - solo si tiene datos (hasAnyField del backend)
-    if (data.address) {
-      const hasAddressData = Object.values(data.address).some(value => value && value.trim());
-      if (hasAddressData) {
-        const cleanAddress: any = {};
-        Object.entries(data.address).forEach(([key, value]) => {
-          if (value && value.trim()) {
-            cleanAddress[key] = value.trim();
-          }
-        });
-        cleanedData.address = cleanAddress;
-      }
-    }
+    // 2. "Traducción" Estructural para la API
+    const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
 
-    // ✅ CommunicationPreferences - Map<String, Object> según backend
-    if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
-      const cleanPrefs: Record<string, any> = {};
-      Object.entries(data.communicationPreferences).forEach(([key, value]) => {
-        if (typeof value === 'boolean') {
-          cleanPrefs[key] = value;
-        }
-      });
-      if (Object.keys(cleanPrefs).length > 0) {
-        cleanedData.communicationPreferences = cleanPrefs;
-      }
-    }
-
-    // ✅ IMPORTANTE: Backend espera tagNames (strings), no tags (numbers)
-    if (data.tags && data.tags.length > 0) {
-      // Necesitarías convertir IDs a nombres, o mejor cambiar el formulario
-      // Por ahora lo omitimos hasta que tengas la conversión
-      console.warn('⚠️ Tags omitidos - backend espera tagNames (strings), no IDs');
-    }
-
-    // ✅ CustomFields - Map<String, Object> según backend
-    if (data.customFields && Object.keys(data.customFields).length > 0) {
-      cleanedData.customFields = data.customFields;
-    }
-
-    const baseSubmitData = cleanedData;
- 
-    // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
+    // 3. Lógica separada para CREAR y EDITAR
     if (mode === 'edit' && contact) {
-      // En esta rama, TypeScript sabe que el objeto debe ser un UpdateContactRequest
       const updateData: UpdateContactRequest = {
-        ...baseSubmitData,
+        ...contact,
+        ...data,
         version: contact.version,
+        phone: phoneValidation.e164Phone || undefined,
+        gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+        birthDate: data.birthDate === '' ? undefined : data.birthDate,
+        source: data.source as ContactSource,
+        marketingConsent: marketingConsent,
+        communicationPreferences: {
+          ...(contact.communicationPreferences),
+          ...restOfCommPrefs,
+        },
+        tags: data.tags,
       };
-      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
-      // En esta rama, TypeScript sabe que el objeto debe ser un CreateContactRequest
-      const createData: CreateContactRequest = baseSubmitData;
+      const defaultCommPrefs: CommunicationPreferences = {
+          allowEmail: false, allowSms: false, allowPhone: false, allowWhatsapp: false,
+          allowPostalMail: false, preferredContactMethod: 'EMAIL', preferredTime: 'ANYTIME', language: 'es',
+      };
+      const createData: CreateContactRequest = {
+          firstName: data.firstName.trim(), lastName: data.lastName.trim(),
+          email: data.email?.trim() || undefined, companyId: data.companyId,
+          address: data.address, sourceDetails: data.sourceDetails,
+          customFields: data.customFields, phone: phoneValidation.e164Phone || undefined,
+          source: data.source as ContactSource,
+          birthDate: data.birthDate === '' ? undefined : data.birthDate,
+          gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+          marketingConsent: marketingConsent,
+          communicationPreferences: { ...defaultCommPrefs, ...restOfCommPrefs },
+          tags: data.tags,
+      };
       await onSubmit(createData);
     }
   };
  
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
-    
-    // ✅ NUEVO: Extraer país del teléfono para geografía
     if (result.isValid && result.e164Phone) {
       const region = getRegionFromE164(result.e164Phone);
       setSelectedCountryFromPhone(region);
-      
-      // Auto-llenar campo país
       setValue('address.country', getCountryName(region));
     }
-    
     if (currentPhone && !result.isValid) {
       setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
     } else {
@@ -687,363 +660,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  
   return (
     <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
-      {/* Error Message */}
-      {error && (
-        <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-400 mr-2" />
-            <span className="text-sm text-red-300">{error}</span>
-          </div>
-        </div>
-      )}
- 
-      {/* Basic Information */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
-          Información Básica
-        </h3>
- 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            label="Nombre"
-            name="firstName"
-            required={true}
-            icon={<User className="h-4 w-4" />}
-            error={errors.firstName?.message}
-          >
-            <input
-              {...register('firstName')}
-              type="text"
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="Ingresa el nombre"
-            />
-          </FormField>
- 
-          <FormField
-            label="Apellido"
-            name="lastName"
-            required={true}
-            icon={<User className="h-4 w-4" />}
-            error={errors.lastName?.message}
-          >
-            <input
-              {...register('lastName')}
-              type="text"
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="Ingresa el apellido"
-            />
-          </FormField>
-        </div>
-      </div>
- 
-      {/* Contact Information */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
-          Información de Contacto
-        </h3>
- 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            label="Correo electrónico"
-            name="email"
-            icon={<Mail className="h-4 w-4" />}
-            error={errors.email?.message}
-            description="Opcional, pero requerido para acceso al portal"
-          >
-            <input
-              {...register('email')}
-              type="email"
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="ejemplo@correo.com"
-            />
-          </FormField>
- 
-      {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
-      <FormField
-        label="Teléfono"
-        name="phone"
-        icon={<Phone className="h-4 w-4" />}
-        error={errors.phone?.message}
-        description="Validación automática con formato E164 estándar"
-      >
-        <SmartPhoneInput
-          value={currentPhone || ''}
-          onChange={(phone) => setValue('phone', phone, { shouldValidate: true, shouldDirty: true })}
-          onValidationChange={handlePhoneValidation}
-          disabled={loading}
-          initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
-        />
-      </FormField>
-      </div>
-      </div>
- 
-      {/* Source Information */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
-          Origen del Contacto
-        </h3>
- 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            label="Fuente"
-            name="source"
-            required={true}
-            icon={<Globe className="h-4 w-4" />}
-            error={errors.source?.message}
-          >
-            <select
-              {...register('source')}
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {CONTACT_SOURCES.map(source => (
-                <option key={source.value} value={source.value}>
-                  {source.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
- 
-          <FormField
-            label="Detalles de la fuente"
-            name="sourceDetails"
-            error={errors.sourceDetails?.message}
-            description="Información adicional sobre cómo se obtuvo este contacto"
-          >
-            <input
-              {...register('sourceDetails')}
-              type="text"
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="Ej: Formulario de contacto, referido por Juan"
-            />
-          </FormField>
-        </div>
-      </div>
- 
-      {/* Advanced Information */}
-      <div className="space-y-6">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center text-app-gray-300 hover:text-app-gray-100 transition-colors"
-         >
-          <span className="text-lg font-medium">Información Adicional</span>
-          <span className="ml-2 text-sm text-app-gray-500">
-            {showAdvanced ? '(ocultar)' : '(mostrar)'}
-          </span>
-        </button>
- 
-        {showAdvanced && (
-          <div className="space-y-6 p-4 bg-app-dark-700/50 rounded-lg border border-app-dark-600">
-            {/* Personal Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Fecha de nacimiento"
-                name="birthDate"
-                icon={<User className="h-4 w-4" />}
-                error={errors.birthDate?.message}
-              >
-                <input
-                  {...register('birthDate')}
-                  type="date"
-                  className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </FormField>
- 
-              <FormField
-                label="Género"
-                name="gender"
-                icon={<User className="h-4 w-4" />}
-                error={errors.gender?.message}
-              >
-                <select
-                  {...register('gender')}
-                  className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Seleccionar...</option>
-                  {GENDERS.map(gender => (
-                    <option key={gender.value} value={gender.value}>
-                      {gender.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
- 
-            {/* Address - ✅ LAYOUT CORREGIDO Y SIN BUCLES */}
-<div className="space-y-4">
-  <h4 className="text-md font-medium text-app-gray-200 flex items-center">
-    <MapPin className="h-4 w-4 mr-2" />
-    Dirección
-  </h4>
-  
-  {selectedCountryFromPhone && (
-    <>
-      <h5 className="text-sm font-medium text-app-gray-300 pt-2">
-        Ubicación Geográfica
-      </h5>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        
-        {/* --- Fila 1: País y Departamento/Estado --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="País" 
-            name="address.country" 
-            error={errors.address?.country?.message}
-          >
-            <input 
-              {...register('address.country')} 
-              type="text" 
-              readOnly 
-              className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed" 
-              placeholder="Automático desde teléfono"
-            />
-          </FormField>
-        </div>
-        
-        <div className="col-span-1">
-          <FormField 
-            label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
-            name="address.state" 
-            error={errors.address?.state?.message}
-          >
-            <GeographySelector
-              countryCode={selectedCountryFromPhone}
-              selectedState={watch('address.state') || ''}
-              onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
-              onCityChange={() => {}} // No hace nada aquí
-              disabled={loading || !selectedCountryFromPhone}
-              layout="separate"
-              renderStateOnly
-              errorState={errors.address?.state?.message}
-            />
-          </FormField>
-        </div>
-
-        {/* --- Fila 2: Ciudad y Código Postal --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="Ciudad" 
-            name="address.city" 
-            error={errors.address?.city?.message}
-          >
-            <GeographySelector
-              countryCode={selectedCountryFromPhone}
-              selectedState={watch('address.state') || ''}
-              selectedCity={watch('address.city') || ''}
-              onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
-              onStateChange={() => {}} // No hace nada aquí
-              // ✅ NUEVO: Auto-llenar código postal
-              onPostalCodeAutoFill={(postalCode) => {
-                setValue('address.postalCode', postalCode, { shouldValidate: true });
-              }}
-              disabled={loading || !watch('address.state')}
-              layout="separate"
-              renderCityOnly
-              errorCity={errors.address?.city?.message}
-              showPostalCodeHint={true}
-            />
-          </FormField>
-        </div>
-
-        <div className="col-span-1">
-          <FormField 
-            label="Código postal" 
-            name="address.postalCode" 
-            error={errors.address?.postalCode?.message}
-          >
-            <input 
-              {...register('address.postalCode')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="760001"
-            />
-          </FormField>
-        </div>
-
-        {/* --- Fila 3: Direcciones --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="Dirección principal" 
-            name="address.addressLine1" 
-            error={errors.address?.addressLine1?.message}
-          >
-            <input 
-              {...register('address.addressLine1')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="Calle 123 #45-67"
-            />
-          </FormField>
-        </div>
-
-        <div className="col-span-1">
-          <FormField 
-            label="Dirección secundaria" 
-            name="address.addressLine2" 
-            error={errors.address?.addressLine2?.message}
-          >
-            <input 
-              {...register('address.addressLine2')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="Apartamento, suite, etc."
-            />
-          </FormField>
-        </div>
-      </div>
-    </>
-  )}
-</div>
- 
-            {/* Communication Preferences */}
-            <FormField
-              label="Preferencias de comunicación"
-              name="communicationPreferences"
-              description="Selecciona los métodos de comunicación preferidos"
-            >
-              <Controller
-                name="communicationPreferences"
-                control={control}
-                render={({ field }) => (
-                  <CommunicationPreferences
-                    value={field.value || {}}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </FormField>
-          </div>
-        )}
-      </div>
- 
-      {showActions && (
-        <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            <X className="h-4 w-4 mr-2" />
-            Cancelar
-          </Button>
-          
-          <Button
-            type="submit"
-            disabled={loading || (!!currentPhone && !phoneValidation.isValid)}
-            className="min-w-32"
-          >
-            {loading ? (
-              <LoadingSpinner size="sm" className="mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            {mode === 'create' ? 'Crear Contacto' : 'Actualizar Contacto'}
-          </Button>
-        </div>
-      )}
- 
+        {/* ... TU JSX COMPLETO VA AQUÍ, SIN NINGÚN CAMBIO ... */}
     </form>
   );
 });
