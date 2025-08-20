@@ -18,9 +18,7 @@ import { getCountryName } from '@/utils/geography';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
-    UpdateContactRequest, 
-    ContactSource,
-    Gender,
+    UpdateContactRequest,
     CommunicationPreferences
   } from '@/types/contact.types';
 
@@ -506,26 +504,23 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
+  const [phoneRegion, setPhoneRegion] = useState<string>('');
  
   const {
     register, control, handleSubmit,
     formState: { errors },
     watch, setValue, setError, clearErrors
-} = useForm<ContactFormData>({
-    resolver: zodResolver(contactFormSchema),
-    defaultValues: useMemo(() => {
+    } = useForm<ContactFormData>({
+      resolver: zodResolver(contactFormSchema),
+      defaultValues: useMemo(() => {
         if (!contact) {
-            return {
-                source: 'MANUAL_ENTRY',
-                communicationPreferences: { marketingConsent: false },
-                tags: [],
-            };
+            return { source: 'MANUAL_ENTRY', communicationPreferences: { marketingConsent: false }, tags: [] };
         }
         return {
             firstName: contact.firstName || '',
             lastName: contact.lastName || '',
             email: contact.email || '',
-            phone: '',
+            phone: '', // SmartPhoneInput se encarga de esto
             companyId: contact.companyId,
             // LA CLAVE: Inicializamos el address completo para que se cargue
             address: {
@@ -548,7 +543,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             tags: contact.tags?.map(tag => tag.id) || [],
         };
     }, [contact]),
-});
+  });
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
@@ -566,70 +561,68 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
-    // 1. Validaciones
-    if (data.phone && !phoneValidation.isValid) { /* ... */ return; }
-    if (!data.email?.trim() && !phoneValidation.e164Phone) { /* ... */ return; }
+    if (data.phone && !phoneValidation.isValid) {
+      setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
+      return;
+    }
+    if (!data.email?.trim() && !phoneValidation.e164Phone) {
+      setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
+      setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
+      return;
+    }
 
-    // 2. "Traducción" Estructural para la API
+    // "Traducimos" los datos del formulario al formato de la API
     const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
 
-    // 3. Lógica separada para CREAR y EDITAR
+    const payload: any = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      email: data.email?.trim() || null,
+      phone: phoneValidation.e164Phone || null,
+      phoneRegion: phoneRegion || null,
+      companyId: data.companyId,
+      address: data.address,
+      birthDate: data.birthDate === '' ? null : data.birthDate,
+      gender: data.gender === '' ? null : data.gender,
+      source: data.source,
+      sourceDetails: data.sourceDetails,
+      customFields: data.customFields,
+      // Aquí están las correcciones clave
+      marketingConsent: marketingConsent,
+      communicationPreferences: restOfCommPrefs,
+      // `tags` del formulario son `number[]`, el backend espera `tagNames: string[]`
+      // Lo dejamos fuera por ahora para no romper el guardado.
+      // tags: undefined,
+    };
+ 
     if (mode === 'edit' && contact) {
       const updateData: UpdateContactRequest = {
-        ...contact,
-        ...data,
+        ...payload,
         version: contact.version,
-        phone: phoneValidation.e164Phone || undefined,
-        gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
-        birthDate: data.birthDate === '' ? undefined : data.birthDate,
-        source: data.source as ContactSource,
-        marketingConsent: marketingConsent,
-        communicationPreferences: {
-          ...(contact.communicationPreferences),
-          ...restOfCommPrefs,
-        },
-        tags: data.tags,
       };
       await onSubmit(updateData);
     } else {
-      const defaultCommPrefs: CommunicationPreferences = {
-          allowEmail: false, allowSms: false, allowPhone: false, allowWhatsapp: false,
-          allowPostalMail: false, preferredContactMethod: 'EMAIL', preferredTime: 'ANYTIME', language: 'es',
-      };
-      const createData: CreateContactRequest = {
-          firstName: data.firstName.trim(), lastName: data.lastName.trim(),
-          email: data.email?.trim() || undefined, companyId: data.companyId,
-          address: data.address, sourceDetails: data.sourceDetails,
-          customFields: data.customFields, phone: phoneValidation.e164Phone || undefined,
-          source: data.source as ContactSource,
-          birthDate: data.birthDate === '' ? undefined : data.birthDate,
-          gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
-          marketingConsent: marketingConsent,
-          communicationPreferences: { ...defaultCommPrefs, ...restOfCommPrefs },
-          tags: data.tags,
-      };
+      const createData: CreateContactRequest = payload;
       await onSubmit(createData);
     }
 };
  
-  const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
-    setPhoneValidation(result);
-    
-    // ✅ NUEVO: Extraer país del teléfono para geografía
-    if (result.isValid && result.e164Phone) {
-      const region = getRegionFromE164(result.e164Phone);
-      setSelectedCountryFromPhone(region);
-      
-      // Auto-llenar campo país
-      setValue('address.country', getCountryName(region));
-    }
-    
-    if (currentPhone && !result.isValid) {
-      setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
-    } else {
-      clearErrors('phone');
-    }
-  }, [currentPhone, setError, clearErrors, setValue]);
+const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
+  setPhoneValidation(result);
+  
+  if (result.isValid && result.e164Phone) {
+    const region = getRegionFromE164(result.e164Phone);
+    setPhoneRegion(region); // ✅ Guardamos la región
+    setSelectedCountryFromPhone(region);
+    setValue('address.country', getCountryName(region));
+  }
+  
+  if (currentPhone && !result.isValid) {
+    setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
+  } else {
+    clearErrors('phone');
+  }
+}, [currentPhone, setError, clearErrors, setValue]);
 
   //finalmente
   const handlePhoneChange = useCallback((phone: string) => {
