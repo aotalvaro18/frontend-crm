@@ -197,6 +197,7 @@ interface ContactFormProps {
   error?: string | null;
   mode: 'create' | 'edit';
   showActions?: boolean; // Para controlar la visibilidad de los botones
+  skipDefaultValues?: boolean; // Para evitar el useMemo problemático en modo edit
 }
 
 // ============================================
@@ -510,7 +511,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     error,
     mode,
     showActions = true,
-  }, ref) => { // <-- Se añade 'ref' aquí
+    skipDefaultValues = false, // Nueva prop para evitar el useMemo problemático
+  }, ref) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
@@ -523,11 +525,18 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     watch,
     setValue,
     setError,
-    clearErrors
+    clearErrors,
+    reset // Para cargar datos de manera segura después de la inicialización
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    // 🔥 Lógica de defaultValues mejorada
-    defaultValues: useMemo(() => {
+    // ✅ SOLUCIÓN QUIRÚRGICA: Evitar useMemo problemático cuando skipDefaultValues=true
+    defaultValues: skipDefaultValues ? {
+      // Valores simples y seguros para evitar el crash
+      source: 'MANUAL_ENTRY',
+      communicationPreferences: { marketingConsent: false },
+      tags: [],
+    } : useMemo(() => {
+      // 🔥 Lógica original para modo crear y edit sin skipDefaultValues
       // Si no hay `contact` (modo crear), devuelve un objeto casi vacío.
       if (!contact) {
         return { source: 'MANUAL_ENTRY' }; // Devuelve solo lo mínimo necesario
@@ -559,6 +568,33 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       };
     }, [contact])
   });
+
+  // ✅ SOLUCIÓN QUIRÚRGICA: Cargar datos con reset() cuando skipDefaultValues=true
+  useEffect(() => {
+    if (skipDefaultValues && mode === 'edit' && contact) {
+      // Pre-procesamos los datos del contact de manera segura
+      const formData = {
+        firstName: contact.firstName || '',
+        lastName: contact.lastName || '',
+        email: contact.email || '',
+        phone: '', // SmartPhoneInput se encarga de esto con initialE164
+        companyId: contact.companyId,
+        address: contact.address,
+        birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+        gender: contact.gender,
+        source: contact.source || 'MANUAL_ENTRY',
+        sourceDetails: contact.sourceDetails,
+        customFields: contact.customFields,
+        communicationPreferences: {
+          ...(contact.communicationPreferences ?? {}),
+          marketingConsent: contact.marketingConsent ?? false,
+        },
+        tags: contact.tags?.map(tag => tag.id) || [],
+      };
+      // Usamos reset para cargar los datos de manera segura
+      reset(formData);
+    }
+  }, [skipDefaultValues, mode, contact, reset]);
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
