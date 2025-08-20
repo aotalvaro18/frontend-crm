@@ -513,6 +513,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
+  
  
   const {
     register, control, handleSubmit,
@@ -522,69 +523,100 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       resolver: zodResolver(contactFormSchema),
       defaultValues: useMemo(() => {
         if (!contact) {
-            return { source: 'MANUAL_ENTRY', communicationPreferences: { marketingConsent: false }, tags: [] };
+          return { 
+            source: 'MANUAL_ENTRY', 
+            communicationPreferences: { 
+              allowEmail: false,
+              allowSms: false,
+              allowPhone: false,
+              allowWhatsapp: false,
+              allowPostalMail: false,
+              marketingConsent: false,
+              preferredContactMethod: 'EMAIL' as const,
+              preferredTime: 'ANYTIME' as const,
+              language: 'es'
+            }, 
+            tags: [] 
+          };
         }
         return {
-            firstName: contact.firstName || '',
-            lastName: contact.lastName || '',
-            email: contact.email || '',
-            phone: '', // SmartPhoneInput se encarga de esto
-            companyId: contact.companyId,
-            // LA CLAVE: Inicializamos el address completo para que se cargue
-            address: {
-              addressLine1: contact.address?.addressLine1 || '',
-              addressLine2: contact.address?.addressLine2 || '',
-              city: contact.address?.city || '',
-              state: contact.address?.state || '',
-              postalCode: contact.address?.postalCode || '',
-              country: contact.address?.country || '',
-            },
-            birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
-            gender: contact.gender,
-            source: contact.source || 'MANUAL_ENTRY',
-            sourceDetails: contact.sourceDetails || '',
-            customFields: contact.customFields,
-            communicationPreferences: {
-              allowEmail: contact.communicationPreferences?.allowEmail ?? false,
-              allowSms: contact.communicationPreferences?.allowSms ?? false,
-              allowPhone: contact.communicationPreferences?.allowPhone ?? false,
-              allowWhatsapp: contact.communicationPreferences?.allowWhatsapp ?? false,
-              allowPostalMail: contact.communicationPreferences?.allowPostalMail ?? false,
-              marketingConsent: contact.communicationPreferences?.marketingConsent ?? false, // ✅ ESTA LÍNEA YA EXISTE
-              preferredContactMethod: contact.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
-              preferredTime: contact.communicationPreferences?.preferredTime ?? 'ANYTIME',
-              language: contact.communicationPreferences?.language ?? 'es'
-            },
-            tags: contact.tags?.map(tag => tag.id) || [],
+          firstName: contact.firstName || '',
+          lastName: contact.lastName || '',
+          email: contact.email || '',
+          phone: '',
+          companyId: contact.companyId,
+          
+          // ✅ CORRECCIÓN CRÍTICA: Cargar address completo con campos específicos
+          address: {
+            addressLine1: contact.address?.addressLine1 || '',
+            addressLine2: contact.address?.addressLine2 || '',
+            city: contact.address?.city || '',           // ✅ ESTA ES LA CLAVE
+            state: contact.address?.state || '',         // ✅ ESTA ES LA CLAVE  
+            postalCode: contact.address?.postalCode || '',
+            country: contact.address?.country || '',
+          },
+          
+          birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+          gender: contact.gender,
+          source: contact.source || 'MANUAL_ENTRY',
+          sourceDetails: contact.sourceDetails || '',
+          customFields: contact.customFields,
+          
+          // ✅ COMUNICACIÓN PREFERENCES COMPLETO:
+          communicationPreferences: {
+            allowEmail: contact.communicationPreferences?.allowEmail ?? false,
+            allowSms: contact.communicationPreferences?.allowSms ?? false,
+            allowPhone: contact.communicationPreferences?.allowPhone ?? false,
+            allowWhatsapp: contact.communicationPreferences?.allowWhatsapp ?? false,
+            allowPostalMail: contact.communicationPreferences?.allowPostalMail ?? false,
+            marketingConsent: contact.communicationPreferences?.marketingConsent ?? false,
+            preferredContactMethod: contact.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
+            preferredTime: contact.communicationPreferences?.preferredTime ?? 'ANYTIME',
+            language: contact.communicationPreferences?.language ?? 'es'
+          },
+          
+          tags: contact.tags?.map(tag => tag.id) || [],
         };
-    }, [contact]),
+      }, [contact]),
   });
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
+  // REEMPLAZAR el useEffect que resetea estado/ciudad:
   useEffect(() => {
+    // ✅ Solo resetear si NO es la carga inicial de un contacto existente
     if (mode === 'create' || !isInitialLoad) {
       setValue('address.state', '');
       setValue('address.city', '');
     }
   }, [selectedCountryFromPhone, setValue, mode, isInitialLoad]);
 
+  // REEMPLAZAR el useEffect que resetea ciudad:
   const watchedState = watch('address.state');
   useEffect(() => {
+    // Solo resetear ciudad si NO es la carga inicial
     if (!isInitialLoad) {
       setValue('address.city', '');
     }
   }, [watchedState, setValue, isInitialLoad]);
 
-  // AGREGAR este useEffect completo:
-useEffect(() => {
-  if (contact && isInitialLoad) {
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 200);
-    
-    return () => clearTimeout(timer);
-  }
-}, [contact, isInitialLoad]);
+  // ✅ AGREGAR NUEVO USEEFFECT para manejar carga inicial:
+  useEffect(() => {
+    if (contact && isInitialLoad) {
+      // Cargar región del teléfono si existe
+      if (contact.phone) {
+        const region = getRegionFromE164(contact.phone);
+        setSelectedCountryFromPhone(region);
+        setPhoneRegion(region);
+      }
+      
+      // Marcar que ya no es carga inicial después de un breve delay
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [contact, isInitialLoad]);
  
   const currentPhone = watch('phone');
  
