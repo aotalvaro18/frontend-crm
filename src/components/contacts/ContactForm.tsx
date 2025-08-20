@@ -307,7 +307,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         onChange(localNumber);
       }
     }
-  }, [initialE164, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialE164]); // <-- LA CLAVE: El array de dependencias solo tiene `initialE164`
  
   // Debounce validation
   useEffect(() => {
@@ -700,6 +701,11 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       clearErrors('phone');
     }
   }, [currentPhone, setError, clearErrors, setValue]);
+
+  //finalmente
+  const handlePhoneChange = useCallback((phone: string) => {
+    setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
+}, [setValue]);
  
   return (
     <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
@@ -775,8 +781,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           </FormField>
  
       {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
-      {/* --- PRUEBA DE AISLAMIENTO: Teléfono deshabilitado temporalmente --- */}
-  {/*
+      
       <FormField
         label="Teléfono"
         name="phone"
@@ -786,13 +791,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       >
         <SmartPhoneInput
           value={currentPhone || ''}
-          onChange={(phone) => setValue('phone', phone, { shouldValidate: true, shouldDirty: true })}
+          onChange={handlePhoneChange}
           onValidationChange={handlePhoneValidation}
           disabled={loading}
           initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
         />
       </FormField>
-  */}
+      
       </div>
       </div>
  
