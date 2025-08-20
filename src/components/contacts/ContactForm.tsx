@@ -163,7 +163,7 @@ const contactFormSchema = z.object({
   birthDate: z.string().optional().or(z.literal('')),
   
   // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).nullish(), // Acepta null o undefined
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('').transform(() => null)),
   
   source: z.string().min(1, 'La fuente es requerida'),
   
@@ -549,16 +549,18 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
-    // Cuando el país del teléfono cambia, resetea el estado y la ciudad
-    setValue('address.state', '');
-    setValue('address.city', '');
-  }, [selectedCountryFromPhone, setValue]);
+    if (mode === 'create') {  // ✅ SOLO AGREGAR ESTA CONDICIÓN
+      setValue('address.state', '');
+      setValue('address.city', '');
+    }
+  }, [selectedCountryFromPhone, setValue, mode]);
 
   const watchedState = watch('address.state');
   useEffect(() => {
-    // Cuando el estado/departamento cambia, resetea solo la ciudad
-    setValue('address.city', '');
-  }, [watchedState, setValue]);
+    if (mode === 'create') {  // ✅ SOLO AGREGAR ESTA CONDICIÓN
+      setValue('address.city', '');
+    }
+  }, [watchedState, setValue, mode]);
  
   const currentPhone = watch('phone');
  
