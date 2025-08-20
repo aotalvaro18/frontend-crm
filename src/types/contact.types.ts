@@ -343,6 +343,7 @@ export interface CommunicationPreferences {
   allowPhone: boolean;
   allowWhatsapp: boolean;
   allowPostalMail: boolean;
+  marketingConsent: boolean;
   preferredContactMethod: 'EMAIL' | 'PHONE' | 'SMS' | 'WHATSAPP' | 'POSTAL';
   preferredTime: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'ANYTIME';
   timezone?: string;

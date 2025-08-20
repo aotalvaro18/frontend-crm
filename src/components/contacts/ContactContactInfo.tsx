@@ -95,6 +95,7 @@ const CommunicationPreferences: React.FC<CommunicationPreferencesProps> = ({ pre
     allowSms: 'SMS',
     allowPhone: 'Llamadas telefónicas',
     allowWhatsapp: 'WhatsApp',
+    marketingConsent: 'Material de marketing',
     // 'marketingConsent' podría venir de otro tipo, lo dejamos fuera por ahora si no está en CommunicationPreferencesType
   };
 

@@ -574,8 +574,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     }
 
     // "Traducimos" los datos del formulario al formato de la API
-    const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
-
+    
     const payload: any = {
       firstName: data.firstName.trim(),
       lastName: data.lastName.trim(),
@@ -589,8 +588,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       source: data.source,
       sourceDetails: data.sourceDetails,
       customFields: data.customFields,
-      marketingConsent: marketingConsent,
-      communicationPreferences: restOfCommPrefs,
+      communicationPreferences: data.communicationPreferences,
       // Se omiten los tags hasta que se aclare el mapeo number[] -> string[]
     };
  
