@@ -234,6 +234,30 @@ const ContactContactInfo: React.FC<ContactContactInfoProps> = ({ contact }) => {
           </div>
         )}
 
+        {/* ✅ CÓDIGO A INSERTAR: Sección para el Consentimiento de Marketing */}
+        <div className="mt-6 pt-6 border-t border-app-dark-700">
+          <div className="flex justify-between items-center">
+            <div>
+              <h4 className="text-md font-medium text-app-gray-200">
+                Consentimiento de Marketing
+              </h4>
+              <p className="text-sm text-app-gray-500 mt-1">
+                Permiso para recibir correos promocionales y noticias.
+              </p>
+            </div>
+            {/* Leemos el valor directamente de contact.marketingConsent */}
+            {contact.marketingConsent ? (
+              <span className="flex items-center text-sm text-green-400 bg-green-900/50 px-3 py-1 rounded-full font-medium">
+                Concedido
+              </span>
+            ) : (
+              <span className="flex items-center text-sm text-app-gray-400 bg-app-dark-700 px-3 py-1 rounded-full font-medium">
+                No concedido
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="mt-6 pt-6 border-t border-app-dark-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-app-gray-500">
             {contact.lastActivityAt && (
