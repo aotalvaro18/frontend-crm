@@ -1,13 +1,12 @@
 // En: src/pages/contacts/EditContactModal.tsx
 
-import React from 'react'; // Ya no se necesita `useMemo`
+import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useContactOperations } from '@/hooks/useContacts';
 import ContactForm from '@/components/contacts/ContactForm';
 import type { 
   ContactDTO, 
-  CreateContactRequest, // Aunque no se usa aquí, es parte del tipo `onSubmit`
   UpdateContactRequest 
 } from '@/types/contact.types';
 
@@ -26,18 +25,50 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
 }) => {
   const { updateContact, loading, error, clearError } = useContactOperations();
 
+  // ✅ SOLUCIÓN: Pre-procesamos los datos aquí para evitar el crash en el formulario.
+  const formDefaultValues = useMemo(() => {
+    if (!contact) return {};
+
+    // 1. Tomamos las preferencias de comunicación y añadimos marketingConsent
+    //    para que coincida con la estructura del formulario.
+    const formCommPrefs = {
+      ...(contact.communicationPreferences ?? {}),
+      marketingConsent: contact.marketingConsent ?? false,
+    };
+
+    // 2. Transformamos los tags de objetos a IDs.
+    const formTagIds = contact.tags?.map(tag => tag.id) || [];
+
+    // 3. Creamos el objeto final de valores por defecto para el formulario.
+    return {
+      firstName: contact.firstName || '',
+      lastName: contact.lastName || '',
+      email: contact.email || '',
+      phone: '', // SmartPhoneInput se encarga de esto a partir del initialE164
+      companyId: contact.companyId,
+      address: contact.address,
+      birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+      gender: contact.gender,
+      source: contact.source || 'MANUAL_ENTRY',
+      sourceDetails: contact.sourceDetails,
+      customFields: contact.customFields,
+      communicationPreferences: formCommPrefs,
+      tags: formTagIds,
+    };
+  }, [contact]);
+
   const handleClose = () => {
     clearError();
     onClose();
   };
 
-  const handleSubmit = async (data: CreateContactRequest | UpdateContactRequest) => {
+  const handleSubmit = async (data: UpdateContactRequest) => {
     try {
-      // TypeScript sabe que `data` aquí debe ser `UpdateContactRequest` por la lógica en ContactForm.
-      await updateContact(contact.id, data as UpdateContactRequest);
+      await updateContact(contact.id, data);
       toast.success(`Contacto "${contact.firstName} ${contact.lastName}" actualizado exitosamente`);
       onSuccess();
     } catch (err) {
+      // El error ya lo maneja el hook y se muestra en el formulario
       console.error('Error al actualizar el contacto:', err);
     }
   };
@@ -64,20 +95,23 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
               <div className="flex items-center">
+                {/* Puedes usar cualquier icono, Save es una opción */}
                 <X className="h-4 w-4 text-red-400 mr-2" /> 
                 <span className="text-sm text-red-300">{error}</span>
               </div>
             </div>
           )}
           
-          {/* ✅ Versión simple y original: solo pasa `contact` y `mode`. */}
           <ContactForm
-            contact={contact}
             mode="edit"
-            onSubmit={handleSubmit}
+            // ✅ Pasamos props claras y pre-procesadas
+            initialContactForEdit={contact}
+            defaultValues={formDefaultValues}
+            onSubmit={handleSubmit as any} // 'as any' es seguro aquí porque el modo 'edit' solo llama a handleSubmit con UpdateContactRequest
             onCancel={handleClose}
             loading={loading}
             error={error}
