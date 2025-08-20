@@ -550,10 +550,10 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           address: {
             addressLine1: contact.address?.addressLine1 || '',
             addressLine2: contact.address?.addressLine2 || '',
-            city: contact.address?.city || '',           // ✅ ESTA ES LA CLAVE
-            state: contact.address?.state || '',         // ✅ ESTA ES LA CLAVE  
-            postalCode: contact.address?.postalCode || '',
-            country: contact.address?.country || '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: '',
           },
           
           birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
@@ -877,6 +877,8 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     Dirección
   </h4>
   
+   
+
   {selectedCountryFromPhone && (
     <>
       <h5 className="text-sm font-medium text-app-gray-300 pt-2">
