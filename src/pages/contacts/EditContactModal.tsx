@@ -73,11 +73,10 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
             </div>
           )}
           
-          {/* ✅ SOLUCIÓN QUIRÚRGICA: Usar skipDefaultValues para evitar el crash */}
+          {/* ✅ SOLUCIÓN: Pasar solo las props que ContactForm espera */}
           <ContactForm
             contact={contact}
             mode="edit"
-            skipDefaultValues={true}
             onSubmit={handleSubmit}
             onCancel={handleClose}
             loading={loading}
