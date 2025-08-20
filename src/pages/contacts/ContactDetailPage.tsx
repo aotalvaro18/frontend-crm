@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 //import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 
 // ============================================
-// HOOKS DESACOPLADOS
+// HOOKS DESACOPLADOS OJO
 // ============================================
 
 import { 
