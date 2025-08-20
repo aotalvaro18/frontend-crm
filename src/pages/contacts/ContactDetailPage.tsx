@@ -132,15 +132,12 @@ const ContactDetailPage: React.FC = () => {
   };
 
   // ✅ CORRECCIÓN: Handler para el evento de éxito del modal de edición
-const handleUpdateSuccess = useCallback(() => {
-  setShowEditModal(false); // Primero, cierra el modal
-  
-  // Segundo, pide los datos frescos del contacto para refrescar la página.
-  // Asegúrate de que contactId no sea nulo antes de llamar.
-  if (contactId) {
-    getContactById(contactId);
-  }
-}, [contactId, getContactById]); // Las dependencias son correctas
+  const handleUpdateSuccess = useCallback(() => {
+    setShowEditModal(false);
+    
+    // ✅ NO hacer nada más - El store ya tiene los datos actualizados
+    // El updateContact() del store ya actualizó selectedContact con los datos del servidor
+  }, []);
 
   // ============================================
   // ESTADOS CONDICIONALES

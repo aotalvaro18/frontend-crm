@@ -35,7 +35,6 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
     try {
       // TypeScript sabe que `data` aquí debe ser `UpdateContactRequest` por la lógica en ContactForm.
       await updateContact(contact.id, data as UpdateContactRequest);
-      toast.success(`Contacto "${contact.firstName} ${contact.lastName}" actualizado exitosamente`);
       onSuccess();
     } catch (err) {
       console.error('Error al actualizar el contacto:', err);
