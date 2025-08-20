@@ -1,7 +1,7 @@
 // src/components/shared/GeographySelector.tsx
 // ✅ VERSIÓN CON AUTO-LLENADO DE CÓDIGOS POSTALES
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react'; // ✅ SOLO AGREGAR useEffect
 import { MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Select, type SelectOption } from '@/components/ui/Select';
@@ -59,15 +59,35 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   renderCityOnly = false,
   showPostalCodeHint = true,
 }) => {
+
+  // ✅ DEBUG QUIRÚRGICO: Solo agregar este useEffect
+  useEffect(() => {
+    if (renderStateOnly || renderCityOnly) {
+      console.log('🔍 GeographySelector:', {
+        type: renderStateOnly ? 'STATE' : 'CITY',
+        countryCode,
+        selectedState,
+        selectedCity
+      });
+    }
+  }, [countryCode, selectedState, selectedCity, renderStateOnly, renderCityOnly]);
+
   // ✅ COMPUTACIÓN DE OPCIONES
   const states = useMemo((): SelectOption[] => {
-    return getStatesByCountry(countryCode).map(s => ({ value: s, label: s }));
-  }, [countryCode]);
+    const options = getStatesByCountry(countryCode).map(s => ({ value: s, label: s }));
+    
+    // ✅ DEBUG: Solo agregar este console.log
+    if (renderStateOnly) {
+      console.log('🔍 States:', { count: options.length, hasAntioquia: options.some(s => s.value === 'Antioquia') });
+    }
+    
+    return options;
+  }, [countryCode, renderStateOnly]);
 
   const cities = useMemo((): SelectOption[] => {
     if (!selectedState) return [];
     
-    return getCitiesByState(countryCode, selectedState).map(cityName => {
+    const options = getCitiesByState(countryCode, selectedState).map(cityName => {
       const hasPostal = hasCityPostalCodes(countryCode, selectedState, cityName);
       const mainPostal = hasPostal ? getMainPostalCode(countryCode, selectedState, cityName) : '';
       
@@ -77,7 +97,14 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
         description: hasPostal ? `📮 CP: ${mainPostal}` : undefined
       };
     });
-  }, [countryCode, selectedState]);
+
+    // ✅ DEBUG: Solo agregar este console.log
+    if (renderCityOnly) {
+      console.log('🔍 Cities:', { selectedState, count: options.length, hasMedellin: options.some(c => c.value === 'Medellín') });
+    }
+
+    return options;
+  }, [countryCode, selectedState, renderCityOnly]);
 
   // ✅ HANDLER MEJORADO PARA CIUDAD CON AUTO-LLENADO
   const handleCityChange = (city: string) => {

@@ -909,7 +909,6 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
             error={errors.address?.state?.message}
           >
             <GeographySelector
-              key={`${contact?.id || 'new'}-state`}
               countryCode={selectedCountryFromPhone}
               selectedState={watch('address.state') || ''}
               onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
@@ -930,7 +929,6 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
             error={errors.address?.city?.message}
           >
             <GeographySelector
-              key={`${contact?.id || 'new'}-city`}
               countryCode={selectedCountryFromPhone}
               selectedState={watch('address.state') || ''}
               selectedCity={watch('address.city') || ''}
