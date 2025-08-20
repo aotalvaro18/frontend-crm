@@ -163,7 +163,12 @@ const contactFormSchema = z.object({
   birthDate: z.string().optional().or(z.literal('')),
   
   // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('').transform(() => null)),
+  gender: z.union([
+    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ]).transform(val => val === '' ? null : val).optional(),
   
   source: z.string().min(1, 'La fuente es requerida'),
   
@@ -505,6 +510,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
  
@@ -539,8 +545,15 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             sourceDetails: contact.sourceDetails || '',
             customFields: contact.customFields,
             communicationPreferences: {
-                ...(contact.communicationPreferences ?? {}),
-                marketingConsent: contact.marketingConsent ?? false,
+              allowEmail: contact.communicationPreferences?.allowEmail ?? false,
+              allowSms: contact.communicationPreferences?.allowSms ?? false,
+              allowPhone: contact.communicationPreferences?.allowPhone ?? false,
+              allowWhatsapp: contact.communicationPreferences?.allowWhatsapp ?? false,
+              allowPostalMail: contact.communicationPreferences?.allowPostalMail ?? false,
+              marketingConsent: contact.communicationPreferences?.marketingConsent ?? false, // ✅ ESTA LÍNEA YA EXISTE
+              preferredContactMethod: contact.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
+              preferredTime: contact.communicationPreferences?.preferredTime ?? 'ANYTIME',
+              language: contact.communicationPreferences?.language ?? 'es'
             },
             tags: contact.tags?.map(tag => tag.id) || [],
         };
@@ -549,18 +562,29 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
-    if (mode === 'create') {  // ✅ SOLO AGREGAR ESTA CONDICIÓN
+    if (mode === 'create' || !isInitialLoad) {
       setValue('address.state', '');
       setValue('address.city', '');
     }
-  }, [selectedCountryFromPhone, setValue, mode]);
+  }, [selectedCountryFromPhone, setValue, mode, isInitialLoad]);
 
   const watchedState = watch('address.state');
   useEffect(() => {
-    if (mode === 'create') {  // ✅ SOLO AGREGAR ESTA CONDICIÓN
+    if (!isInitialLoad) {
       setValue('address.city', '');
     }
-  }, [watchedState, setValue, mode]);
+  }, [watchedState, setValue, isInitialLoad]);
+
+  // AGREGAR este useEffect completo:
+useEffect(() => {
+  if (contact && isInitialLoad) {
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }
+}, [contact, isInitialLoad]);
  
   const currentPhone = watch('phone');
  
