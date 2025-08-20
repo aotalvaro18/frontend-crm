@@ -156,15 +156,17 @@ const contactFormSchema = z.object({
   
   email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
-  companyId: z.number().optional(),
+  companyId: z.number().nullish(), // Acepta null o undefined
   
-  // Aseguramos que el objeto address y sus campos son opcionales
   address: addressSchema.optional(),
   
   birthDate: z.string().optional().or(z.literal('')),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
+  
+  // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).nullish(), // Acepta null o undefined
   
   source: z.string().min(1, 'La fuente es requerida'),
+  
   sourceDetails: z.string().max(255, 'Los detalles no pueden superar los 255 caracteres').optional().or(z.literal('')),
   
   customFields: z.record(z.any()).optional(),
@@ -524,12 +526,12 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             companyId: contact.companyId,
             // LA CLAVE: Inicializamos el address completo para que se cargue
             address: {
-                addressLine1: contact.address?.addressLine1 || '',
-                addressLine2: contact.address?.addressLine2 || '',
-                city: contact.address?.city || '',
-                state: contact.address?.state || '',
-                postalCode: contact.address?.postalCode || '',
-                country: contact.address?.country || '',
+              addressLine1: contact.address?.addressLine1 || '',
+              addressLine2: contact.address?.addressLine2 || '',
+              city: contact.address?.city || '',
+              state: contact.address?.state || '',
+              postalCode: contact.address?.postalCode || '',
+              country: contact.address?.country || '',
             },
             birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
             gender: contact.gender,
@@ -583,16 +585,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       companyId: data.companyId,
       address: data.address,
       birthDate: data.birthDate === '' ? null : data.birthDate,
-      gender: data.gender === '' ? null : data.gender,
+      gender: data.gender || null, // Zod ya se encargó de null/undefined
       source: data.source,
       sourceDetails: data.sourceDetails,
       customFields: data.customFields,
-      // Aquí están las correcciones clave
       marketingConsent: marketingConsent,
       communicationPreferences: restOfCommPrefs,
-      // `tags` del formulario son `number[]`, el backend espera `tagNames: string[]`
-      // Lo dejamos fuera por ahora para no romper el guardado.
-      // tags: undefined,
+      // Se omiten los tags hasta que se aclare el mapeo number[] -> string[]
     };
  
     if (mode === 'edit' && contact) {
