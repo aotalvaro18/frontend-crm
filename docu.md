@@ -307,7 +307,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         onChange(localNumber);
       }
     }
-  }, [initialE164, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialE164]); // <-- LA CLAVE: El array de dependencias solo tiene `initialE164`
  
   // Debounce validation
   useEffect(() => {
@@ -501,15 +502,16 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
  // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
  // ============================================
  
- const ContactForm: React.FC<ContactFormProps> = ({
-  contact,
-  onSubmit,
-  onCancel,
-  loading,
-  error,
-  mode,
-  showActions = true
- }) => {
+ const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
+  ({
+    contact,
+    onSubmit,
+    onCancel,
+    loading,
+    error,
+    mode,
+    showActions = true,
+  }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
@@ -526,21 +528,37 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     // 🔥 Lógica de defaultValues mejorada
-    defaultValues: useMemo(() => ({
-      firstName: contact?.firstName || '',
-      lastName: contact?.lastName || '',
-      email: contact?.email || '',
-      phone: '', // El input local del teléfono siempre empieza vacío. `SmartPhoneInput` lo llenará si hay `initialE164`.
-      companyId: contact?.companyId,
-      address: contact?.address,
-      birthDate: contact?.birthDate ? contact.birthDate.split('T')[0] : '', // Formatear para input[type=date]
-      gender: contact?.gender,
-      source: contact?.source || 'MANUAL_ENTRY',
-      sourceDetails: contact?.sourceDetails,
-      customFields: contact?.customFields,
-      communicationPreferences: contact?.communicationPreferences,
-      tags: contact?.tags?.map(tag => tag.id),
-    }), [contact])
+    defaultValues: useMemo(() => {
+      // Si no hay `contact` (modo crear), devuelve un objeto casi vacío.
+      if (!contact) {
+        return { source: 'MANUAL_ENTRY' }; // Devuelve solo lo mínimo necesario
+      }
+
+      // Si hay `contact` (modo editar), construye los valores por defecto.
+      return {
+        // --- ESTAS LÍNEAS SON EXACTAMENTE LAS MISMAS QUE YA TENÍAS ---
+        firstName: contact.firstName || '',
+        lastName: contact.lastName || '',
+        email: contact.email || '',
+        phone: '', 
+        companyId: contact.companyId,
+        address: contact.address,
+        birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+        gender: contact.gender,
+        source: contact.source || 'MANUAL_ENTRY',
+        sourceDetails: contact.sourceDetails,
+        customFields: contact.customFields,
+
+        // --- AQUÍ ESTÁ EL ÚNICO CAMBIO REAL ---
+        // 1. "Traducimos" la estructura de communicationPreferences
+        communicationPreferences: {
+          ...(contact.communicationPreferences ?? {}),
+          marketingConsent: contact.marketingConsent ?? false,
+        },
+        // 2. "Traducimos" la estructura de tags
+        tags: contact.tags?.map(tag => tag.id) || [],
+      };
+    }, [contact])
   });
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
@@ -683,9 +701,14 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       clearErrors('phone');
     }
   }, [currentPhone, setError, clearErrors, setValue]);
+
+  //finalmente
+  const handlePhoneChange = useCallback((phone: string) => {
+    setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
+}, [setValue]);
  
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+    <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
       {/* Error Message */}
       {error && (
         <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
@@ -758,6 +781,7 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           </FormField>
  
       {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
+      
       <FormField
         label="Teléfono"
         name="phone"
@@ -767,12 +791,13 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       >
         <SmartPhoneInput
           value={currentPhone || ''}
-          onChange={(phone) => setValue('phone', phone, { shouldValidate: true, shouldDirty: true })}
+          onChange={handlePhoneChange}
           onValidationChange={handlePhoneValidation}
           disabled={loading}
           initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
         />
       </FormField>
+      
       </div>
       </div>
  
@@ -1016,7 +1041,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
         )}
       </div>
  
-      <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
+      {showActions && (
+        <div className="flex items-center justify-end space-x-4 pt-6 border-t border-app-dark-700">
           <Button
             type="button"
             variant="outline"
@@ -1029,10 +1055,9 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
           
           <Button
             type="submit"
-            // ✅ SOLUCIÓN: El '!!' convierte cualquier valor a su equivalente booleano.
-            disabled={loading || !!(currentPhone && !phoneValidation.isValid)}
+            disabled={loading || (!!currentPhone && !phoneValidation.isValid)}
             className="min-w-32"
-            >
+          >
             {loading ? (
               <LoadingSpinner size="sm" className="mr-2" />
             ) : (
@@ -1040,10 +1065,11 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             )}
             {mode === 'create' ? 'Crear Contacto' : 'Actualizar Contacto'}
           </Button>
-      </div>
+        </div>
+      )}
  
     </form>
   );
- };
+});
  
- export default ContactForm;
+export default ContactForm;

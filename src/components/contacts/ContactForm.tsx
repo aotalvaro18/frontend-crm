@@ -156,30 +156,21 @@ const contactFormSchema = z.object({
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede tener más de 50 caracteres'),
   
-  email: z.string()
-    .email('Formato de email inválido')
-    .optional()
-    .or(z.literal('')),
-  
-  phone: z.string().optional(), // Este es el número LOCAL, no el E164
-  
+  email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
+  phone: z.string().optional(),
   companyId: z.number().optional(),
   
+  // Aseguramos que el objeto address y sus campos son opcionales
   address: addressSchema.optional(),
   
   birthDate: z.string().optional().or(z.literal('')),
-  
   gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
   
-  source: z.string()
-    .min(1, 'La fuente es requerida'),
-  
-  sourceDetails: z.string().optional(),
+  source: z.string().min(1, 'La fuente es requerida'),
+  sourceDetails: z.string().max(255, 'Los detalles no pueden superar los 255 caracteres').optional().or(z.literal('')),
   
   customFields: z.record(z.any()).optional(),
-  
-  communicationPreferences: communicationPreferencesSchema,
-  
+  communicationPreferences: communicationPreferencesSchema.optional(),
   tags: z.array(z.number()).optional(),
 });
 
@@ -517,49 +508,47 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
  
   const {
-    register,
-    control,
-    handleSubmit,
+    register, control, handleSubmit,
     formState: { errors },
-    watch,
-    setValue,
-    setError,
-    clearErrors
-  } = useForm<ContactFormData>({
+    watch, setValue, setError, clearErrors
+} = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    // 🔥 Lógica de defaultValues mejorada
     defaultValues: useMemo(() => {
-      // Si no hay `contact` (modo crear), devuelve un objeto casi vacío.
-      if (!contact) {
-        return { source: 'MANUAL_ENTRY' }; // Devuelve solo lo mínimo necesario
-      }
-
-      // Si hay `contact` (modo editar), construye los valores por defecto.
-      return {
-        // --- ESTAS LÍNEAS SON EXACTAMENTE LAS MISMAS QUE YA TENÍAS ---
-        firstName: contact.firstName || '',
-        lastName: contact.lastName || '',
-        email: contact.email || '',
-        phone: '', 
-        companyId: contact.companyId,
-        address: contact.address,
-        birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
-        gender: contact.gender,
-        source: contact.source || 'MANUAL_ENTRY',
-        sourceDetails: contact.sourceDetails,
-        customFields: contact.customFields,
-
-        // --- AQUÍ ESTÁ EL ÚNICO CAMBIO REAL ---
-        // 1. "Traducimos" la estructura de communicationPreferences
-        communicationPreferences: {
-          ...(contact.communicationPreferences ?? {}),
-          marketingConsent: contact.marketingConsent ?? false,
-        },
-        // 2. "Traducimos" la estructura de tags
-        tags: contact.tags?.map(tag => tag.id) || [],
-      };
-    }, [contact])
-  });
+        if (!contact) {
+            return {
+                source: 'MANUAL_ENTRY',
+                communicationPreferences: { marketingConsent: false },
+                tags: [],
+            };
+        }
+        return {
+            firstName: contact.firstName || '',
+            lastName: contact.lastName || '',
+            email: contact.email || '',
+            phone: '',
+            companyId: contact.companyId,
+            // LA CLAVE: Inicializamos el address completo para que se cargue
+            address: {
+                addressLine1: contact.address?.addressLine1 || '',
+                addressLine2: contact.address?.addressLine2 || '',
+                city: contact.address?.city || '',
+                state: contact.address?.state || '',
+                postalCode: contact.address?.postalCode || '',
+                country: contact.address?.country || '',
+            },
+            birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+            gender: contact.gender,
+            source: contact.source || 'MANUAL_ENTRY',
+            sourceDetails: contact.sourceDetails || '',
+            customFields: contact.customFields,
+            communicationPreferences: {
+                ...(contact.communicationPreferences ?? {}),
+                marketingConsent: contact.marketingConsent ?? false,
+            },
+            tags: contact.tags?.map(tag => tag.id) || [],
+        };
+    }, [contact]),
+});
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
@@ -577,111 +566,51 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
-    if (data.phone && !phoneValidation.isValid) {
-      setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
-      return;
-    }
+    // 1. Validaciones
+    if (data.phone && !phoneValidation.isValid) { /* ... */ return; }
+    if (!data.email?.trim() && !phoneValidation.e164Phone) { /* ... */ return; }
 
-    // ✅ DEBUG: Ver qué datos del formulario tenemos
-    console.log('🔍 Datos del formulario:', data);
-    console.log('🔍 Validación del teléfono:', phoneValidation);
- 
-    // ✅ Crear datos según el DTO exacto del backend
-    const cleanedData: any = {
-      firstName: data.firstName.trim(),
-      lastName: data.lastName.trim(),
-      source: data.source as ContactSource, // Backend valida que sea string válido
-    };
+    // 2. "Traducción" Estructural para la API
+    const { marketingConsent, ...restOfCommPrefs } = data.communicationPreferences || {};
 
-    // ✅ OBLIGATORIO: email O teléfono (validación isValidContactInfo del backend)
-    if (data.email && data.email.trim()) {
-      cleanedData.email = data.email.trim();
-    }
-    
-    if (phoneValidation.e164Phone) {
-      cleanedData.phone = phoneValidation.e164Phone;
-    }
-
-    // ✅ Verificar que cumple validación del backend
-    if (!cleanedData.email && !cleanedData.phone) {
-      setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
-      setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
-      return;
-    }
-    
-    // ✅ Campos opcionales - solo si tienen valores
-    if (data.companyId) {
-      cleanedData.companyId = data.companyId;
-    }
-    
-    if (data.sourceDetails && data.sourceDetails.trim()) {
-      cleanedData.sourceDetails = data.sourceDetails.trim();
-    }
-    
-    if (data.birthDate && data.birthDate.trim()) {
-      cleanedData.birthDate = data.birthDate; // LocalDate en backend
-    }
-    
-    if (data.gender && data.gender.trim()) {
-      cleanedData.gender = data.gender as Gender;
-    }
-
-    // ✅ Address - solo si tiene datos (hasAnyField del backend)
-    if (data.address) {
-      const hasAddressData = Object.values(data.address).some(value => value && value.trim());
-      if (hasAddressData) {
-        const cleanAddress: any = {};
-        Object.entries(data.address).forEach(([key, value]) => {
-          if (value && value.trim()) {
-            cleanAddress[key] = value.trim();
-          }
-        });
-        cleanedData.address = cleanAddress;
-      }
-    }
-
-    // ✅ CommunicationPreferences - Map<String, Object> según backend
-    if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
-      const cleanPrefs: Record<string, any> = {};
-      Object.entries(data.communicationPreferences).forEach(([key, value]) => {
-        if (typeof value === 'boolean') {
-          cleanPrefs[key] = value;
-        }
-      });
-      if (Object.keys(cleanPrefs).length > 0) {
-        cleanedData.communicationPreferences = cleanPrefs;
-      }
-    }
-
-    // ✅ IMPORTANTE: Backend espera tagNames (strings), no tags (numbers)
-    if (data.tags && data.tags.length > 0) {
-      // Necesitarías convertir IDs a nombres, o mejor cambiar el formulario
-      // Por ahora lo omitimos hasta que tengas la conversión
-      console.warn('⚠️ Tags omitidos - backend espera tagNames (strings), no IDs');
-    }
-
-    // ✅ CustomFields - Map<String, Object> según backend
-    if (data.customFields && Object.keys(data.customFields).length > 0) {
-      cleanedData.customFields = data.customFields;
-    }
-
-    const baseSubmitData = cleanedData;
- 
-    // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
+    // 3. Lógica separada para CREAR y EDITAR
     if (mode === 'edit' && contact) {
-      // En esta rama, TypeScript sabe que el objeto debe ser un UpdateContactRequest
       const updateData: UpdateContactRequest = {
-        ...baseSubmitData,
+        ...contact,
+        ...data,
         version: contact.version,
+        phone: phoneValidation.e164Phone || undefined,
+        gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+        birthDate: data.birthDate === '' ? undefined : data.birthDate,
+        source: data.source as ContactSource,
+        marketingConsent: marketingConsent,
+        communicationPreferences: {
+          ...(contact.communicationPreferences),
+          ...restOfCommPrefs,
+        },
+        tags: data.tags,
       };
-      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
-      // En esta rama, TypeScript sabe que el objeto debe ser un CreateContactRequest
-      const createData: CreateContactRequest = baseSubmitData;
+      const defaultCommPrefs: CommunicationPreferences = {
+          allowEmail: false, allowSms: false, allowPhone: false, allowWhatsapp: false,
+          allowPostalMail: false, preferredContactMethod: 'EMAIL', preferredTime: 'ANYTIME', language: 'es',
+      };
+      const createData: CreateContactRequest = {
+          firstName: data.firstName.trim(), lastName: data.lastName.trim(),
+          email: data.email?.trim() || undefined, companyId: data.companyId,
+          address: data.address, sourceDetails: data.sourceDetails,
+          customFields: data.customFields, phone: phoneValidation.e164Phone || undefined,
+          source: data.source as ContactSource,
+          birthDate: data.birthDate === '' ? undefined : data.birthDate,
+          gender: (data.gender === '' ? undefined : data.gender) as Gender | undefined,
+          marketingConsent: marketingConsent,
+          communicationPreferences: { ...defaultCommPrefs, ...restOfCommPrefs },
+          tags: data.tags,
+      };
       await onSubmit(createData);
     }
-  };
+};
  
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
