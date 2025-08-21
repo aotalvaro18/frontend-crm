@@ -111,10 +111,12 @@ const ContactDetailPage: React.FC = () => {
     
     try {
       await deleteContact(contact.id);
-      setShowDeleteDialog(false); // Cierra el diálogo al tener éxito
+      setShowDeleteDialog(false);
       
       toastSuccess(`El contacto "${contact.firstName} ${contact.lastName}" ha sido eliminado.`);
-      navigate('/contacts');
+      
+  -   navigate('/contacts');
+  +   navigate('/contacts', { state: { refresh: true } }); // <-- CAMBIO CLAVE
       
     } catch (error) {
       toastError('No se pudo eliminar el contacto. Inténtalo de nuevo.');
