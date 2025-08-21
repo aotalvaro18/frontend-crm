@@ -163,7 +163,12 @@ const contactFormSchema = z.object({
   birthDate: z.string().optional().or(z.literal('')),
   
   // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('').transform(() => null)),
+  gender: z.union([
+    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ]).transform(val => val === '' ? null : val).optional(),
   
   source: z.string().min(1, 'La fuente es requerida'),
   
@@ -540,8 +545,15 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
             sourceDetails: contact.sourceDetails || '',
             customFields: contact.customFields,
             communicationPreferences: {
-                ...(contact.communicationPreferences ?? {}),
-                marketingConsent: contact.marketingConsent ?? false,
+              allowEmail: contact?.communicationPreferences?.allowEmail ?? false,
+              allowSms: contact?.communicationPreferences?.allowSms ?? false,
+              allowPhone: contact?.communicationPreferences?.allowPhone ?? false,
+              allowWhatsapp: contact?.communicationPreferences?.allowWhatsapp ?? false,
+              allowPostalMail: contact?.communicationPreferences?.allowPostalMail ?? false,
+              marketingConsent: contact?.communicationPreferences?.marketingConsent ?? false,
+              preferredContactMethod: contact?.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
+              preferredTime: contact?.communicationPreferences?.preferredTime ?? 'ANYTIME',
+              language: contact?.communicationPreferences?.language ?? 'es'
             },
             tags: contact.tags?.map(tag => tag.id) || [],
         };
