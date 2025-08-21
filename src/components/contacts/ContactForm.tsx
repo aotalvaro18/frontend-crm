@@ -163,12 +163,7 @@ const contactFormSchema = z.object({
   birthDate: z.string().optional().or(z.literal('')),
   
   // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
-  gender: z.union([
-    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
-    z.literal(''),
-    z.null(),
-    z.undefined()
-  ]).transform(val => val === '' ? null : val).optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('').transform(() => null)),
   
   source: z.string().min(1, 'La fuente es requerida'),
   
@@ -510,10 +505,9 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  //const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
-  
  
   const {
     register, control, handleSubmit,
@@ -523,100 +517,47 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       resolver: zodResolver(contactFormSchema),
       defaultValues: useMemo(() => {
         if (!contact) {
-          return { 
-            source: 'MANUAL_ENTRY', 
-            communicationPreferences: { 
-              allowEmail: false,
-              allowSms: false,
-              allowPhone: false,
-              allowWhatsapp: false,
-              allowPostalMail: false,
-              marketingConsent: false,
-              preferredContactMethod: 'EMAIL' as const,
-              preferredTime: 'ANYTIME' as const,
-              language: 'es'
-            }, 
-            tags: [] 
-          };
+            return { source: 'MANUAL_ENTRY', communicationPreferences: { marketingConsent: false }, tags: [] };
         }
         return {
-          firstName: contact.firstName || '',
-          lastName: contact.lastName || '',
-          email: contact.email || '',
-          phone: '',
-          companyId: contact.companyId,
-          
-          // ✅ CORRECCIÓN CRÍTICA: Cargar address completo con campos específicos
-          address: {
-            addressLine1: contact.address?.addressLine1 || '',
-            addressLine2: contact.address?.addressLine2 || '',
-            city: '',
-            state: '',
-            postalCode: '',
-            country: '',
-          },
-          
-          birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
-          gender: contact.gender,
-          source: contact.source || 'MANUAL_ENTRY',
-          sourceDetails: contact.sourceDetails || '',
-          customFields: contact.customFields,
-          
-          // ✅ COMUNICACIÓN PREFERENCES COMPLETO:
-          communicationPreferences: {
-            allowEmail: contact.communicationPreferences?.allowEmail ?? false,
-            allowSms: contact.communicationPreferences?.allowSms ?? false,
-            allowPhone: contact.communicationPreferences?.allowPhone ?? false,
-            allowWhatsapp: contact.communicationPreferences?.allowWhatsapp ?? false,
-            allowPostalMail: contact.communicationPreferences?.allowPostalMail ?? false,
-            marketingConsent: contact.communicationPreferences?.marketingConsent ?? false,
-            preferredContactMethod: contact.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
-            preferredTime: contact.communicationPreferences?.preferredTime ?? 'ANYTIME',
-            language: contact.communicationPreferences?.language ?? 'es'
-          },
-          
-          tags: contact.tags?.map(tag => tag.id) || [],
+            firstName: contact.firstName || '',
+            lastName: contact.lastName || '',
+            email: contact.email || '',
+            phone: '', // SmartPhoneInput se encarga de esto
+            companyId: contact.companyId,
+            // LA CLAVE: Inicializamos el address completo para que se cargue
+            address: {
+              addressLine1: contact.address?.addressLine1 || '',
+              addressLine2: contact.address?.addressLine2 || '',
+              city: contact.address?.city || '',
+              state: contact.address?.state || '',
+              postalCode: contact.address?.postalCode || '',
+              country: contact.address?.country || '',
+            },
+            birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+            gender: contact.gender,
+            source: contact.source || 'MANUAL_ENTRY',
+            sourceDetails: contact.sourceDetails || '',
+            customFields: contact.customFields,
+            communicationPreferences: {
+                ...(contact.communicationPreferences ?? {}),
+                marketingConsent: contact.marketingConsent ?? false,
+            },
+            tags: contact.tags?.map(tag => tag.id) || [],
         };
-      }, [contact]),
+    }, [contact]),
   });
 
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
-  // REEMPLAZAR el useEffect que resetea estado/ciudad:
   useEffect(() => {
-    // ✅ Solo resetear si NO es la carga inicial de un contacto existente
-    if (mode === 'create' || !isInitialLoad) {
       setValue('address.state', '');
       setValue('address.city', '');
-    }
-  }, [selectedCountryFromPhone, setValue, mode, isInitialLoad]);
+  }, [selectedCountryFromPhone, setValue, mode]);
 
-  // REEMPLAZAR el useEffect que resetea ciudad:
   const watchedState = watch('address.state');
   useEffect(() => {
-    // Solo resetear ciudad si NO es la carga inicial
-    if (!isInitialLoad) {
-      setValue('address.city', '');
-    }
-  }, [watchedState, setValue, isInitialLoad]);
-
-  // ✅ AGREGAR NUEVO USEEFFECT para manejar carga inicial:
-  useEffect(() => {
-    if (contact && isInitialLoad) {
-      // Cargar región del teléfono si existe
-      if (contact.phone) {
-        const region = getRegionFromE164(contact.phone);
-        setSelectedCountryFromPhone(region);
-        setPhoneRegion(region);
-      }
-      
-      // Marcar que ya no es carga inicial después de un breve delay
-      const timer = setTimeout(() => {
-        setIsInitialLoad(false);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [contact, isInitialLoad]);
+     setValue('address.city', '');
+  }, [watchedState, setValue, mode]);
  
   const currentPhone = watch('phone');
  
@@ -877,8 +818,6 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     Dirección
   </h4>
   
-   
-
   {selectedCountryFromPhone && (
     <>
       <h5 className="text-sm font-medium text-app-gray-300 pt-2">
