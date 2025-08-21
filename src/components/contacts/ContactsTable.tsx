@@ -90,7 +90,6 @@ import { formatters } from '@/utils/formatters';
 
 export interface ContactsTableProps {
   // Action props (solo estas props vienen de ContactListPage)
-  contacts: ContactDTO[];
   onContactClick?: (contact: ContactDTO) => void;
   onContactEdit?: (contact: ContactDTO) => void;
   onContactDelete?: (contact: ContactDTO) => void;
@@ -310,7 +309,6 @@ const ContactActionsDropdown: React.FC<{
 // ============================================
 
 const ContactsTable: React.FC<ContactsTableProps> = ({
-  contacts,
   onContactClick,
   onContactEdit,
   onContactDelete,
@@ -325,6 +323,7 @@ const ContactsTable: React.FC<ContactsTableProps> = ({
 
   // Core contact data (desde el store)
   const {
+    contacts,
     loading,
     error,
     totalContacts
