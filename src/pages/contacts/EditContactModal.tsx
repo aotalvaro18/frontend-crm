@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { useContactOperations } from '@/hooks/useContacts';
 import ContactForm from '@/components/contacts/ContactForm';
 import type { 

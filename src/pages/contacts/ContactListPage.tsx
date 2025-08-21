@@ -3,7 +3,7 @@
 // Refinamientos arquitectónicos para código extraordinario
 
 import React, { useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Plus, 
   Filter, 
@@ -75,7 +75,6 @@ import { cn } from '@/utils/cn';
 const ContactListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation(); // <-- 2. Obtén el objeto de ubicación
 
   // ============================================
   // HOOKS - RESPONSABILIDAD ÚNICA
@@ -179,17 +178,6 @@ console.log('🔧 ContactListPage Debug:', {
     
     setSearchParams(params, { replace: true });
   }, [searchTerm, currentPage, setSearchParams]);
-
-  // Este efecto se encarga de escuchar la señal de refresco
-  useEffect(() => {
-    // Si la navegación anterior nos envió la señal 'refresh: true'...
-    if (location.state?.refresh === true) {
-      // ...ejecutamos la función para recargar los contactos.
-      searchContacts();
-      // Opcional: limpiar el estado para no recargar de nuevo si el usuario refresca la página manualmente
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state, searchContacts, navigate]);
 
   // ============================================
   // HANDLERS - CLEAN & FOCUSED
