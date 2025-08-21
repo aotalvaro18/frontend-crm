@@ -2,7 +2,7 @@
 // Header component especializado para el detalle de contacto
 
 import React from 'react';
-import { ArrowLeft, Edit, Trash2, UserPlus, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, UserPlus, Mail, Phone, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { ContactDTO } from '@/types/contact.types';
@@ -137,10 +137,19 @@ const ContactDetailHeader: React.FC<ContactDetailHeaderProps> = ({
             variant="outline" 
             onClick={onDelete}
             disabled={isLoading}
-            className="text-red-400 border-red-500/30 hover:bg-red-900/20"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Eliminar</span>
+            className="text-red-400 border-red-500/30 hover:bg-red-900/20 disabled:opacity-70"
+            >
+            {isDeleting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <span className="hidden sm:inline">Eliminando...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Eliminar</span>
+              </>
+            )}
           </Button>
         </div>
       </div>

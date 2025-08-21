@@ -3,7 +3,15 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-//import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  UserPlus,
+  Mail,
+  Phone,
+  Loader2
+} from 'lucide-react';
 
 // ============================================
 // HOOKS DESACOPLADOS OJO
