@@ -570,6 +570,27 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   useEffect(() => {
      setValue('address.city', '');
   }, [watchedState, setValue, mode]);
+
+  useEffect(() => {
+    console.log('🔍 Address setValue useEffect:', {
+      hasContact: !!contact,
+      hasAddress: !!contact?.address,
+      mode,
+      contactId: contact?.id,
+      addressData: contact?.address
+    });
+    
+    if (contact?.address && mode === 'edit') {
+      console.log('✅ Setting address values:', contact.address);
+      // Forzar los valores directamente
+      setValue('address.state', contact.address.state || '');
+      setValue('address.city', contact.address.city || '');
+      setValue('address.country', contact.address.country || '');
+      setValue('address.addressLine1', contact.address.addressLine1 || '');
+      setValue('address.addressLine2', contact.address.addressLine2 || '');
+      setValue('address.postalCode', contact.address.postalCode || '');
+    }
+  }, [contact?.id, mode, setValue]);
  
   const currentPhone = watch('phone');
  
