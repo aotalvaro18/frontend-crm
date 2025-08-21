@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import toast from 'react-hot-toast';
+import { queryClient } from '@/lib/react-query';
 
 import { 
   contactApi, 
@@ -25,6 +26,10 @@ import type {
 } from '@/types/api.types';
 
 import type { PageRequest } from '@/types/common.types';
+
+// ✅ Definir las llaves de caché de forma centralizada
+const CONTACTS_LIST_QUERY_KEY = ['contacts'];
+const contactDetailQueryKey = (id: number) => ['contact', id];
 
 // ============================================
 // CONTACT STORE STATE
@@ -273,10 +278,17 @@ export const useContactStore = create<ContactState>()(
         
         try {
           const contact = await contactApi.getContactById(id);
-          set({
+          
+          // Invalida la caché de la lista para asegurar consistencia
+          await queryClient.invalidateQueries({ queryKey: CONTACTS_LIST_QUERY_KEY });
+          
+          // Actualización atómica del estado de Zustand
+          set(state => ({
             selectedContact: contact,
+            contacts: state.contacts.map(c => c.id === id ? contact : c),
             loading: false,
-          });
+          }));
+
         } catch (error: unknown) {
           const errorInfo = handleContactApiError(error);
           set({
@@ -293,23 +305,19 @@ export const useContactStore = create<ContactState>()(
         
         try {
           const newContact = await contactApi.createContact(request);
+
+          // Invalidar la caché de la lista para que la próxima carga sea fresca
+          await queryClient.invalidateQueries({ queryKey: CONTACTS_LIST_QUERY_KEY });
           
-          // Agregar optimísticamente a la lista si está en la primera página
-          const { currentPage } = get();
-          if (currentPage === 0) {
-            set(state => ({
-              contacts: [newContact, ...state.contacts.slice(0, state.pageSize - 1)],
-              totalContacts: state.totalContacts + 1,
-              creating: false,
-            }));
-          } else {
-            set({ creating: false });
-          }
+          // Opcional pero recomendado: Refrescar la lista actual para ver el cambio de inmediato
+          await get().refreshContacts();
+
+          set({ creating: false });
           
           toast.success('Contacto creado exitosamente');
           return newContact;
           
-        } catch (error: unknown) {
+          } catch (error: unknown) {
           const errorInfo = handleContactApiError(error);
           set({
             error: errorInfo.message,
@@ -345,6 +353,10 @@ export const useContactStore = create<ContactState>()(
         
         try {
           const updatedContact = await contactApi.updateContact(id, request);
+
+          // Invalidar la caché de la lista Y del detalle
+          await queryClient.invalidateQueries({ queryKey: CONTACTS_LIST_QUERY_KEY });
+          await queryClient.invalidateQueries({ queryKey: contactDetailQueryKey(id) });
           
           // Actualizar con datos reales del servidor
           set(state => ({
@@ -394,6 +406,10 @@ export const useContactStore = create<ContactState>()(
         try {
           // 2. Llamar a la API para realizar la eliminación en el backend
           await contactApi.deleteContact(id);
+
+          // Invalidar la caché de la lista Y del detalle
+          await queryClient.invalidateQueries({ queryKey: CONTACTS_LIST_QUERY_KEY });
+          await queryClient.invalidateQueries({ queryKey: contactDetailQueryKey(id) });
           
           // 3. Actualizar el estado local para reflejar el cambio INMEDIATAMENTE
           set(state => ({
