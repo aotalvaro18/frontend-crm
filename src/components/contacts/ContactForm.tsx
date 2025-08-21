@@ -560,6 +560,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     }, [contact]),
   });
 
+
+  {/*
   // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
   useEffect(() => {
       setValue('address.state', '');
@@ -592,6 +594,8 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     }
   }, [contact?.id, mode, setValue]);
  
+*/}
+
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
@@ -639,24 +643,32 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
 const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
   setPhoneValidation(result);
   
-  if (result.isValid && result.e164Phone) {
-    const region = getRegionFromE164(result.e164Phone);
-    setPhoneRegion(region); // ✅ Guardamos la región
-    setSelectedCountryFromPhone(region);
-    setValue('address.country', getCountryName(region));
-  }
-  
-  if (currentPhone && !result.isValid) {
-    setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
-  } else {
-    clearErrors('phone');
-  }
-}, [currentPhone, setError, clearErrors, setValue]);
+    if (result.isValid && result.e164Phone) {
+      const region = getRegionFromE164(result.e164Phone);
+
+      // --- AQUÍ SE INSERTA TU CÓDIGO ---
+      if (mode === 'create' && region !== phoneRegion) {
+        setValue('address.state', '');
+        setValue('address.city', '');
+      }
+      // --- FIN DE LA INSERCIÓN ---
+
+      setPhoneRegion(region); // ✅ Guardamos la región
+      setSelectedCountryFromPhone(region);
+      setValue('address.country', getCountryName(region));
+    }
+    
+    if (currentPhone && !result.isValid) {
+      setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
+    } else {
+      clearErrors('phone');
+    }
+}, [currentPhone, setError, clearErrors, setValue, mode, phoneRegion]);
 
   //finalmente
   const handlePhoneChange = useCallback((phone: string) => {
     setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
-}, [setValue]);
+  }, [setValue]);
  
   return (
     <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
