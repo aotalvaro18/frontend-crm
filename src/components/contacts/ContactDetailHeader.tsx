@@ -136,7 +136,7 @@ const ContactDetailHeader: React.FC<ContactDetailHeaderProps> = ({
           <Button 
             variant="outline" 
             onClick={onDelete}
-            disabled={isLoading}
+            disabled={isLoading} // Se deshabilita con CUALQUIER carga
             className="text-red-400 border-red-500/30 hover:bg-red-900/20 disabled:opacity-70"
             >
             {isDeleting ? (

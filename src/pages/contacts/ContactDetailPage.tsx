@@ -3,15 +3,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Edit,
-  Trash2,
-  UserPlus,
-  Mail,
-  Phone,
-  Loader2
-} from 'lucide-react';
 
 // ============================================
 // HOOKS DESACOPLADOS OJO
@@ -29,6 +20,7 @@ import {
 // ============================================
 
 import ContactDetailHeader from '../../components/contacts/ContactDetailHeader';
+import { toastSuccess, toastError } from '@/services/notifications/toastService';
 import ContactBasicInfo from '../../components/contacts/ContactBasicInfo';
 import ContactContactInfo from '../../components/contacts/ContactContactInfo';
 import ContactPortalSection from '../../components/contacts/ContactPortalSection';
@@ -113,9 +105,20 @@ const ContactDetailPage: React.FC = () => {
     const contactName = `${contact.firstName} ${contact.lastName}`;
     if (window.confirm(`¿Estás seguro de que quieres eliminar a ${contactName}?`)) {
       try {
+        // Tu hook `useContactOperations` ya se encarga de poner `isDeleting` en true.
         await deleteContact(contact.id);
+        
+        // ✅ Muestra notificación de éxito al usuario.
+        toastSuccess(`El contacto "${contactName}" ha sido eliminado.`);
+        
+        // ✅ Navega DESPUÉS de mostrar el mensaje para que el usuario lo vea.
         navigate('/contacts');
+
       } catch (error) {
+        // ❌ Muestra notificación de error al usuario.
+        toastError('No se pudo eliminar el contacto. Inténtalo de nuevo.');
+
+        // Mantenemos el log para depuración.
         console.error('Error deleting contact:', error);
       }
     }
