@@ -385,36 +385,58 @@ export const useContactStore = create<ContactState>()(
       },
 
       deleteContact: async (id: number) => {
+        // 1. Iniciar estado de carga para este ID específico
         set(state => ({
           deleting: new Set([...state.deleting, id]),
-          error: null,
+          error: null, // Limpiar errores previos
         }));
         
         try {
+          // 2. Llamar a la API para realizar la eliminación en el backend
           await contactApi.deleteContact(id);
           
-          // Remover de la lista
+          // 3. Actualizar el estado local para reflejar el cambio INMEDIATAMENTE
           set(state => ({
+            // ✅ FILTRAR LA LISTA: Esta es la lógica clave que actualiza la UI en ContactListPage
             contacts: state.contacts.filter(contact => contact.id !== id),
+            
+            // Si el contacto eliminado era el seleccionado, limpiarlo
             selectedContact: state.selectedContact?.id === id ? null : state.selectedContact,
+            
+            // Actualizar el conteo total de contactos
             totalContacts: Math.max(0, state.totalContacts - 1),
+            
+            // Limpiar el estado de carga para este ID
             deleting: new Set([...state.deleting].filter(contactId => contactId !== id)),
+            
+            // Si el contacto estaba seleccionado para una acción bulk, quitarlo
             selectedContactIds: new Set([...state.selectedContactIds].filter(contactId => contactId !== id)),
           }));
           
-          toast.success('Contacto eliminado exitosamente');
+          // ✅ TOAST DE ÉXITO ELIMINADO: Ya no se muestra el toast genérico desde aquí.
+          // El toast específico con el nombre del contacto se manejará en ContactDetailPage.
           
         } catch (error: unknown) {
+          // 4. Manejo de errores
+          // Limpiar el estado de carga para este ID aunque haya fallado
           set(state => ({
             deleting: new Set([...state.deleting].filter(contactId => contactId !== id)),
           }));
           
+          // Procesar el error para obtener un mensaje amigable
           const errorInfo = handleContactApiError(error);
+          
+          // Actualizar el estado con la información del error
           set({
             error: errorInfo.message,
             lastError: error,
           });
-          toast.error(errorInfo.message);
+          
+          // ✅ MOSTRAR TOAST DE ERROR: Es importante notificar al usuario que la acción falló.
+          toast.error(errorInfo.message || 'No se pudo eliminar el contacto.');
+          
+          // Re-lanzar el error para que el componente que llamó a la función (ContactDetailPage)
+          // también pueda reaccionar si es necesario (ej. no cerrar un modal).
           throw error;
         }
       },

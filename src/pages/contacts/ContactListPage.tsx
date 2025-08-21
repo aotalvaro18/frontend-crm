@@ -1,6 +1,5 @@
 // src/pages/contacts/ContactListPage.tsx
 // ✅ CONTACT LIST PAGE - VERSIÓN EXCEPCIONAL
-// Refinamientos arquitectónicos para código extraordinario
 
 import React, { useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -82,6 +81,7 @@ const ContactListPage: React.FC = () => {
 
   // Core contact data
   const {
+    contacts,
     totalContacts,
     searchContacts,
     refreshContacts,
@@ -449,6 +449,7 @@ console.log('🔧 ContactListPage Debug:', {
     // ✅ ContactsTable maneja TODO su estado internamente
     return (
       <ContactsTable
+        contacts={contacts}
         onContactClick={handleContactClick}
         onContactEdit={handleContactEdit}
         onContactDelete={handleContactDelete}
