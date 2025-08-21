@@ -20,6 +20,7 @@ import {
 // ============================================
 
 import ContactDetailHeader from '../../components/contacts/ContactDetailHeader';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { toastSuccess, toastError } from '@/services/notifications/toastService';
 import ContactBasicInfo from '../../components/contacts/ContactBasicInfo';
 import ContactContactInfo from '../../components/contacts/ContactContactInfo';
@@ -41,6 +42,7 @@ import Page from '@/components/layout/Page';
 
 const ContactDetailPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -99,28 +101,24 @@ const ContactDetailPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (!contact) return;
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
     if (!contact) return;
     
-    const contactName = `${contact.firstName} ${contact.lastName}`;
-    if (window.confirm(`¿Estás seguro de que quieres eliminar a ${contactName}?`)) {
-      try {
-        // Tu hook `useContactOperations` ya se encarga de poner `isDeleting` en true.
-        await deleteContact(contact.id);
-        
-        // ✅ Muestra notificación de éxito al usuario.
-        toastSuccess(`El contacto "${contactName}" ha sido eliminado.`);
-        
-        // ✅ Navega DESPUÉS de mostrar el mensaje para que el usuario lo vea.
-        navigate('/contacts');
-
-      } catch (error) {
-        // ❌ Muestra notificación de error al usuario.
-        toastError('No se pudo eliminar el contacto. Inténtalo de nuevo.');
-
-        // Mantenemos el log para depuración.
-        console.error('Error deleting contact:', error);
-      }
+    try {
+      await deleteContact(contact.id);
+      setShowDeleteDialog(false); // Cierra el diálogo al tener éxito
+      
+      toastSuccess(`El contacto "${contact.firstName} ${contact.lastName}" ha sido eliminado.`);
+      navigate('/contacts');
+      
+    } catch (error) {
+      toastError('No se pudo eliminar el contacto. Inténtalo de nuevo.');
+      console.error('Error deleting contact:', error);
     }
   };
 
@@ -260,13 +258,24 @@ const ContactDetailPage: React.FC = () => {
       </div>
       {/* Edit Modal */}
       {contact && (
+      <>
         <EditContactModal
           contact={contact}
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           onSuccess={handleUpdateSuccess}
         />
-      )}
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onConfirm={handleConfirmDelete}
+          title={`Eliminar a ${contact.firstName} ${contact.lastName}`}
+          description="Esta acción moverá el contacto a la papelera. ¿Estás seguro de que quieres continuar?"
+          confirmLabel="Sí, eliminar"
+          isConfirming={isDeleting}
+        />
+      </>
+    )}
     </Page>
   );
 };
