@@ -4,8 +4,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/lib/react-query';
 import { Toaster } from 'react-hot-toast';
 import { HelmetProvider } from 'react-helmet-async';
 
@@ -31,38 +32,7 @@ import { cn } from "@/utils/cn";
 // REACT QUERY CONFIGURATION
 // ============================================
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 3 * 60 * 1000,
-      gcTime: 5 * 60 * 1000,
-      
-      retry: (failureCount, error: any) => {
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 2;
-      },
-      
-      retryDelay: (attemptIndex) => {
-        return Math.min(500 * 2 ** attemptIndex, 15000);
-      },
-      
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-      refetchInterval: false,
-      networkMode: 'offlineFirst',
-    },
-    mutations: {
-      retry: 1,
-      networkMode: 'offlineFirst',
-      
-      onError: (error: any) => {
-        console.error('Mutation error:', error);
-      },
-    },
-  },
-});
+
 
 // ============================================
 // ERROR BOUNDARY FALLBACK

@@ -24,10 +24,10 @@ import type {
 // REACT QUERY KEYS (ÚNICA FUENTE DE VERDAD PARA CACHÉ)
 // ============================================
 // Exportamos las llaves para que los componentes puedan usarlas con useQuery.
-export const CONTACTS_LIST_QUERY_KEY = (criteria: ContactSearchCriteria) => ['contacts', criteria];
-export const CONTACT_DETAIL_QUERY_KEY = (id: number | null) => ['contact', id];
-export const CONTACT_STATS_QUERY_KEY = ['contactStats'];
-
+export const CONTACTS_LIST_QUERY_KEY = (criteria: ContactSearchCriteria = {}, page = 0) => 
+  ['contacts', 'list', { ...criteria, page }];
+export const CONTACT_DETAIL_QUERY_KEY = (id: number | null) => ['contacts', 'detail', id];
+export const CONTACT_STATS_QUERY_KEY = ['contacts', 'stats'];
 
 // ============================================
 // CONTACT STORE STATE (Simplificado: solo estado de UI y acciones)
@@ -81,7 +81,7 @@ export const useContactStore = create<ContactState>()(
           const newContact = await contactApi.createContact(request);
           // Invalida TODAS las queries de listas de contactos para asegurar que se refresquen
           await queryClient.invalidateQueries({ 
-            predicate: (query) => query.queryKey[0] === 'contacts' 
+            queryKey: ['contacts']
           });
           toast.success('Contacto creado exitosamente');
           onSuccess?.(newContact);
@@ -98,7 +98,7 @@ export const useContactStore = create<ContactState>()(
           await contactApi.updateContact(id, request);
           // Invalida la lista Y el detalle específico para una actualización completa
           await queryClient.invalidateQueries({ 
-            predicate: (query) => query.queryKey[0] === 'contacts' 
+            queryKey: ['contacts']
           });
           await queryClient.invalidateQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
           toast.success('Contacto actualizado exitosamente');
@@ -121,11 +121,11 @@ export const useContactStore = create<ContactState>()(
           await contactApi.deleteContact(id);
           // Invalida la lista Y el detalle específico
           await queryClient.invalidateQueries({ 
-            predicate: (query) => query.queryKey[0] === 'contacts' 
+            queryKey: ['contacts']
           });
           await queryClient.invalidateQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
           // Opcional: remover la query del detalle de la caché para limpieza inmediata
-          queryClient.removeQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
+          //queryClient.removeQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
           onSuccess?.();
         } catch (error: unknown) {
           toast.error(handleContactApiError(error).message);
