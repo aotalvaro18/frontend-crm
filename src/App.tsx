@@ -9,6 +9,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ui/ErrorMessage';
 import { Toaster } from 'react-hot-toast';
 import { authLogger } from '@/types/auth.types';
+import { queryClient } from '@/lib/react-query';
 
 // ============================================
 // ERROR BOUNDARY ESPECÍFICO PARA AUTH

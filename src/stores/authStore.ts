@@ -80,6 +80,12 @@ class AuthServiceClient {
       }
       
       const serviceUser: ServiceUser = await response.json();
+
+// ✅ =============================================================
+// ✅ AÑADIR ESTE LOG DE DEPURACIÓN AQUÍ
+console.log('✅ RAW USER DATA FROM API:', JSON.stringify(serviceUser, null, 2));
+// ✅ =============================================================
+
       const user = serviceUserToUser(serviceUser);
       
       authLogger.success('User profile loaded from auth-service', { email: user.email });
