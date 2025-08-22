@@ -42,6 +42,7 @@ const ContactDetailPage: React.FC = () => {
   // ============================================
   // DATA FETCHING CON REACT QUERY
   // ============================================
+  console.log('🔍 Query key being used:', CONTACT_DETAIL_QUERY_KEY(contactId));
   const { 
     data: contact, 
     isLoading, 

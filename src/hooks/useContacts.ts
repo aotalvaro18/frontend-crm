@@ -81,10 +81,24 @@ export const useContactStore = create<ContactState>()(
           const newContact = await contactApi.createContact(request);
           // Invalidar TODO lo relacionado con contactos
           await queryClient.invalidateQueries();
+          console.log('🔄 INVALIDATING ALL QUERIES');
+console.log('📊 Current queries:', queryClient.getQueryCache().getAll().map(q => q.queryKey));
           // Forzar refetch inmediato
           await queryClient.refetchQueries({
             predicate: (query) => query.queryKey[0] === 'contacts'
           });
+          
+          await queryClient.invalidateQueries();
+          console.log('🔄 INVALIDATING ALL QUERIES');
+console.log('📊 Current queries:', queryClient.getQueryCache().getAll().map(q => q.queryKey));
+          // Forzar refetch inmediato
+          await queryClient.refetchQueries({
+            predicate: (query) => query.queryKey[0] === 'contacts'
+          });
+          console.log('✅ Queries after en create refetch:', queryClient.getQueryCache().getAll().map(q => ({
+            key: q.queryKey,
+            state: q.state.status
+          })));
           toast.success('Contacto creado exitosamente');
           onSuccess?.(newContact);
         } catch (error: unknown) {
@@ -101,9 +115,15 @@ export const useContactStore = create<ContactState>()(
           // Invalida la lista Y el detalle específico para una actualización completa
           // Invalidar TODO y refetch específico
           await queryClient.invalidateQueries();
+          console.log('🔄 INVALIDATING ALL QUERIES');
+console.log('📊 Current queries:', queryClient.getQueryCache().getAll().map(q => q.queryKey));
           await queryClient.refetchQueries({
             predicate: (query) => query.queryKey[0] === 'contacts'
           });
+          console.log('✅ Queries after en update refetch:', queryClient.getQueryCache().getAll().map(q => ({
+            key: q.queryKey,
+            state: q.state.status
+          })));
           toast.success('Contacto actualizado exitosamente');
           onSuccess?.();
         } catch (error: unknown) {
@@ -125,10 +145,15 @@ export const useContactStore = create<ContactState>()(
           // Invalida la lista Y el detalle específico
           // Invalidar TODO y refetch específico
           await queryClient.invalidateQueries();
+          console.log('🔄 INVALIDATING ALL QUERIES');
+console.log('📊 Current queries:', queryClient.getQueryCache().getAll().map(q => q.queryKey));
           await queryClient.refetchQueries({
             predicate: (query) => query.queryKey[0] === 'contacts'
           });
-          
+          console.log('✅ Queries after en delete refetch:', queryClient.getQueryCache().getAll().map(q => ({
+            key: q.queryKey,
+            state: q.state.status
+          })));
           onSuccess?.();
         } catch (error: unknown) {
           toast.error(handleContactApiError(error).message);
