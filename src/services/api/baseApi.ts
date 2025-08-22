@@ -1,10 +1,9 @@
 // src/services/api/baseApi.ts
-// ✅ SOLUCIÓN REAL: Sin generateClient que causa excessive stack depth
+// ✅ REFACTORIZADO: Sin cache redundante con React Query
 // Compatible con TypeScript 5.4.5 + React 18.3.3
 
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
-//import toast from 'react-hot-toast';
 import { env } from '@/config/environment';
 
 // ============================================
@@ -17,7 +16,6 @@ export interface ApiConfig {
   retries: number;
   retryDelay: number;
   enableOfflineQueue?: boolean;
-  enableCaching?: boolean;
 }
 
 export interface ApiError {
@@ -39,12 +37,6 @@ interface OfflineQueueItem {
   data?: any;
   timestamp: number;
   retries: number;
-}
-
-interface CacheItem {
-  data: any;
-  timestamp: number;
-  ttl: number;
 }
 
 interface NetworkInfo {
@@ -129,63 +121,6 @@ class NetworkManager {
     return () => {
       this.listeners = this.listeners.filter(l => l !== callback);
     };
-  }
-}
-
-// ============================================
-// CACHE MANAGER
-// ============================================
-
-class CacheManager {
-  private cache = new Map<string, CacheItem>();
-  private readonly maxSize = 100;
-
-  set(key: string, data: any, ttl: number = 5 * 60 * 1000): void {
-    if (this.cache.size >= this.maxSize) {
-      this.cleanExpired();
-    }
-
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl,
-    });
-  }
-
-  get(key: string): any | null {
-    const item = this.cache.get(key);
-    if (!item) return null;
-
-    if (Date.now() - item.timestamp > item.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return item.data;
-  }
-
-  clear(prefix?: string): void {
-    if (prefix) {
-      const keysToDelete = Array.from(this.cache.keys()).filter(key => 
-        key.startsWith(prefix)
-      );
-      keysToDelete.forEach(key => this.cache.delete(key));
-    } else {
-      this.cache.clear();
-    }
-  }
-
-  private cleanExpired(): void {
-    const now = Date.now();
-    const expiredKeys: string[] = [];
-
-    this.cache.forEach((item, key) => {
-      if (now - item.timestamp > item.ttl) {
-        expiredKeys.push(key);
-      }
-    });
-
-    expiredKeys.forEach(key => this.cache.delete(key));
   }
 }
 
@@ -287,14 +222,12 @@ class OfflineQueueManager {
 
 export class BaseApiClient {
   private networkManager: NetworkManager;
-  private cacheManager: CacheManager;
   private offlineQueue: OfflineQueueManager;
   private config: ApiConfig;
 
   constructor(config: ApiConfig) {
     this.config = config;
     this.networkManager = new NetworkManager();
-    this.cacheManager = new CacheManager();
     this.offlineQueue = new OfflineQueueManager();
 
     this.setupNetworkManager();
@@ -346,10 +279,6 @@ export class BaseApiClient {
   private setupAuthListener() {
     Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
-        case 'signedOut':
-        case 'tokenRefresh_failure':
-          this.cacheManager.clear();
-          break;
         case 'signedIn':
         case 'tokenRefresh':
           if (this.networkManager.getConnectionInfo().isOnline) {
@@ -412,16 +341,11 @@ export class BaseApiClient {
       
       const apiError = this.createApiError(response, errorData);
       
-      // ✅ CORRECCIÓN QUIRÚRGICA: Reemplazar redirección forzada con lógica inteligente
       if (apiError.status === 401) {
-        // Solo forzamos el logout si no estamos ya en una página pública o intentando loguear
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
             console.warn('API Interceptor: Received 401 Unauthorized. Forcing logout.');
             
-            // Usamos import() dinámico para evitar dependencias circulares
             const { useAuthStore } = await import('@/stores/authStore');
-            
-            // Llamamos a la acción de signOut del store, que manejará la redirección de forma segura
             useAuthStore.getState().signOut();
         }
       }
@@ -444,15 +368,7 @@ export class BaseApiClient {
   // ============================================
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    const cacheKey = `GET:${endpoint}:${JSON.stringify(params || {})}`;
-    
-    const cached = this.cacheManager.get(cacheKey);
-    if (cached && this.networkManager.getConnectionInfo().isOnline) {
-      return cached;
-    }
-
     if (!this.networkManager.getConnectionInfo().isOnline) {
-      if (cached) return cached;
       const offlineError: ApiError = {
         code: ERROR_CODES.NETWORK_ERROR,
         message: 'Sin conexión a internet',
@@ -482,7 +398,6 @@ export class BaseApiClient {
       });
 
       const data = await this.handleResponse<T>(response);
-      this.cacheManager.set(cacheKey, data);
       return data;
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -520,7 +435,6 @@ export class BaseApiClient {
     });
 
     const result = await this.handleResponse<T>(response);
-    this.cacheManager.clear(endpoint.split('/')[1] || '');
     return result;
   }
 
@@ -546,7 +460,6 @@ export class BaseApiClient {
     });
 
     const result = await this.handleResponse<T>(response);
-    this.cacheManager.clear(endpoint.split('/')[1] || '');
     return result;
   }
 
@@ -571,7 +484,6 @@ export class BaseApiClient {
     });
 
     const result = await this.handleResponse<T>(response);
-    this.cacheManager.clear(endpoint.split('/')[1] || '');
     return result;
   }
 
@@ -580,7 +492,9 @@ export class BaseApiClient {
   // ============================================
 
   clearCache(prefix?: string): void {
-    this.cacheManager.clear(prefix);
+    // ✅ REFACTORIZADO: Method mantenido por compatibilidad pero sin funcionalidad
+    // React Query maneja el caching
+    console.log('Cache clearing handled by React Query');
   }
 
   getConnectionInfo(): NetworkInfo {
@@ -602,7 +516,6 @@ const apiConfig: ApiConfig = {
   retries: 3,
   retryDelay: 1000,
   enableOfflineQueue: true,
-  enableCaching: true,
 };
 
 export const apiClient = new BaseApiClient(apiConfig);

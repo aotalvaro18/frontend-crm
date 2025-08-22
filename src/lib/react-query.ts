@@ -3,27 +3,15 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Datos siempre stale
-      gcTime: 0,    // Sin caché
-      
-      // ✅ CRÍTICO: Desactivar structural sharing
-      structuralSharing: false,
-      
-      // ✅ CRÍTICO: Forzar datos frescos inmediatamente
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: 'always',
-      refetchOnReconnect: 'always',
-      notifyOnChangeProps: 'all',
-      
+      staleTime: 0,
+      gcTime: 30 * 1000, // 30 segundos
       retry: 1,
-      retryDelay: 1000,
-      
-      refetchInterval: false,
-      networkMode: 'online',
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
     },
     mutations: {
       retry: 0,
-      networkMode: 'online',
     },
   },
 });
