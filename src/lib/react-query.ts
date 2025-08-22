@@ -3,32 +3,27 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // 3 minutos (coherente con main.tsx)
-      gcTime: 5 * 60 * 1000,
+      staleTime: 0, // Datos siempre stale
+      gcTime: 0,    // Sin caché
       
-      retry: (failureCount, error: any) => {
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 2;
-      },
+      // ✅ CRÍTICO: Desactivar structural sharing
+      structuralSharing: false,
       
-      retryDelay: (attemptIndex) => {
-        return Math.min(500 * 2 ** attemptIndex, 15000);
-      },
+      // ✅ CRÍTICO: Forzar datos frescos inmediatamente
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: 'always',
+      refetchOnReconnect: 'always',
+      notifyOnChangeProps: 'all',
       
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+      retry: 1,
+      retryDelay: 1000,
+      
       refetchInterval: false,
-      networkMode: 'offlineFirst',
+      networkMode: 'online',
     },
     mutations: {
-      retry: 1,
-      networkMode: 'offlineFirst',
-      
-      onError: (error: any) => {
-        console.error('Mutation error:', error);
-      },
+      retry: 0,
+      networkMode: 'online',
     },
   },
 });
