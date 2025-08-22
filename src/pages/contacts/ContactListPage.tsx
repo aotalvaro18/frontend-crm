@@ -75,10 +75,6 @@ const ContactListPage: React.FC = () => {
   // DATA FETCHING CON REACT QUERY (ÚNICA FUENTE DE VERDAD)
   // ============================================
 
-  // ✅ AÑADE ESTE CONSOLE.LOG
-  const listQueryKey = CONTACTS_LIST_QUERY_KEY({ ...searchCriteria, page: currentPage });
-  console.log('ContactListPage - USING Query Key:', listQueryKey);
-
   const { 
     data: contactsData, 
     isLoading: isLoadingContacts, 
@@ -86,7 +82,7 @@ const ContactListPage: React.FC = () => {
     error: contactsError,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: listQueryKey, // <-- Usa la variable que acabamos de crear
+    queryKey: CONTACTS_LIST_QUERY_KEY,
     queryFn: () => contactApi.searchContacts({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['lastName,asc'] }),
     placeholderData: (previousData) => previousData,
   });
