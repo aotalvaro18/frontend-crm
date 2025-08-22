@@ -10,6 +10,7 @@ import type {
   UpdateContactRequest 
 } from '@/types/contact.types';
 
+
 interface EditContactModalProps {
   contact: ContactDTO;
   isOpen: boolean;
@@ -23,22 +24,19 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { updateContact, loading, error, clearError } = useContactOperations();
+  const { updateContact, isUpdating: isUpdatingById } = useContactOperations();
+// El estado de error general del store ya no es necesario aquí, 
+// porque el store ahora muestra toasts directamente.
 
-  const handleClose = () => {
-    clearError();
-    onClose();
-  };
+const handleClose = () => {
+  onClose();
+};
 
-  const handleSubmit = async (data: CreateContactRequest | UpdateContactRequest) => {
-    try {
-      // TypeScript sabe que `data` aquí debe ser `UpdateContactRequest` por la lógica en ContactForm.
-      await updateContact(contact.id, data as UpdateContactRequest);
-      onSuccess();
-    } catch (err) {
-      console.error('Error al actualizar el contacto:', err);
-    }
-  };
+const handleSubmit = async (data: CreateContactRequest | UpdateContactRequest) => {
+  // La función updateContact del store ya devuelve una Promise.
+  // Al usar await, nos aseguramos de que handleSubmit también devuelva una Promise.
+  await updateContact(contact.id, data as UpdateContactRequest, onSuccess);
+};
 
   if (!isOpen) return null;
 
@@ -62,14 +60,7 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {error && (
-            <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
-              <div className="flex items-center">
-                <X className="h-4 w-4 text-red-400 mr-2" /> 
-                <span className="text-sm text-red-300">{error}</span>
-              </div>
-            </div>
-          )}
+          
           
           {/* ✅ SOLUCIÓN: Pasar solo las props que ContactForm espera */}
           <ContactForm
@@ -77,8 +68,7 @@ const EditContactModal: React.FC<EditContactModalProps> = ({
             mode="edit"
             onSubmit={handleSubmit}
             onCancel={handleClose}
-            loading={loading}
-            error={error}
+            loading={isUpdatingById(contact.id)}
             showActions={true}
           />
         </div>

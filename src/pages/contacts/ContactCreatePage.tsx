@@ -5,7 +5,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 // ✅ SOLUCIÓN:
-import toast from 'react-hot-toast';
 
 // ============================================
 // HOOKS DESACOPLADOS
@@ -37,8 +36,8 @@ const ContactCreatePage: React.FC = () => {
   // HOOKS DESACOPLADOS
   // ============================================
 
-  const { createContact, creating, error } = useContactOperations();
-
+  const { createContact, isCreating } = useContactOperations();
+  
   // ============================================
   // HANDLERS SIMPLES
   // ============================================
@@ -48,32 +47,12 @@ const ContactCreatePage: React.FC = () => {
   };
 
   const handleSubmit = async (data: CreateContactRequest | UpdateContactRequest) => {
-    try {
-      // A pesar de que 'data' puede ser de dos tipos, en esta página
-      // sabemos que siempre será un 'CreateContactRequest'.
-      // Lo confirmamos y le damos una pista a TypeScript.
-      const newContact = await createContact(data as CreateContactRequest);
-      
-      // Opcional: un type guard para más seguridad en runtime
-      if ('version' in data) {
-        console.error("Error lógico: Se intentó actualizar un contacto desde la página de creación.");
-        return; // No continuar si algo está mal
-      }
-
-      toast.success(`Contacto "${newContact.firstName} ${newContact.lastName}" creado exitosamente.`);
-      
-      setTimeout(() => {
-        navigate('/contacts');
-      }, 1500);
-      
-      // Navegar al detalle del contacto creado
-      navigate('/contacts');
-
-    } catch (error) {
-      // El error ya es manejado por el store y se mostrará en el formulario
-      // a través de la prop 'error'. No es necesario mostrar otro toast aquí.
-      console.error('Error al crear el contacto:', error);
-    }
+    // Usamos el callback onSuccess para manejar la navegación después de que
+    // la creación y la invalidación de caché en el store hayan terminado.
+    createContact(data as CreateContactRequest, (newContact) => {
+      // Navegar al detalle del nuevo contacto creado
+      navigate(`/contacts/${newContact.id}`);
+    });
   };
 
   const handleCancel = () => {
@@ -114,8 +93,7 @@ const ContactCreatePage: React.FC = () => {
               <ContactForm
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
-                loading={creating}
-                error={error}
+                loading={isCreating}
                 mode="create"
               />
             </div>
