@@ -63,8 +63,9 @@ const ContactDetailHeader: React.FC<ContactDetailHeaderProps> = ({
           {/* Contact Info */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-2">
-              <h1 className="text-2xl font-bold text-app-gray-100 truncate">
-                {contact.firstName} {contact.lastName}
+            <h1 className="text-2xl font-bold text-app-gray-100">
+                <span className="block sm:inline">{contact.firstName}</span>
+                <span className="block sm:inline sm:ml-2">{contact.lastName}</span>
                 {isLoading && (
                   <LoadingSpinner size="sm" className="ml-3 inline-block" />
                 )}
