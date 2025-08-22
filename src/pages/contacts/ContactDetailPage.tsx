@@ -42,7 +42,6 @@ const ContactDetailPage: React.FC = () => {
   // ============================================
   // DATA FETCHING CON REACT QUERY
   // ============================================
-  console.log('🔍 Query key being used:', CONTACT_DETAIL_QUERY_KEY(contactId));
   const { 
     data: contact, 
     isLoading, 
@@ -72,8 +71,6 @@ const ContactDetailPage: React.FC = () => {
 
   const handleUpdateSuccess = useCallback(() => {
     setShowEditModal(false);
-    toastSuccess("Contacto actualizado con éxito.");
-    // No es necesario llamar a refetch manualmente, la invalidación en el store se encarga.
   }, []);
 
   const handleConfirmDelete = useCallback(() => {

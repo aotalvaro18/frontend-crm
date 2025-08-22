@@ -83,7 +83,7 @@ const ContactListPage: React.FC = () => {
     refetch: refetchContacts,
   } = useQuery({
     queryKey: CONTACTS_LIST_QUERY_KEY(searchCriteria, currentPage),
-    queryFn: () => contactApi.searchContacts({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['lastName,asc'] }),
+    queryFn: () => contactApi.searchContacts({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['updatedAt,desc'] }),
     placeholderData: (previousData) => previousData,
     refetchInterval: 1000, // Refetch cada segundo temporalmente para debug
     refetchOnMount: true,

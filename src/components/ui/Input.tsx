@@ -278,16 +278,23 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, Combined
           {hasRightIcon && (
             <div className={cn('absolute right-0 top-0 h-full flex items-center justify-center space-x-1 pr-3', error && 'text-red-400', success && 'text-green-400')}>
               {loading && <div className="animate-spin"><div className="w-4 h-4 border-2 border-app-gray-400 border-t-transparent rounded-full" /></div>}
-              {clearable && currentValue && !loading && (
-                <button type="button" onClick={handleClear} className="text-app-gray-400 hover:text-white transition-colors duration-200 p-1" tabIndex={-1}><X className="h-4 w-4" /></button>
-              )}
-              {shouldShowPasswordToggle && !loading && (
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-app-gray-400 hover:text-white transition-colors duration-200 p-1" tabIndex={-1}>
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              )}
-              {rightIcon && !loading && (
-                <div className="text-app-gray-400">{React.cloneElement(rightIcon as React.ReactElement, { className: cn('h-4 w-4', (rightIcon as any)?.props?.className) })}</div>
+              
+              {/* ✅ CORRECCIÓN: Usar un if/else para dar prioridad al rightIcon personalizado */}
+              {!loading && rightIcon ? (
+                // Si se provee un rightIcon, se renderiza y se ignoran los automáticos
+                <div className="text-app-gray-400">{rightIcon}</div>
+              ) : (
+                // Si no hay rightIcon, se renderizan los automáticos (clearable, password toggle)
+                <>
+                  {clearable && currentValue && (
+                    <button type="button" onClick={handleClear} className="text-app-gray-400 hover:text-white transition-colors duration-200 p-1" tabIndex={-1}><X className="h-4 w-4" /></button>
+                  )}
+                  {shouldShowPasswordToggle && (
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-app-gray-400 hover:text-white transition-colors duration-200 p-1" tabIndex={-1}>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

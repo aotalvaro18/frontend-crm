@@ -38,7 +38,7 @@ const ContactDetailHeader: React.FC<ContactDetailHeaderProps> = ({
 
   return (
     <div className="border-b border-app-dark-700 pb-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start space-x-4 flex-1">
           {/* Back button - Mobile priority */}
           <Button
@@ -123,7 +123,7 @@ const ContactDetailHeader: React.FC<ContactDetailHeaderProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center space-x-3 ml-4">
+        <div className="flex items-center space-x-3 sm:ml-4 self-end sm:self-auto">
           <Button 
             variant="outline" 
             onClick={onEdit}
