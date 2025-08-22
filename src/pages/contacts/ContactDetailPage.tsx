@@ -51,6 +51,10 @@ const ContactDetailPage: React.FC = () => {
     queryKey: CONTACT_DETAIL_QUERY_KEY(contactId),
     queryFn: () => contactApi.getContactById(contactId),
     enabled: !!contactId, // Solo ejecuta si el ID es un número válido
+    refetchInterval: 1000, // Refetch cada segundo temporalmente para debug
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
 
   // ============================================

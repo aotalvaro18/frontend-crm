@@ -79,9 +79,11 @@ export const useContactStore = create<ContactState>()(
         set({ isCreating: true });
         try {
           const newContact = await contactApi.createContact(request);
-          // Invalida TODAS las queries de listas de contactos para asegurar que se refresquen
-          await queryClient.invalidateQueries({ 
-            queryKey: ['contacts']
+          // Invalidar TODO lo relacionado con contactos
+          await queryClient.invalidateQueries();
+          // Forzar refetch inmediato
+          await queryClient.refetchQueries({
+            predicate: (query) => query.queryKey[0] === 'contacts'
           });
           toast.success('Contacto creado exitosamente');
           onSuccess?.(newContact);
@@ -97,10 +99,11 @@ export const useContactStore = create<ContactState>()(
         try {
           await contactApi.updateContact(id, request);
           // Invalida la lista Y el detalle específico para una actualización completa
-          await queryClient.invalidateQueries({ 
-            queryKey: ['contacts']
+          // Invalidar TODO y refetch específico
+          await queryClient.invalidateQueries();
+          await queryClient.refetchQueries({
+            predicate: (query) => query.queryKey[0] === 'contacts'
           });
-          await queryClient.invalidateQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
           toast.success('Contacto actualizado exitosamente');
           onSuccess?.();
         } catch (error: unknown) {
@@ -120,12 +123,12 @@ export const useContactStore = create<ContactState>()(
         try {
           await contactApi.deleteContact(id);
           // Invalida la lista Y el detalle específico
-          await queryClient.invalidateQueries({ 
-            queryKey: ['contacts']
+          // Invalidar TODO y refetch específico
+          await queryClient.invalidateQueries();
+          await queryClient.refetchQueries({
+            predicate: (query) => query.queryKey[0] === 'contacts'
           });
-          await queryClient.invalidateQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
-          // Opcional: remover la query del detalle de la caché para limpieza inmediata
-          //queryClient.removeQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
+          
           onSuccess?.();
         } catch (error: unknown) {
           toast.error(handleContactApiError(error).message);

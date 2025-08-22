@@ -82,9 +82,13 @@ const ContactListPage: React.FC = () => {
     error: contactsError,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: CONTACTS_LIST_QUERY_KEY({ ...searchCriteria, page: currentPage }),
+    queryKey: CONTACTS_LIST_QUERY_KEY(searchCriteria, currentPage),
     queryFn: () => contactApi.searchContacts({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['lastName,asc'] }),
     placeholderData: (previousData) => previousData,
+    refetchInterval: 1000, // Refetch cada segundo temporalmente para debug
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
 
   const contacts = contactsData?.content || [];
