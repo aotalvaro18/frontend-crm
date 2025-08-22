@@ -119,13 +119,24 @@ export const useContactStore = create<ContactState>()(
         set(state => ({ deleting: new Set(state.deleting).add(id) }));
         try {
           await contactApi.deleteContact(id);
+          console.log('useContacts.ts - ATTEMPTING TO INVALIDATE Query Keys that start with:', ['contacts']);
+
+
           // Invalida la lista Y el detalle específico
           await queryClient.invalidateQueries({ 
-            predicate: (query) => query.queryKey[0] === 'contacts' 
+            predicate: (query) => {
+              // ✅ Log para cada query que se está evaluando
+              console.log('  - Evaluating query:', query.queryKey, 'Result:', query.queryKey[0] === 'contacts');
+              return query.queryKey[0] === 'contacts';
+            }
           });
-          await queryClient.invalidateQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
-          // Opcional: remover la query del detalle de la caché para limpieza inmediata
-          queryClient.removeQueries({ queryKey: CONTACT_DETAIL_QUERY_KEY(id) });
+
+          const detailKey = CONTACT_DETAIL_QUERY_KEY(id);
+          console.log('useContacts.ts - ATTEMPTING TO INVALIDATE Detail Query Key:', detailKey);
+          await queryClient.invalidateQueries({ queryKey: detailKey });
+          
+          queryClient.removeQueries({ queryKey: detailKey });
+          
           onSuccess?.();
         } catch (error: unknown) {
           toast.error(handleContactApiError(error).message);
