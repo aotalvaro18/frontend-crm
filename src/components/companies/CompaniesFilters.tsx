@@ -134,8 +134,8 @@ export const CompaniesFilters: React.FC<CompaniesFiltersProps> = ({
             Tamaño
           </label>
           <Select
-            value={localFilters.size || ''}
-            onValueChange={(value) => handleFilterChange('size', value as CompanySize)}
+            value={localFilters.companySize || ''}
+            onValueChange={(value) => handleFilterChange('companySize', value as CompanySize)}
             options={companySizeOptions}
           />
         </div>

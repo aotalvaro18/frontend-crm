@@ -197,7 +197,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
               country: company.address?.country || '',
             },
             industry: company.industry || '',
-            size: company.size || 'SMALL',
+            companySize: company.companySize || 'SMALL',
             annualRevenue: company.annualRevenue,
             customFields: company.customFields || {},
         };

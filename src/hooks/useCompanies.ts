@@ -53,7 +53,7 @@ interface CompanyState {
   deselectCompany: (id: number) => void;
   deselectAllCompanies: () => void;
   
-  bulkUpdateCompanies: (updates: Partial<Pick<CompanyDTO, 'type' | 'industry' | 'size'>>) => Promise<void>;
+  bulkUpdateCompanies: (updates: Partial<Pick<CompanyDTO, 'type' | 'industry' | 'companySize'>>) => Promise<void>;
   bulkDeleteCompanies: () => Promise<void>;
 }
 

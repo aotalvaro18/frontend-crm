@@ -7,7 +7,6 @@ import {
     BaseSearchCriteria,
     ID,
     CognitoSub,
-    Timestamp,
     CustomFields,
     Address,
   } from './common.types';
@@ -46,7 +45,7 @@ import {
     
     // Detalles comerciales
     industry?: string;
-    size?: CompanySize;
+    companySize?: CompanySize;
     annualRevenue?: number;
     
     // Ownership y asignación
@@ -170,7 +169,7 @@ import {
     // Filtros básicos
     type?: CompanyType;
     industry?: string;
-    size?: CompanySize;
+    companySize?: CompanySize;
     
     // Ownership y asignación
     ownerCognitoSub?: CognitoSub;
@@ -219,7 +218,7 @@ import {
     phone?: string;
     website?: string;
     industry?: string;
-    size?: CompanySize;
+    companySize?: CompanySize;
     annualRevenue?: number;
     address?: Address;
     customFields?: CustomFields;
@@ -237,7 +236,7 @@ import {
     phone?: string;
     website?: string;
     industry?: string;
-    size?: CompanySize;
+    companySize?: CompanySize;
     annualRevenue?: number;
     address?: Address;
     customFields?: CustomFields;
@@ -537,7 +536,7 @@ import {
    */
   export const isLargeCompany = (company: Company): boolean => {
     // Por tamaño declarado
-    if (company.size === 'LARGE' || company.size === 'ENTERPRISE') {
+    if (company.companySize === 'LARGE' || company.companySize === 'ENTERPRISE') {
       return true;
     }
     
@@ -580,7 +579,7 @@ import {
     overrides: Partial<CompanySearchCriteria> = {}
   ): CompanySearchCriteria => ({
     page: 0,
-    size: 20,
+    size: 20, // Este es el size de paginación de BaseSearchCriteria
     includeDeleted: false,
     ...overrides,
   });

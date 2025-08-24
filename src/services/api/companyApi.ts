@@ -52,7 +52,7 @@ export class CompanyApiService {
     if (criteria.search) params.append('search', criteria.search);
     if (criteria.type) params.append('type', criteria.type);
     if (criteria.industry) params.append('industry', criteria.industry);
-    if (criteria.size) params.append('size', criteria.size);
+    if (criteria.companySize) params.append('companySize', String(criteria.companySize));
     if (criteria.onlyOwned !== undefined) params.append('onlyOwned', String(criteria.onlyOwned));
     if (criteria.includeDeleted !== undefined) params.append('includeDeleted', String(criteria.includeDeleted));
     if (criteria.hasContacts !== undefined) params.append('hasContacts', String(criteria.hasContacts));
@@ -241,7 +241,7 @@ export class CompanyApiService {
    */
   async bulkUpdateCompanies(
     companyIds: number[],
-    updates: Partial<Pick<UpdateCompanyRequest, 'type' | 'industry' | 'size'>>
+    updates: Partial<Pick<UpdateCompanyRequest, 'type' | 'industry' | 'companySize'>>
   ): Promise<BulkOperationResult> {
     
     if (companyIds.length > 100) {
