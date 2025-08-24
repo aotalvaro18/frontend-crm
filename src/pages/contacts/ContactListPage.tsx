@@ -12,10 +12,6 @@ import {
   RefreshCw,
   FileDown,
   Upload,
-  UserCheck,
-  UserX,
-  Globe,
-  Target,
   Users
 } from 'lucide-react';
 
@@ -35,8 +31,7 @@ import Page from '@/components/layout/Page';
 import ContactsTable from '@/components/contacts/ContactsTable';
 import ContactsFilters from '@/components/contacts/ContactsFilters';
 import ContactsBulkActions from '@/components/contacts/ContactsBulkActions';
-import { StatsCards } from '@/components/shared/StatsCards';
-import type { StatCardConfig } from '@/components/shared/StatsCards';
+import ContactsStatsCards from '@/components/contacts/ContactsStatsCards';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ============================================
@@ -119,17 +114,7 @@ const ContactListPage: React.FC = () => {
     bulkUpdateContacts,
     bulkDeleteContacts
   } = useBulkOperations();
-  const { handleError } = useErrorHandler();
-
-  // ============================================
-  // STATS CARDS CONFIGURATION
-  // ============================================
-  const contactStatConfigs = useMemo((): StatCardConfig[] => [
-    { key: 'total', title: 'Total Contactos', description: 'Número total de contactos en el sistema.', icon: Users, variant: 'default', format: 'number' },
-    { key: 'active', title: 'Activos', description: 'Contactos con estado activo.', icon: UserCheck, variant: 'success', format: 'number' },
-    { key: 'withPortal', title: 'Con Portal', description: 'Contactos con acceso al portal digital.', icon: Globe, variant: 'info', format: 'number' },
-    { key: 'adoptionRate', title: 'Adopción Portal', description: 'Porcentaje de contactos con portal activo.', icon: Target, variant: 'accent', format: 'percentage' },
-  ], []);
+  const { handleError } = useErrorHandler(); // Mantenemos para acciones como export
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -216,16 +201,8 @@ const ContactListPage: React.FC = () => {
   // ============================================
   const renderHeader = () => (
     <div className="space-y-6">
-      <StatsCards 
-        configs={contactStatConfigs}
-        // ✅ Creamos un objeto "mapeado" al vuelo
-        stats={stats ? {
-          total: stats.total,
-          active: stats.active,
-          withPortal: stats.withPortal,
-          adoptionRate: stats.adoptionRate,
-          // Aquí puedes añadir cualquier otra métrica que necesites mostrar
-        } : undefined}
+      <ContactsStatsCards 
+        stats={stats || { total: totalContacts, active: 0, inactive: 0, withPortal: 0, adoptionRate: 0, averageEngagementScore: 0, newContactsThisMonth: 0 }}
         isLoading={isLoadingStats}
         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       />
