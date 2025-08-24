@@ -12,6 +12,10 @@ import {
   RefreshCw,
   FileDown,
   Upload,
+  UserCheck,
+  UserX,
+  Globe,
+  Target,
   Users
 } from 'lucide-react';
 
@@ -31,7 +35,8 @@ import Page from '@/components/layout/Page';
 import ContactsTable from '@/components/contacts/ContactsTable';
 import ContactsFilters from '@/components/contacts/ContactsFilters';
 import ContactsBulkActions from '@/components/contacts/ContactsBulkActions';
-import ContactsStatsCards from '@/components/contacts/ContactsStatsCards';
+import { StatsCards } from '@/components/shared/StatsCards';
+import type { StatCardConfig } from '@/components/shared/StatsCards';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ============================================
@@ -114,7 +119,17 @@ const ContactListPage: React.FC = () => {
     bulkUpdateContacts,
     bulkDeleteContacts
   } = useBulkOperations();
-  const { handleError } = useErrorHandler(); // Mantenemos para acciones como export
+  const { handleError } = useErrorHandler();
+
+  // ============================================
+  // STATS CARDS CONFIGURATION
+  // ============================================
+  const contactStatConfigs = useMemo((): StatCardConfig[] => [
+    { key: 'total', title: 'Total de Contactos', description: 'Número total de contactos en la base de datos.', icon: Users, variant: 'default', format: 'number' },
+    { key: 'newContactsThisMonth', title: 'Nuevos (30 días)', description: 'Contactos añadidos en los últimos 30 días.', icon: UserCheck, variant: 'success', format: 'number' },
+    { key: 'contactsWithoutActivity', title: 'Sin Actividad (30 días)', description: 'Contactos sin interacción en los últimos 30 días.', icon: UserX, variant: 'warning', format: 'number' },
+    { key: 'adoptionRate', title: 'Adopción del Portal', description: 'Porcentaje de contactos con portal digital activo.', icon: Target, variant: 'accent', format: 'percentage' },
+  ], []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -201,8 +216,19 @@ const ContactListPage: React.FC = () => {
   // ============================================
   const renderHeader = () => (
     <div className="space-y-6">
-      <ContactsStatsCards 
-        stats={stats || { total: totalContacts, active: 0, inactive: 0, withPortal: 0, adoptionRate: 0, averageEngagementScore: 0, newContactsThisMonth: 0 }}
+      <StatsCards 
+        configs={contactStatConfigs}
+        // ✅ Creamos un objeto "mapeado" al vuelo
+        stats={stats ? {
+          total: totalContacts,
+          newContactsThisMonth: stats.newContactsThisMonth,
+          contactsWithoutActivity: stats.contactsWithoutActivity,
+          adoptionRate: stats.adoptionRate,
+          // ✅ Añade los que faltaban en la config, aunque no los muestres, para que no de error
+          active: stats.active,
+          withPortal: stats.withPortal,
+          // Aquí puedes añadir cualquier otra métrica que necesites mostrar
+        } : undefined}
         isLoading={isLoadingStats}
         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       />

@@ -166,8 +166,8 @@ export interface ContactStats {
   contactsWithoutPortal?: number;
   averageEngagementScore?: number;
   newContactsThisMonth?: number;
+  contactsWithoutActivity: number;
 }
-
 
 // ============================================
 // ALIAS TYPES (Para compatibilidad con componentes)
