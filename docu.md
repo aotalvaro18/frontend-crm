@@ -1,946 +1,3 @@
-// src/hooks/useContacts.ts
-// Enterprise contact hooks - CORREGIDO TypeScript-Safe
-// Mobile-first + Zustand + Optimistic Updates - Sin errores
-
-import { create } from 'zustand';
-import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import toast from 'react-hot-toast';
-
-import { 
-  contactApi, 
-  handleContactApiError 
-} from '@/services/api/contactApi';
-import { APP_CONFIG } from '@/utils/constants';
-
-import type {
-  ContactDTO,
-  CreateContactRequest,
-  UpdateContactRequest,
-  ContactSearchCriteria,
-  ContactStats,
-} from '@/types/contact.types';
-
-import type { 
-  BulkOperationResult 
-} from '@/types/api.types';
-
-import type { PageRequest } from '@/types/common.types';
-
-// ============================================
-// CONTACT STORE STATE
-// ============================================
-
-interface ContactState {
-  // ============================================
-  // DATA STATE (Core data)
-  // ============================================
-  contacts: ContactDTO[];
-  selectedContact: ContactDTO | null;
-  totalContacts: number;
-  currentPage: number;
-  pageSize: number;
-  totalPages: number;
-  searchCriteria: ContactSearchCriteria;
-  
-  // ============================================
-  // UI STATE (Mobile-optimized)
-  // ============================================
-  loading: boolean;
-  error: string | null;
-  lastError: unknown; // Para debugging
-  
-  // Operation states (granular)
-  creating: boolean;
-  updating: Set<number>;
-  deleting: Set<number>;
-  
-  // ============================================
-  // SELECTION & BULK OPERATIONS
-  // ============================================
-  selectedContactIds: Set<number>;
-  bulkOperationLoading: boolean;
-  lastBulkOperation: string | null;
-  
-  // ============================================
-  // STATS & ANALYTICS
-  // ============================================
-  stats: ContactStats | null;
-  statsLoading: boolean;
-  statsLastUpdated: number | null;
-  
-  // ============================================
-  // CONNECTION STATE (Mobile-critical)
-  // ============================================
-  isOffline: boolean;
-  isSyncing: boolean;
-  hasUnsyncedChanges: boolean;
-  
-  // ============================================
-  // ACTIONS - SEARCH & LIST
-  // ============================================
-  searchContacts: (criteria?: ContactSearchCriteria, page?: number) => Promise<void>;
-  refreshContacts: () => Promise<void>;
-  prefetchNextPage: () => Promise<void>;
-  
-  // ============================================
-  // ACTIONS - INDIVIDUAL OPERATIONS
-  // ============================================
-  getContactById: (id: number, forceRefresh?: boolean) => Promise<void>;
-  createContact: (request: CreateContactRequest) => Promise<ContactDTO>;
-  updateContact: (id: number, request: UpdateContactRequest) => Promise<ContactDTO>;
-  deleteContact: (id: number) => Promise<void>;
-  setSelectedContact: (contact: ContactDTO | null) => void;
-  
-  // ============================================
-  // ACTIONS - PORTAL OPERATIONS
-  // ============================================
-  generatePortalInvitation: (contactId: number) => Promise<string>;
-  resendPortalInvitation: (contactId: number) => Promise<void>;
-  revokePortalAccess: (contactId: number) => Promise<void>;
-  
-  // ============================================
-  // ACTIONS - BULK OPERATIONS
-  // ============================================
-  selectContact: (id: number) => void;
-  selectAllContacts: () => void;
-  deselectContact: (id: number) => void;
-  deselectAllContacts: () => void;
-  bulkUpdateContacts: (updates: Partial<Pick<ContactDTO, 'status' | 'source'>>) => Promise<void>;
-  bulkDeleteContacts: () => Promise<void>;
-  
-  // ============================================
-  // ACTIONS - EXPORT
-  // ============================================
-  exportContacts: (format: 'csv' | 'excel', criteria?: ContactSearchCriteria) => Promise<void>;
-  
-  // ============================================
-  // ACTIONS - STATS
-  // ============================================
-  loadStats: (forceRefresh?: boolean) => Promise<void>;
-  
-  // ============================================
-  // ACTIONS - SEARCH & FILTERS
-  // ============================================
-  setSearchCriteria: (criteria: ContactSearchCriteria) => void;
-  clearFilters: () => void;
-  
-  // ============================================
-  // ACTIONS - ERROR HANDLING
-  // ============================================
-  clearError: () => void;
-  resetState: () => void;
-}
-
-// ============================================
-// HELPER FUNCTIONS (TypeScript-Safe)
-// ============================================
-
-// CORREGIDO: Helper para toast warnings (no existe toast.warning)
-const showWarningToast = (message: string) => {
-  toast(message, {
-    icon: '⚠️',
-    style: {
-      background: '#f59e0b',
-      color: '#fff',
-    },
-  });
-};
-
-// CORREGIDO: Helper para merge seguro de contactos (evita conflictos de tipos)
-const safeUpdateContact = (
-    contact: ContactDTO,
-    updates: Record<string, unknown>
-  ): ContactDTO => {
-    return { ...contact, ...updates };
-  };
-
-// ============================================
-// ZUSTAND STORE IMPLEMENTATION
-// ============================================
-
-export const useContactStore = create<ContactState>()(
-  devtools(
-    subscribeWithSelector((set, get) => ({
-      // ============================================
-      // INITIAL STATE
-      // ============================================
-      contacts: [],
-      selectedContact: null,
-      totalContacts: 0,
-      currentPage: 0,
-      pageSize: APP_CONFIG.DEFAULT_PAGE_SIZE,
-      totalPages: 0,
-      searchCriteria: {},
-      
-      // UI State
-      loading: false,
-      error: null,
-      lastError: null,
-      
-      // Operation states
-      creating: false,
-      updating: new Set(),
-      deleting: new Set(),
-      
-      // Selection
-      selectedContactIds: new Set(),
-      bulkOperationLoading: false,
-      lastBulkOperation: null,
-      
-      // Stats
-      stats: null,
-      statsLoading: false,
-      statsLastUpdated: null,
-      
-      // Connection
-      isOffline: false,
-      isSyncing: false,
-      hasUnsyncedChanges: false,
-
-      // ============================================
-      // SEARCH & LIST ACTIONS
-      // ============================================
-      
-      searchContacts: async (criteria = {}, page = 0) => {
-        set({ loading: true, error: null });
-        
-        try {
-          const currentCriteria = { ...get().searchCriteria, ...criteria };
-          const pagination: PageRequest = {
-            page,
-            size: get().pageSize,
-            sort: ['lastName,asc', 'firstName,asc'],
-          };
-
-          const response = await contactApi.searchContacts(currentCriteria, pagination);
-          
-          set({
-            contacts: response.content,
-            totalContacts: response.totalElements,
-            currentPage: response.number,
-            totalPages: response.totalPages,
-            searchCriteria: currentCriteria,
-            loading: false,
-          });
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          
-          // Solo mostrar toast si no es un error de red que se puede reintentar
-          if (errorInfo.type !== 'network_error') {
-            toast.error(errorInfo.message);
-          }
-        }
-      },
-
-      refreshContacts: async () => {
-        const { searchCriteria, currentPage } = get();
-        await get().searchContacts(searchCriteria, currentPage);
-      },
-
-      prefetchNextPage: async () => {
-        const { searchCriteria, currentPage, totalPages, loading } = get();
-        
-        // Solo prefetch si no estamos cargando y hay más páginas
-        if (loading || currentPage >= totalPages - 1) return;
-        
-        try {
-          const nextPage = currentPage + 1;
-          const pagination: PageRequest = {
-            page: nextPage,
-            size: get().pageSize,
-            sort: ['lastName,asc', 'firstName,asc'],
-          };
-          
-          // Prefetch silencioso (no actualizar el estado)
-          await contactApi.searchContacts(searchCriteria, pagination);
-        } catch {
-          // Ignorar errores en prefetch
-        }
-      },
-
-      // ============================================
-      // INDIVIDUAL CONTACT ACTIONS
-      // ============================================
-      
-      getContactById: async (id: number) => {
-        set({ loading: true, selectedContact: null }); // Se ajusta el estado de carga
-        
-        try {
-          const contact = await contactApi.getContactById(id);
-          set({
-            selectedContact: contact,
-            loading: false,
-          });
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          toast.error(errorInfo.message);
-        }
-      },
-
-      createContact: async (request: CreateContactRequest) => {
-        set({ creating: true, error: null });
-        
-        try {
-          const newContact = await contactApi.createContact(request);
-          
-          // Agregar optimísticamente a la lista si está en la primera página
-          const { currentPage } = get();
-          if (currentPage === 0) {
-            set(state => ({
-              contacts: [newContact, ...state.contacts.slice(0, state.pageSize - 1)],
-              totalContacts: state.totalContacts + 1,
-              creating: false,
-            }));
-          } else {
-            set({ creating: false });
-          }
-          
-          toast.success('Contacto creado exitosamente');
-          return newContact;
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            creating: false,
-          });
-          
-          if (errorInfo.type === 'validation_error') {
-            toast.error('Revisa los datos ingresados');
-          } else {
-            toast.error(errorInfo.message);
-          }
-          throw error;
-        }
-      },
-
-      updateContact: async (id: number, request: UpdateContactRequest) => {
-        // CORREGIDO: Optimistic update type-safe
-        set(state => ({
-          updating: new Set([...state.updating, id]),
-          error: null,
-        }));
-        
-        // CORREGIDO: Guardar lista original para rollback
-        const originalContacts = [...get().contacts];
-        
-        // CORREGIDO: Actualizar optimísticamente con merge seguro
-        set(state => ({
-          contacts: state.contacts.map(contact =>
-            contact.id === id ? safeUpdateContact(contact, request) : contact
-          ),
-        }));
-        
-        try {
-          const updatedContact = await contactApi.updateContact(id, request);
-          
-          // Actualizar con datos reales del servidor
-          set(state => ({
-            contacts: state.contacts.map(contact =>
-              contact.id === id ? updatedContact : contact
-            ),
-            selectedContact: state.selectedContact?.id === id ? updatedContact : state.selectedContact,
-            updating: new Set([...state.updating].filter(contactId => contactId !== id)),
-          }));
-          
-          toast.success('Contacto actualizado exitosamente');
-          return updatedContact;
-          
-        } catch (error: unknown) {
-          // CORREGIDO: Revertir cambio optimista con datos originales
-          set(state => ({
-            contacts: originalContacts,
-            updating: new Set([...state.updating].filter(contactId => contactId !== id)),
-          }));
-          
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-          });
-          
-          if (errorInfo.type === 'concurrency_conflict') {
-            toast.error('Este contacto fue modificado por otro usuario. Se actualizará automáticamente.');
-            // Auto-refresh en conflictos de concurrencia
-            setTimeout(() => get().getContactById(id, true), 1000);
-          } else if (errorInfo.type === 'validation_error') {
-            toast.error('Revisa los datos ingresados');
-          } else {
-            toast.error(errorInfo.message);
-          }
-          throw error;
-        }
-      },
-
-      deleteContact: async (id: number) => {
-        // 1. Iniciar estado de carga para este ID específico
-        set(state => ({
-          deleting: new Set([...state.deleting, id]),
-          error: null, // Limpiar errores previos
-        }));
-        
-        try {
-          // 2. Llamar a la API para realizar la eliminación en el backend
-          await contactApi.deleteContact(id);
-          
-          // 3. Actualizar el estado local para reflejar el cambio INMEDIATAMENTE
-          set(state => ({
-            // ✅ FILTRAR LA LISTA: Esta es la lógica clave que actualiza la UI en ContactListPage
-            contacts: state.contacts.filter(contact => contact.id !== id),
-            
-            // Si el contacto eliminado era el seleccionado, limpiarlo
-            selectedContact: state.selectedContact?.id === id ? null : state.selectedContact,
-            
-            // Actualizar el conteo total de contactos
-            totalContacts: Math.max(0, state.totalContacts - 1),
-            
-            // Limpiar el estado de carga para este ID
-            deleting: new Set([...state.deleting].filter(contactId => contactId !== id)),
-            
-            // Si el contacto estaba seleccionado para una acción bulk, quitarlo
-            selectedContactIds: new Set([...state.selectedContactIds].filter(contactId => contactId !== id)),
-          }));
-          
-          // ✅ TOAST DE ÉXITO ELIMINADO: Ya no se muestra el toast genérico desde aquí.
-          // El toast específico con el nombre del contacto se manejará en ContactDetailPage.
-          
-        } catch (error: unknown) {
-          // 4. Manejo de errores
-          // Limpiar el estado de carga para este ID aunque haya fallado
-          set(state => ({
-            deleting: new Set([...state.deleting].filter(contactId => contactId !== id)),
-          }));
-          
-          // Procesar el error para obtener un mensaje amigable
-          const errorInfo = handleContactApiError(error);
-          
-          // Actualizar el estado con la información del error
-          set({
-            error: errorInfo.message,
-            lastError: error,
-          });
-          
-          // ✅ MOSTRAR TOAST DE ERROR: Es importante notificar al usuario que la acción falló.
-          toast.error(errorInfo.message || 'No se pudo eliminar el contacto.');
-          
-          // Re-lanzar el error para que el componente que llamó a la función (ContactDetailPage)
-          // también pueda reaccionar si es necesario (ej. no cerrar un modal).
-          throw error;
-        }
-      },
-
-      setSelectedContact: (contact: ContactDTO | null) => {
-        set({ selectedContact: contact });
-      },
-
-      // ============================================
-      // PORTAL OPERATIONS
-      // ============================================
-      
-      generatePortalInvitation: async (contactId: number) => {
-        set({ loading: true, error: null });
-        
-        try {
-          const result = await contactApi.generateMemberPortalInvitation(contactId);
-          
-          // Actualizar el contacto en la lista para mostrar que tiene portal
-          set(state => ({
-            contacts: state.contacts.map(contact =>
-              contact.id === contactId 
-                ? safeUpdateContact(contact, { 
-                    hasDigitalPortal: true, 
-                    portalInvitationSent: new Date().toISOString() 
-                  })
-                : contact
-            ),
-            selectedContact: state.selectedContact?.id === contactId 
-              ? safeUpdateContact(state.selectedContact, { 
-                  hasDigitalPortal: true, 
-                  portalInvitationSent: new Date().toISOString() 
-                })
-              : state.selectedContact,
-            loading: false,
-          }));
-          
-          toast.success('Invitación de portal generada exitosamente');
-          return result.invitationToken;
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          toast.error(errorInfo.message);
-          throw error;
-        }
-      },
-
-      resendPortalInvitation: async (contactId: number) => {
-        set({ loading: true, error: null });
-        
-        try {
-          await contactApi.resendPortalInvitation(contactId);
-          set({ loading: false });
-          toast.success('Invitación reenviada exitosamente');
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          toast.error(errorInfo.message);
-          throw error;
-        }
-      },
-
-      revokePortalAccess: async (contactId: number) => {
-        set({ loading: true, error: null });
-        
-        try {
-          await contactApi.revokePortalAccess(contactId);
-          
-          // Actualizar el contacto para remover acceso al portal
-          set(state => ({
-            contacts: state.contacts.map(contact =>
-              contact.id === contactId 
-                ? safeUpdateContact(contact, { hasDigitalPortal: false })
-                : contact
-            ),
-            selectedContact: state.selectedContact?.id === contactId 
-              ? safeUpdateContact(state.selectedContact, { hasDigitalPortal: false })
-              : state.selectedContact,
-            loading: false,
-          }));
-          
-          toast.success('Acceso al portal revocado exitosamente');
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          toast.error(errorInfo.message);
-          throw error;
-        }
-      },
-
-      // ============================================
-      // BULK OPERATIONS
-      // ============================================
-      
-      selectContact: (id: number) => {
-        set(state => ({
-          selectedContactIds: new Set([...state.selectedContactIds, id]),
-        }));
-      },
-
-      selectAllContacts: () => {
-        const { contacts } = get();
-        set({
-          selectedContactIds: new Set(contacts.map(contact => contact.id)),
-        });
-      },
-
-      deselectContact: (id: number) => {
-        set(state => ({
-          selectedContactIds: new Set([...state.selectedContactIds].filter(contactId => contactId !== id)),
-        }));
-      },
-
-      deselectAllContacts: () => {
-        set({ selectedContactIds: new Set() });
-      },
-
-      bulkUpdateContacts: async (updates: Partial<Pick<ContactDTO, 'status' | 'source'>>) => {
-        const { selectedContactIds } = get();
-        const contactIds = Array.from(selectedContactIds);
-        
-        if (contactIds.length === 0) return;
-        
-        set({ bulkOperationLoading: true, error: null, lastBulkOperation: 'update' });
-        
-        try {
-          // CORREGIDO: Usar tipo correcto para el resultado
-          const result = await contactApi.bulkUpdateContacts(contactIds, updates) as BulkOperationResult;
-          
-          // CORREGIDO: Actualizar contactos con merge seguro
-          set(state => ({
-            contacts: state.contacts.map(contact =>
-              contactIds.includes(contact.id) ? safeUpdateContact(contact, updates) : contact
-            ),
-            selectedContactIds: new Set(), // Limpiar selección
-            bulkOperationLoading: false,
-          }));
-          
-          // CORREGIDO: Usar propiedades que existen
-          const updatedCount = result.updated || contactIds.length - result.failed;
-          toast.success(`${updatedCount} contactos actualizados exitosamente`);
-          
-          if (result.failed > 0) {
-            showWarningToast(`${result.failed} contactos no pudieron ser actualizados`);
-          }
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            bulkOperationLoading: false,
-          });
-          toast.error(errorInfo.message);
-          throw error;
-        }
-      },
-
-      bulkDeleteContacts: async () => {
-        const { selectedContactIds } = get();
-        const contactIds = Array.from(selectedContactIds);
-        
-        if (contactIds.length === 0) return;
-        
-        set({ bulkOperationLoading: true, error: null, lastBulkOperation: 'delete' });
-        
-        try {
-          // CORREGIDO: Usar tipo correcto para el resultado
-          const result = await contactApi.bulkDeleteContacts(contactIds) as BulkOperationResult;
-          
-          // CORREGIDO: Calcular cuántos se eliminaron correctamente
-          const deletedCount = result.deleted || contactIds.length - result.failed;
-          
-          // Remover contactos de la lista
-          set(state => ({
-            contacts: state.contacts.filter(contact => !contactIds.includes(contact.id)),
-            totalContacts: Math.max(0, state.totalContacts - deletedCount),
-            selectedContactIds: new Set(),
-            bulkOperationLoading: false,
-          }));
-          
-          // CORREGIDO: Usar valores calculados
-          toast.success(`${deletedCount} contactos eliminados exitosamente`);
-          
-          if (result.failed > 0) {
-            showWarningToast(`${result.failed} contactos no pudieron ser eliminados`);
-          }
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            bulkOperationLoading: false,
-          });
-          toast.error(errorInfo.message);
-          throw error;
-        }
-      },
-
-      // ============================================
-      // EXPORT OPERATIONS
-      // ============================================
-      
-      exportContacts: async (format: 'csv' | 'excel', criteria?: ContactSearchCriteria) => {
-        set({ loading: true, error: null });
-        
-        try {
-          const exportCriteria = criteria || get().searchCriteria;
-          let blob: Blob;
-          
-          if (format === 'csv') {
-            blob = await contactApi.exportContactsCSV(exportCriteria);
-          } else {
-            blob = await contactApi.exportContactsExcel(exportCriteria);
-          }
-          
-          // Crear link de descarga
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `contactos_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-          
-          set({ loading: false });
-          toast.success(`Contactos exportados como ${format.toUpperCase()}`);
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            loading: false,
-          });
-          toast.error(`Error al exportar: ${errorInfo.message}`);
-          throw error;
-        }
-      },
-
-      // ============================================
-      // STATS OPERATIONS
-      // ============================================
-      
-      loadStats: async (forceRefresh = false) => {
-        const { statsLastUpdated, statsLoading } = get();
-        
-        // No recargar si ya están cargando o son recientes (menos de 5 minutos)
-        const isStale = !statsLastUpdated || (Date.now() - statsLastUpdated > 5 * 60 * 1000);
-        if (!forceRefresh && (!isStale || statsLoading)) return;
-        
-        set({ statsLoading: true, error: null });
-        
-        try {
-          const stats = await contactApi.getContactStats();
-          set({
-            stats,
-            statsLastUpdated: Date.now(),
-            statsLoading: false,
-          });
-          
-        } catch (error: unknown) {
-          const errorInfo = handleContactApiError(error);
-          set({
-            error: errorInfo.message,
-            lastError: error,
-            statsLoading: false,
-          });
-          
-          // No mostrar toast para errores de stats, son menos críticos
-          console.warn('Failed to load contact stats:', errorInfo.message);
-        }
-      },
-
-      // ============================================
-      // SEARCH & FILTER ACTIONS
-      // ============================================
-      
-      setSearchCriteria: (criteria: ContactSearchCriteria) => {
-        set({ searchCriteria: criteria });
-      },
-
-      clearFilters: () => {
-        set({ searchCriteria: {} });
-        get().searchContacts({}, 0);
-      },
-
-      // ============================================
-      // ERROR HANDLING & UTILITY
-      // ============================================
-      
-      clearError: () => {
-        set({ error: null, lastError: null });
-      },
-
-      resetState: () => {
-        set({
-          contacts: [],
-          selectedContact: null,
-          totalContacts: 0,
-          currentPage: 0,
-          totalPages: 0,
-          searchCriteria: {},
-          loading: false,
-          error: null,
-          lastError: null,
-          creating: false,
-          updating: new Set(),
-          deleting: new Set(),
-          selectedContactIds: new Set(),
-          bulkOperationLoading: false,
-          lastBulkOperation: null,
-          stats: null,
-          statsLoading: false,
-          statsLastUpdated: null,
-        });
-      },
-    })),
-    {
-      name: 'contact-store',
-      // CORREGIDO: Tipado explícito del parámetro state
-      partialize: (state: ContactState) => ({
-        // Solo persistir datos no sensibles
-        pageSize: state.pageSize,
-        searchCriteria: state.searchCriteria,
-      }),
-    }
-  )
-);
-
-// ============================================
-// SPECIALIZED HOOKS (Para tu ContactListPage)
-// ============================================
-
-/**
- * Hook principal para contactos - Exactamente lo que usa tu ContactListPage
- */
-export const useContacts = () => {
-  return useContactStore(state => ({
-    contacts: state.contacts,
-    loading: state.loading,
-    error: state.error,
-    totalContacts: state.totalContacts,
-    searchContacts: state.searchContacts,
-    refreshContacts: state.refreshContacts,
-  }));
-};
-
-/**
- * Hook para operaciones bulk - Para tu ContactListPage
- */
-export const useBulkOperations = () => {
-  return useContactStore(state => ({
-    selectedContactIds: state.selectedContactIds,
-    hasSelection: state.selectedContactIds.size > 0,
-    selectionCount: state.selectedContactIds.size,
-    bulkOperationLoading: state.bulkOperationLoading,
-    selectContact: state.selectContact,
-    selectAllContacts: state.selectAllContacts,
-    deselectContact: state.deselectContact,
-    deselectAllContacts: state.deselectAllContacts,
-    bulkUpdateContacts: state.bulkUpdateContacts,
-    bulkDeleteContacts: state.bulkDeleteContacts,
-  }));
-};
-
-/**
- * Hook para stats - Para tu ContactListPage
- */
-export const useContactStats = () => {
-  return useContactStore(state => ({
-    stats: state.stats,
-    loadStats: state.loadStats,
-  }));
-};
-
-/**
- * Hook para import/export - Para tu ContactListPage
- */
-export const useImportExport = () => {
-  return useContactStore(state => ({
-    exportContacts: state.exportContacts,
-  }));
-};
-
-
-
-/**
- * Hook para búsqueda y filtros - Para tu ContactListPage
- */
-export const useContactSearch = () => {
-  return useContactStore(state => ({
-    searchCriteria: state.searchCriteria,
-    setSearchCriteria: state.setSearchCriteria,
-    hasActiveFilters: Object.keys(state.searchCriteria).some(key => {
-      const value = state.searchCriteria[key as keyof ContactSearchCriteria];
-      return value !== undefined && value !== null && value !== '';
-    }),
-  }));
-};
-
-/**
- * Hook para estados de operaciones - Para tu ContactListPage
- */
-export const useOperationStates = () => {
-  return useContactStore(state => ({
-    updating: state.updating,
-    deleting: state.deleting,
-  }));
-};
-
-/**
- * Hook para estado de conexión - Para tu ContactListPage
- */
-export const useConnectionStatus = () => {
-  return useContactStore(state => ({
-    isOnline: !state.isOffline,
-  }));
-};
-
-/**
- * Hook para contacto seleccionado y operaciones individuales
- */
-export const useSelectedContact = () => {
-  return useContactStore(state => ({
-    selectedContact: state.selectedContact,
-    getContactById: state.getContactById,
-    setSelectedContact: state.setSelectedContact,
-    // Mobile: Include update state for selected contact
-    isUpdating: state.selectedContact ? state.updating.has(state.selectedContact.id) : false,
-    isDeleting: state.selectedContact ? state.deleting.has(state.selectedContact.id) : false,
-  }));
-};
-
-/**
- * Hook para operaciones CRUD individuales
- */
-export const useContactOperations = () => {
-  return useContactStore(state => ({
-    createContact: state.createContact,
-    updateContact: state.updateContact,
-    deleteContact: state.deleteContact,
-    loading: state.loading,
-    creating: state.creating,
-    error: state.error,
-    clearError: state.clearError,
-  }));
-};
-
-/**
- * Hook para operaciones de portal
- */
-export const usePortalOperations = () => {
-  return useContactStore(state => ({
-    generatePortalInvitation: state.generatePortalInvitation,
-    resendPortalInvitation: state.resendPortalInvitation,
-    revokePortalAccess: state.revokePortalAccess,
-    loading: state.loading,
-    error: state.error,
-  }));
-};
-
-/**
- * Hook para manejo de errores de forma consistente
- */
-export const useContactErrorHandler = () => {
-  return useContactStore(state => ({
-    error: state.error,
-    lastError: state.lastError,
-    clearError: state.clearError,
-  }));
-};
-
-// ============================================
-// EXPORT DEFAULT (El hook principal)
-// ============================================
-
-export default useContacts;
-
-
-
-
-
-
-
-
-
 // src/components/contacts/ContactForm.tsx
 // ✅ VERSIÓN FINAL: Contact form enterprise - E164 estándar y limpio
 
@@ -961,9 +18,7 @@ import { getCountryName } from '@/utils/geography';
 import type { 
     ContactDTO,               // <-- Este es el alias correcto para 'Contact'
     CreateContactRequest, 
-    UpdateContactRequest, 
-    ContactSource,
-    Gender,
+    UpdateContactRequest,
     CommunicationPreferences
   } from '@/types/contact.types';
 
@@ -1099,30 +154,28 @@ const contactFormSchema = z.object({
     .min(2, 'El apellido debe tener al menos 2 caracteres')
     .max(50, 'El apellido no puede tener más de 50 caracteres'),
   
-  email: z.string()
-    .email('Formato de email inválido')
-    .optional()
-    .or(z.literal('')),
-  
-  phone: z.string().optional(), // Este es el número LOCAL, no el E164
-  
-  companyId: z.number().optional(),
+  email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  companyId: z.number().nullish(), // Acepta null o undefined
   
   address: addressSchema.optional(),
   
   birthDate: z.string().optional().or(z.literal('')),
   
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
+  // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
+  gender: z.union([
+    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ]).transform(val => val === '' ? null : val).optional(),
   
-  source: z.string()
-    .min(1, 'La fuente es requerida'),
+  source: z.string().min(1, 'La fuente es requerida'),
   
-  sourceDetails: z.string().optional(),
+  sourceDetails: z.string().max(255, 'Los detalles no pueden superar los 255 caracteres').optional().or(z.literal('')),
   
   customFields: z.record(z.any()).optional(),
-  
-  communicationPreferences: communicationPreferencesSchema,
-  
+  communicationPreferences: communicationPreferencesSchema.optional(),
   tags: z.array(z.number()).optional(),
 });
 
@@ -1457,66 +510,56 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
   }, ref) => { // <-- Se añade 'ref' aquí
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
+  //const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
+  const [phoneRegion, setPhoneRegion] = useState<string>('');
  
   const {
-    register,
-    control,
-    handleSubmit,
+    register, control, handleSubmit,
     formState: { errors },
-    watch,
-    setValue,
-    setError,
-    clearErrors
-  } = useForm<ContactFormData>({
-    resolver: zodResolver(contactFormSchema),
-    // 🔥 Lógica de defaultValues mejorada
-    defaultValues: useMemo(() => {
-      // Si no hay `contact` (modo crear), devuelve un objeto casi vacío.
-      if (!contact) {
-        return { source: 'MANUAL_ENTRY' }; // Devuelve solo lo mínimo necesario
-      }
-
-      // Si hay `contact` (modo editar), construye los valores por defecto.
-      return {
-        // --- ESTAS LÍNEAS SON EXACTAMENTE LAS MISMAS QUE YA TENÍAS ---
-        firstName: contact.firstName || '',
-        lastName: contact.lastName || '',
-        email: contact.email || '',
-        phone: '', 
-        companyId: contact.companyId,
-        address: contact.address,
-        birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
-        gender: contact.gender,
-        source: contact.source || 'MANUAL_ENTRY',
-        sourceDetails: contact.sourceDetails,
-        customFields: contact.customFields,
-
-        // --- AQUÍ ESTÁ EL ÚNICO CAMBIO REAL ---
-        // 1. "Traducimos" la estructura de communicationPreferences
-        communicationPreferences: {
-          ...(contact.communicationPreferences ?? {}),
-          marketingConsent: contact.marketingConsent ?? false,
-        },
-        // 2. "Traducimos" la estructura de tags
-        tags: contact.tags?.map(tag => tag.id) || [],
-      };
-    }, [contact])
+    watch, setValue, setError, clearErrors
+    } = useForm<ContactFormData>({
+      resolver: zodResolver(contactFormSchema),
+      defaultValues: useMemo(() => {
+        if (!contact) {
+            return { source: 'MANUAL_ENTRY', communicationPreferences: { marketingConsent: false }, tags: [] };
+        }
+        return {
+            firstName: contact.firstName || '',
+            lastName: contact.lastName || '',
+            email: contact.email || '',
+            phone: '', // SmartPhoneInput se encarga de esto
+            companyId: contact.companyId,
+            // LA CLAVE: Inicializamos el address completo para que se cargue
+            address: {
+              addressLine1: contact.address?.addressLine1 || '',
+              addressLine2: contact.address?.addressLine2 || '',
+              city: contact.address?.city || '',
+              state: contact.address?.state || '',
+              postalCode: contact.address?.postalCode || '',
+              country: contact.address?.country || '',
+            },
+            birthDate: contact.birthDate ? contact.birthDate.split('T')[0] : '',
+            gender: contact.gender,
+            source: contact.source || 'MANUAL_ENTRY',
+            sourceDetails: contact.sourceDetails || '',
+            customFields: contact.customFields,
+            communicationPreferences: {
+              allowEmail: contact?.communicationPreferences?.allowEmail ?? false,
+              allowSms: contact?.communicationPreferences?.allowSms ?? false,
+              allowPhone: contact?.communicationPreferences?.allowPhone ?? false,
+              allowWhatsapp: contact?.communicationPreferences?.allowWhatsapp ?? false,
+              allowPostalMail: contact?.communicationPreferences?.allowPostalMail ?? false,
+              marketingConsent: contact?.communicationPreferences?.marketingConsent ?? false,
+              preferredContactMethod: contact?.communicationPreferences?.preferredContactMethod ?? 'EMAIL',
+              preferredTime: contact?.communicationPreferences?.preferredTime ?? 'ANYTIME',
+              language: contact?.communicationPreferences?.language ?? 'es'
+            },
+            tags: contact.tags?.map(tag => tag.id) || [],
+        };
+    }, [contact]),
   });
 
-  // ✅ NUEVO: Lógica de reseteo ahora vive en el formulario, no en el selector
-  useEffect(() => {
-    // Cuando el país del teléfono cambia, resetea el estado y la ciudad
-    setValue('address.state', '');
-    setValue('address.city', '');
-  }, [selectedCountryFromPhone, setValue]);
-
-  const watchedState = watch('address.state');
-  useEffect(() => {
-    // Cuando el estado/departamento cambia, resetea solo la ciudad
-    setValue('address.city', '');
-  }, [watchedState, setValue]);
- 
   const currentPhone = watch('phone');
  
   const handleFormSubmit = async (data: ContactFormData) => {
@@ -1524,117 +567,58 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
-
-    // ✅ DEBUG: Ver qué datos del formulario tenemos
-    console.log('🔍 Datos del formulario:', data);
-    console.log('🔍 Validación del teléfono:', phoneValidation);
- 
-    // ✅ Crear datos según el DTO exacto del backend
-    const cleanedData: any = {
-      firstName: data.firstName.trim(),
-      lastName: data.lastName.trim(),
-      source: data.source as ContactSource, // Backend valida que sea string válido
-    };
-
-    // ✅ OBLIGATORIO: email O teléfono (validación isValidContactInfo del backend)
-    if (data.email && data.email.trim()) {
-      cleanedData.email = data.email.trim();
-    }
-    
-    if (phoneValidation.e164Phone) {
-      cleanedData.phone = phoneValidation.e164Phone;
-    }
-
-    // ✅ Verificar que cumple validación del backend
-    if (!cleanedData.email && !cleanedData.phone) {
+    if (!data.email?.trim() && !phoneValidation.e164Phone) {
       setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
       setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
       return;
     }
+
+    // "Traducimos" los datos del formulario al formato de la API
     
-    // ✅ Campos opcionales - solo si tienen valores
-    if (data.companyId) {
-      cleanedData.companyId = data.companyId;
-    }
-    
-    if (data.sourceDetails && data.sourceDetails.trim()) {
-      cleanedData.sourceDetails = data.sourceDetails.trim();
-    }
-    
-    if (data.birthDate && data.birthDate.trim()) {
-      cleanedData.birthDate = data.birthDate; // LocalDate en backend
-    }
-    
-    if (data.gender && data.gender.trim()) {
-      cleanedData.gender = data.gender as Gender;
-    }
-
-    // ✅ Address - solo si tiene datos (hasAnyField del backend)
-    if (data.address) {
-      const hasAddressData = Object.values(data.address).some(value => value && value.trim());
-      if (hasAddressData) {
-        const cleanAddress: any = {};
-        Object.entries(data.address).forEach(([key, value]) => {
-          if (value && value.trim()) {
-            cleanAddress[key] = value.trim();
-          }
-        });
-        cleanedData.address = cleanAddress;
-      }
-    }
-
-    // ✅ CommunicationPreferences - Map<String, Object> según backend
-    if (data.communicationPreferences && Object.keys(data.communicationPreferences).length > 0) {
-      const cleanPrefs: Record<string, any> = {};
-      Object.entries(data.communicationPreferences).forEach(([key, value]) => {
-        if (typeof value === 'boolean') {
-          cleanPrefs[key] = value;
-        }
-      });
-      if (Object.keys(cleanPrefs).length > 0) {
-        cleanedData.communicationPreferences = cleanPrefs;
-      }
-    }
-
-    // ✅ IMPORTANTE: Backend espera tagNames (strings), no tags (numbers)
-    if (data.tags && data.tags.length > 0) {
-      // Necesitarías convertir IDs a nombres, o mejor cambiar el formulario
-      // Por ahora lo omitimos hasta que tengas la conversión
-      console.warn('⚠️ Tags omitidos - backend espera tagNames (strings), no IDs');
-    }
-
-    // ✅ CustomFields - Map<String, Object> según backend
-    if (data.customFields && Object.keys(data.customFields).length > 0) {
-      cleanedData.customFields = data.customFields;
-    }
-
-    const baseSubmitData = cleanedData;
+    const payload: any = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      email: data.email?.trim() || null,
+      phone: phoneValidation.e164Phone || null,
+      phoneRegion: phoneRegion || null,
+      companyId: data.companyId,
+      address: data.address,
+      birthDate: data.birthDate === '' ? null : data.birthDate,
+      gender: data.gender || null, // Zod ya se encargó de null/undefined
+      source: data.source,
+      sourceDetails: data.sourceDetails,
+      customFields: data.customFields,
+      communicationPreferences: data.communicationPreferences,
+      // Se omiten los tags hasta que se aclare el mapeo number[] -> string[]
+    };
  
-    // ✅ SOLUCIÓN: Llamar a onSubmit de forma condicional y explícita
     if (mode === 'edit' && contact) {
-      // En esta rama, TypeScript sabe que el objeto debe ser un UpdateContactRequest
       const updateData: UpdateContactRequest = {
-        ...baseSubmitData,
+        ...payload,
         version: contact.version,
       };
-      console.log('🚀 Enviando UPDATE al backend:', JSON.stringify(updateData, null, 2));
       await onSubmit(updateData);
     } else {
-      // En esta rama, TypeScript sabe que el objeto debe ser un CreateContactRequest
-      const createData: CreateContactRequest = baseSubmitData;
+      const createData: CreateContactRequest = payload;
       await onSubmit(createData);
     }
-  };
+};
  
-  const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
-    setPhoneValidation(result);
-    
-    // ✅ NUEVO: Extraer país del teléfono para geografía
+const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
+  setPhoneValidation(result);
+  
     if (result.isValid && result.e164Phone) {
       const region = getRegionFromE164(result.e164Phone);
+
+      // --- AQUÍ SE INSERTA TU CÓDIGO ---
+      if (mode === 'create' && region !== phoneRegion) {
+        setValue('address.state', '');
+        setValue('address.city', '');
+      }
+      // --- FIN DE LA INSERCIÓN ---
+
+      setPhoneRegion(region); // ✅ Guardamos la región
       setSelectedCountryFromPhone(region);
-      
-      // Auto-llenar campo país
       setValue('address.country', getCountryName(region));
     }
     
@@ -1643,12 +627,12 @@ const SmartPhoneInput: React.FC<SmartPhoneInputProps> = ({
     } else {
       clearErrors('phone');
     }
-  }, [currentPhone, setError, clearErrors, setValue]);
+}, [currentPhone, setError, clearErrors, setValue, mode, phoneRegion]);
 
   //finalmente
   const handlePhoneChange = useCallback((phone: string) => {
     setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
-}, [setValue]);
+  }, [setValue]);
  
   return (
     <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
