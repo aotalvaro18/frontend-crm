@@ -50,8 +50,8 @@ const CompanyDetailPage: React.FC = () => {
   } = useQuery({
     queryKey: COMPANY_DETAIL_QUERY_KEY(companyId),
     queryFn: () => companyApi.getCompanyById(companyId),
-    enabled: !!companyId, // Solo ejecuta si el ID es un número válido
-    refetchInterval: 1000, // Refetch cada segundo temporalmente para debug
+    enabled: companyId > 0,
+    //refetchInterval: 1000, // Refetch cada segundo temporalmente para debug
     refetchOnMount: true,
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
