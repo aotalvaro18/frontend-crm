@@ -153,22 +153,42 @@ export const formatPhoneForLink = (phone: string | null | undefined): string => 
 /**
  * Format currency in Colombian Pesos
  */
+/**
+ * Formatea un valor numérico o un string como una moneda.
+ * Es robusto: maneja strings, numbers, nulls y undefined.
+ * @param value - El valor a formatear.
+ * @param decimals - El número de decimales a mostrar (por defecto 0).
+ * @param currencyCode - El código de la moneda (ej. 'USD', 'COP').
+ * @returns El valor formateado como string.
+ */
 export const formatCurrency = (
-  amount: number | null | undefined, 
-  currency = 'COP',
-  showDecimals = false
+  value: string | number | null | undefined, 
+  decimals: number = 0, 
+  currencyCode: string = 'COP' // Mantenemos COP como default
 ): string => {
-  if (amount === null || amount === undefined) return '$0';
-  
+  if (value === null || value === undefined) {
+    return '$0';
+  }
+
+  // Convierte el valor a número, sea string o number
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  // Validación: si después de convertir no es un número, devuelve un fallback
+  if (isNaN(numericValue)) {
+    return '$0';
+  }
+
   try {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
-      currency,
-      minimumFractionDigits: showDecimals ? 2 : 0,
-      maximumFractionDigits: showDecimals ? 2 : 0,
-    }).format(amount);
-  } catch {
-    return `$${amount.toLocaleString('es-CO')}`;
+      currency: currencyCode,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(numericValue);
+  } catch (error) {
+    console.error(`Error formatting currency:`, error);
+    // Fallback simple si Intl.NumberFormat falla por alguna razón
+    return `$${numericValue.toLocaleString('es-CO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
   }
 };
 

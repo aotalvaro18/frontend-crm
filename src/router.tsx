@@ -38,6 +38,22 @@ const ContactCreatePage = lazy(() => {
   });
 });
 
+// ✅ COMPANY pages (las que ya existen)
+const CompanyListPage = lazy(() => {
+  authLogger.info('Loading CompanyListPage...');
+  return import('@/pages/companies/CompanyListPage');
+});
+
+const CompanyDetailPage = lazy(() => {
+  authLogger.info('Loading CompanyDetailPage...');
+  return import('@/pages/companies/CompanyDetailPage');
+});
+
+const CompanyCreatePage = lazy(() => {
+  authLogger.info('Loading CompanyCreatePage...');
+  return import('@/pages/companies/CompanyCreatePage');
+});
+
 const MainLayout = lazy(() => {
   return import('@/components/layout/Layout').catch(() => {
     // Simple fallback layout
@@ -199,20 +215,37 @@ const router = createBrowserRouter([
           </MainLayout>
         ),
       },
+      // ============================================
+      // COMPANIES ROUTES (ACTIVADAS)
+      // ============================================
       {
         path: 'companies',
         element: (
-          <MainLayout>
-            <PlaceholderPage title="Gestión de Empresas" />
-          </MainLayout>
+          <SuspenseWrapper fallbackText="Cargando empresas...">
+            <MainLayout>
+              <CompanyListPage />
+            </MainLayout>
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'companies/new',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando formulario...">
+            <MainLayout>
+              <CompanyCreatePage />
+            </MainLayout>
+          </SuspenseWrapper>
         ),
       },
       {
         path: 'companies/:id',
         element: (
-          <MainLayout>
-            <PlaceholderPage title="Detalle de Empresa" />
-          </MainLayout>
+          <SuspenseWrapper fallbackText="Cargando empresa...">
+            <MainLayout>
+              <CompanyDetailPage />
+            </MainLayout>
+          </SuspenseWrapper>
         ),
       },
       {

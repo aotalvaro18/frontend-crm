@@ -22,7 +22,9 @@ import {
     BaseMetrics,
     GroupedMetrics,
   } from './api.types';
-  
+
+  import type { CommunicationPreferences, Tag } from './common.types';
+    
   // ============================================
   // COMPANY CORE TYPES (Matching CompanyDTO)
   // ============================================
@@ -54,12 +56,30 @@ import {
     
     // Custom fields
     customFields: CustomFields;
+
+    /**
+     * Un array de objetos Tag asociados a esta empresa.
+     * Permite una segmentación flexible y definida por el usuario.
+     * El backend poblará este campo a través de la tabla de unión `company_tags`.
+     * @type {Tag[] | undefined}
+     */
+    tags?: Tag[];
+
+    communicationPreferences?: CommunicationPreferences;
     
     // Métricas y relaciones (computed fields)
     contactCount?: number;          // Número de contactos asociados
     activeContactsCount?: number;   // Contactos activos
     dealCount?: number;             // Número de deals
     totalDealValue?: number;        // Valor total de deals
+    lastActivityAt?: string;
+
+    // Campos de Inteligencia de Negocio (del backend)
+    overallHealthScore?: number;
+    pipelineHealthStatus?: 'excellent' | 'good' | 'warning' | 'critical';
+    revenueCategory?: 'enterprise' | 'mid-market' | 'smb' | 'startup';
+    engagementHealthStatus?: 'hot' | 'warm' | 'cold' | 'dormant';
+    riskLevel?: 'low' | 'medium' | 'high';
     
     // Display helpers (computed fields)
     displayName?: string;           // Nombre para mostrar según tipo

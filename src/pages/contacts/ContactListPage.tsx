@@ -125,10 +125,10 @@ const ContactListPage: React.FC = () => {
   // STATS CARDS CONFIGURATION
   // ============================================
   const contactStatConfigs = useMemo((): StatCardConfig[] => [
-    { key: 'total', title: 'Total de Contactos', description: 'Número total de contactos en la base de datos.', icon: Users, variant: 'default', format: 'number' },
-    { key: 'newContactsThisMonth', title: 'Nuevos (30 días)', description: 'Contactos añadidos en los últimos 30 días.', icon: UserCheck, variant: 'success', format: 'number' },
-    { key: 'contactsWithoutActivity', title: 'Sin Actividad (30 días)', description: 'Contactos sin interacción en los últimos 30 días.', icon: UserX, variant: 'warning', format: 'number' },
-    { key: 'adoptionRate', title: 'Adopción del Portal', description: 'Porcentaje de contactos con portal digital activo.', icon: Target, variant: 'accent', format: 'percentage' },
+    { key: 'total', title: 'Total', description: 'Número total de contactos en la base de datos.', icon: Users, variant: 'default', format: 'number' },
+    { key: 'newContactsThisMonth', title: 'Nuevos (30d)', description: 'Contactos añadidos en los últimos 30 días.', icon: UserCheck, variant: 'success', format: 'number' },
+    { key: 'contactsWithoutActivity', title: 'En Riesgo (30d)', description: 'Contactos sin interacción en los últimos 30 días.', icon: UserX, variant: 'warning', format: 'number' },
+    { key: 'adoptionRate', title: 'Portal', description: 'Porcentaje de contactos con portal digital activo.', icon: Target, variant: 'accent', format: 'percentage' },
   ], []);
 
   useEffect(() => {

@@ -169,7 +169,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   const [phoneRegion, setPhoneRegion] = useState<string>('');
 
   const {
-    register, control, handleSubmit,
+    control, handleSubmit,
     formState: { errors },
     watch, setValue, setError, clearErrors
     } = useForm<CompanyFormData>({
