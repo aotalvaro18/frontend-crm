@@ -242,14 +242,14 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
     // ✅ PAYLOAD MAPPING - CONVERSIÓN CORRECTA DE STRINGS VACÍAS
     const payload: any = {
       name: data.name.trim(),
-      type: data.type && data.type.trim() ? data.type as CompanyType : null,
+      ...(data.type && data.type.trim() && { type: data.type as CompanyType }),
       email: data.email?.trim() || null,
       phone: phoneValidation.e164Phone || null,
       phoneRegion: phoneRegion || null,
       website: data.website?.trim() || null,
       address: data.address,
-      industry: data.industry && data.industry.trim() ? data.industry as Industry : null,
-      companySize: data.companySize && data.companySize.trim() ? data.companySize as CompanySize : null,
+      ...(data.industry && data.industry.trim() && { industry: data.industry as Industry }),
+      ...(data.companySize && data.companySize.trim() && { size: data.companySize as CompanySize }),
       annualRevenue: data.annualRevenue,
       customFields: data.customFields,
     };
