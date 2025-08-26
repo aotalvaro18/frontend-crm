@@ -93,7 +93,7 @@ const companyFormSchema = z.object({
   address: addressSchema.optional(),
   
   industry: z.string().max(100).optional().or(z.literal('')),
-  companySize: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().or(z.literal('')),
+  size: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().or(z.literal('')),
   
   annualRevenue: z.number()
     .min(0, 'El revenue debe ser mayor o igual a 0')
@@ -178,7 +178,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
         if (!company) {
             return { 
               type: 'COMPANY',
-              companySize: 'SMALL',
+              size: 'SMALL',
               customFields: {}
             };
         }
@@ -225,7 +225,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       website: data.website?.trim() || undefined,
       address: data.address,
       industry: data.industry?.trim() || undefined,
-      companySize: data.companySize || undefined,
+      size: data.size || undefined,
       annualRevenue: data.annualRevenue,
       customFields: data.customFields,
     };
@@ -435,19 +435,19 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
 
           <FormField
             label="Tamaño de la empresa"
-            name="companySize"
+            name="size"
             icon={<Users className="h-4 w-4" />}
-            error={errors.companySize?.message}
+            error={errors.size?.message}
           >
             <Controller
-              name="companySize"
+              name="size"
               control={control}
               render={({ field }) => (
                 <Select
                   {...field}
                   options={COMPANY_SIZE_OPTIONS}
                   placeholder="Seleccionar tamaño..."
-                  error={errors.companySize?.message}
+                  error={errors.size?.message}
                 />
               )}
             />
