@@ -20,10 +20,7 @@ import type {
   CompanySize,
   Industry,
   CreateCompanyRequest,
-  UpdateCompanyRequest,
-  COMPANY_TYPE_LABELS,
-  COMPANY_SIZE_LABELS,
-  INDUSTRY_LABELS
+  UpdateCompanyRequest
 } from '@/types/company.types';
 
 // ============================================
@@ -75,13 +72,22 @@ const companyFormSchema = z.object({
   companySize: z.string().optional(),
   
   annualRevenue: z.preprocess(
-    (val) => (String(val).trim() === '' ? undefined : Number(val)),
+    // Paso 1: Preparar el valor antes de validar.
+    (val) => {
+      // Si el valor es un string vacío, o null, o undefined, lo tratamos como `undefined`.
+      if (val === '' || val === null || val === undefined) {
+        return undefined;
+      }
+      // Si no, intentamos convertirlo a número.
+      return Number(val);
+    },
+    // Paso 2: Validar el valor ya preparado.
     z.number({
-        invalid_type_error: 'Debe ser un número',
+        // Mensaje de error si la conversión a número falla (ej. si el usuario escribe "abc").
+        invalid_type_error: 'Debe ser un número válido',
       })
       .min(0, 'El revenue no puede ser negativo')
-      .optional()
-      .nullable()
+      .optional() // Permite que el valor sea `undefined`.
   ),
   
   customFields: z.record(z.any()).optional(),
