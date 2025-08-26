@@ -1,12 +1,11 @@
 // src/components/companies/CompanyForm.tsx
-// ✅ VERSIÓN PERFECCIONADA: Micro-optimizaciones aplicadas
-// Simplificación de lógica de teléfono, Select más limpio, y validaciones optimizadas
+// ✅ REFACTORIZADO: Siguiendo exactamente los patrones del ContactForm funcional
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
 import { 
   Building2, Mail, Phone, MapPin, Globe, DollarSign,
   Save, X, AlertCircle, Users
@@ -22,49 +21,27 @@ import type {
   Industry,
   CreateCompanyRequest,
   UpdateCompanyRequest,
+  COMPANY_TYPE_LABELS,
+  COMPANY_SIZE_LABELS,
+  INDUSTRY_LABELS
 } from '@/types/company.types';
 
 // ============================================
 // UI COMPONENTS - Importados desde ubicación central
 // ============================================
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { FormField } from '@/components/forms/FormField';
-import { SmartPhoneInput } from '@/components/forms/PhoneInput';
+import { SmartPhoneInput, type PhoneValidationResult, getRegionFromE164 } from '@/components/forms/PhoneInput';
 import { GeographySelector } from '@/components/shared/GeographySelector';
 
 // ============================================
 // UTILITIES
 // ============================================
 import { getCountryName } from '@/utils/geography';
-import { 
-  COMPANY_TYPE_LABELS as TYPE_LABELS, 
-  COMPANY_SIZE_LABELS as SIZE_LABELS,
-  INDUSTRY_LABELS 
-} from '@/types/company.types';
 
 // ============================================
-// PHONE UTILITIES - Optimizados con libphonenumber-js
-// ============================================
-
-/**
- * Extrae la región/país de un número E164 usando libphonenumber-js
- * ✅ MEJORADO: Función robusta para todos los países del mundo
- */
-const getRegionFromE164 = (e164Phone?: string): string | null => {
-  if (!e164Phone) return null;
-  try {
-    const phoneNumber = parsePhoneNumberFromString(e164Phone);
-    return phoneNumber?.country || null; // 'CO', 'US', etc.
-  } catch {
-    return null;
-  }
-};
-
-// ============================================
-// VALIDATION SCHEMAS
+// VALIDATION SCHEMAS - SIGUIENDO PATRON CONTACTFORM
 // ============================================
 
 const addressSchema = z.object({
@@ -82,9 +59,8 @@ const companyFormSchema = z.object({
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(255, 'El nombre no puede tener más de 255 caracteres'),
   
-  type: z.enum(['COMPANY', 'FAMILY', 'INSTITUTION', 'OTHER'], {
-    required_error: 'El tipo de empresa es requerido'
-  }),
+  // ✅ SIMPLIFICADO: string opcional que se convierte a null si está vacío
+  type: z.string().optional(),
   
   email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
@@ -92,8 +68,11 @@ const companyFormSchema = z.object({
   
   address: addressSchema.optional(),
   
-  industry: z.string().max(100).optional().or(z.literal('')),
-  size: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().or(z.literal('')),
+  // ✅ SIMPLIFICADO: string opcional
+  industry: z.string().optional(),
+  
+  // ✅ SIMPLIFICADO: string opcional
+  companySize: z.string().optional(),
   
   annualRevenue: z.number()
     .min(0, 'El revenue debe ser mayor o igual a 0')
@@ -120,37 +99,60 @@ interface CompanyFormProps {
 }
 
 // ============================================
-// INTERFACES PARA SMART PHONE INPUT
+// CONSTANTS - SIGUIENDO PATRON CONTACTFORM
 // ============================================
 
-interface PhoneValidationResult {
-  isValid: boolean;
-  e164Phone?: string;
-  formattedDisplay?: string;
-  errorMessage?: string;
-}
+const COMPANY_TYPE_OPTIONS = [
+  { value: 'COMPANY', label: 'Empresa' },
+  { value: 'FAMILY', label: 'Familia' },
+  { value: 'INSTITUTION', label: 'Institución' },
+  { value: 'OTHER', label: 'Otro' },
+];
+
+const COMPANY_SIZE_OPTIONS = [
+  { value: 'SMALL', label: 'Pequeña' },
+  { value: 'MEDIUM', label: 'Mediana' },
+  { value: 'LARGE', label: 'Grande' },
+  { value: 'ENTERPRISE', label: 'Corporativa' },
+];
+
+const INDUSTRY_OPTIONS = [
+  // Tecnología
+  { value: 'TECHNOLOGY', label: 'Tecnología' },
+  { value: 'SOFTWARE', label: 'Software' },
+  { value: 'IT_SERVICES', label: 'Servicios TI' },
+  
+  // Servicios
+  { value: 'CONSULTING', label: 'Consultoría' },
+  { value: 'PROFESSIONAL_SERVICES', label: 'Servicios Profesionales' },
+  { value: 'FINANCIAL_SERVICES', label: 'Servicios Financieros' },
+  { value: 'LEGAL_SERVICES', label: 'Servicios Legales' },
+  
+  // Comercio
+  { value: 'RETAIL', label: 'Retail' },
+  { value: 'E_COMMERCE', label: 'E-commerce' },
+  { value: 'WHOLESALE', label: 'Mayorista' },
+  
+  // Manufactura
+  { value: 'MANUFACTURING', label: 'Manufactura' },
+  { value: 'CONSTRUCTION', label: 'Construcción' },
+  { value: 'AUTOMOTIVE', label: 'Automotriz' },
+  
+  // Salud y educación
+  { value: 'HEALTHCARE', label: 'Salud' },
+  { value: 'EDUCATION', label: 'Educación' },
+  { value: 'NON_PROFIT', label: 'Sin Fines de Lucro' },
+  
+  // Otros
+  { value: 'REAL_ESTATE', label: 'Bienes Raíces' },
+  { value: 'TRANSPORTATION', label: 'Transporte' },
+  { value: 'HOSPITALITY', label: 'Hospitalidad' },
+  { value: 'MEDIA', label: 'Medios' },
+  { value: 'OTHER', label: 'Otro' },
+];
 
 // ============================================
-// CONSTANTS - Optimizados sin opciones placeholder manuales
-// ============================================
-
-const COMPANY_TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({
-  value: value as CompanyType,
-  label
-}));
-
-const COMPANY_SIZE_OPTIONS = Object.entries(SIZE_LABELS).map(([value, label]) => ({
-  value: value as CompanySize,
-  label
-}));
-
-const INDUSTRY_OPTIONS = Object.entries(INDUSTRY_LABELS).map(([value, label]) => ({
-  value: value as Industry,
-  label
-}));
-
-// ============================================
-// MAIN COMPONENT PERFECCIONADO
+// MAIN COMPONENT - SIGUIENDO ESTRUCTURA CONTACTFORM
 // ============================================
 
 const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
@@ -176,30 +178,45 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       resolver: zodResolver(companyFormSchema),
       defaultValues: useMemo(() => {
         if (!company) {
-            return { 
-              type: 'COMPANY',
-              size: 'SMALL',
-              customFields: {}
-            };
-        }
-        return {
-            name: company.name || '',
-            type: company.type || 'COMPANY',
-            email: company.email || '',
+          // Modo creación - valores por defecto mínimos
+          return { 
+            name: '',
+            type: '',
+            email: '',
             phone: '',
-            website: company.website || '',
+            website: '',
             address: {
-              addressLine1: company.address?.addressLine1 || '',
-              addressLine2: company.address?.addressLine2 || '',
-              city: company.address?.city || '',
-              state: company.address?.state || '',
-              postalCode: company.address?.postalCode || '',
-              country: company.address?.country || '',
+              addressLine1: '',
+              addressLine2: '',
+              city: '',
+              state: '',
+              postalCode: '',
+              country: '',
             },
-            industry: company.industry || '',
-            companySize: company.companySize || 'SMALL',
-            annualRevenue: company.annualRevenue,
-            customFields: company.customFields || {},
+            industry: '',
+            companySize: '',
+            customFields: {}
+          };
+        }
+        // Modo edición - cargar datos existentes
+        return {
+          name: company.name || '',
+          type: company.type || '',
+          email: company.email || '',
+          phone: '', // SmartPhoneInput maneja esto
+          website: company.website || '',
+          address: {
+            addressLine1: company.address?.addressLine1 || '',
+            addressLine2: company.address?.addressLine2 || '',
+            city: company.address?.city || '',
+            state: company.address?.state || '',
+            postalCode: company.address?.postalCode || '',
+            country: company.address?.country || '',
+          },
+          industry: company.industry || '',
+          companySize: company.companySize || '',
+          annualRevenue: company.annualRevenue,
+          customFields: company.customFields || {},
         };
     }, [company]),
   });
@@ -207,25 +224,32 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   const currentPhone = watch('phone');
 
   // ============================================
-  // ✅ MEJORADO: handleFormSubmit simplificado y optimizado
+  // ✅ VALIDACIÓN CRUZADA EMAIL/PHONE - IGUAL QUE CONTACTFORM
   // ============================================
   const handleFormSubmit = async (data: CompanyFormData) => {
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
     }
+    
+    // ✅ VALIDACIÓN CRUZADA EXACTA COMO CONTACTFORM
+    if (!data.email?.trim() && !phoneValidation.e164Phone) {
+      setError('email', { message: 'Debe proporcionar al menos email o teléfono' });
+      setError('phone', { message: 'Debe proporcionar al menos email o teléfono' });
+      return;
+    }
 
-    // ✅ OPTIMIZADO: Conversión más limpia, aprovechando que zod ya maneja opcional
-    const payload = {
+    // ✅ PAYLOAD MAPPING - CONVERSIÓN CORRECTA DE STRINGS VACÍAS
+    const payload: any = {
       name: data.name.trim(),
-      type: data.type,
-      email: data.email?.trim() || undefined,
-      phone: phoneValidation.e164Phone || undefined,
-      phoneRegion: phoneRegion || undefined,
-      website: data.website?.trim() || undefined,
+      type: data.type && data.type.trim() ? data.type as CompanyType : null,
+      email: data.email?.trim() || null,
+      phone: phoneValidation.e164Phone || null,
+      phoneRegion: phoneRegion || null,
+      website: data.website?.trim() || null,
       address: data.address,
-      industry: data.industry?.trim() || undefined,
-      size: data.size || undefined,
+      industry: data.industry && data.industry.trim() ? data.industry as Industry : null,
+      companySize: data.companySize && data.companySize.trim() ? data.companySize as CompanySize : null,
       annualRevenue: data.annualRevenue,
       customFields: data.customFields,
     };
@@ -243,29 +267,24 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   };
 
   // ============================================
-  // ✅ MEJORADO: handlePhoneValidation simplificado con libphonenumber-js
+  // PHONE VALIDATION - IGUAL QUE CONTACTFORM
   // ============================================
   const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     setPhoneValidation(result);
     
     if (result.isValid && result.e164Phone) {
-      // ✅ OPTIMIZADO: Usar helper robusto en lugar de regex hardcodeado
-      const regionCode = getRegionFromE164(result.e164Phone);
-      
-      if (regionCode) {
-        // Limpiar campos de geografía si cambió el país en modo creación
-        if (mode === 'create' && regionCode !== phoneRegion) {
-          setValue('address.state', '');
-          setValue('address.city', '');
-        }
+      const region = getRegionFromE164(result.e164Phone);
 
-        setPhoneRegion(regionCode);
-        setSelectedCountryFromPhone(regionCode);
-        setValue('address.country', getCountryName(regionCode));
+      if (mode === 'create' && region !== phoneRegion) {
+        setValue('address.state', '');
+        setValue('address.city', '');
       }
+
+      setPhoneRegion(region);
+      setSelectedCountryFromPhone(region);
+      setValue('address.country', getCountryName(region));
     }
     
-    // Manejo de errores de validación
     if (currentPhone && !result.isValid) {
       setError('phone', { message: result.errorMessage || 'Formato de teléfono inválido' });
     } else {
@@ -303,38 +322,32 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             icon={<Building2 className="h-4 w-4" />}
             error={errors.name?.message}
           >
-            <Controller
-              name="name"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  placeholder="Ingresa el nombre de la empresa"
-                  error={errors.name?.message}
-                />
-              )}
+            <input
+              {...register('name')}
+              type="text"
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Ingresa el nombre de la empresa"
             />
           </FormField>
 
+          {/* ✅ TIPO OPCIONAL COMO GÉNERO */}
           <FormField
             label="Tipo de organización"
             name="type"
-            required={true}
             icon={<Users className="h-4 w-4" />}
             error={errors.type?.message}
           >
-            <Controller
-              name="type"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  options={COMPANY_TYPE_OPTIONS}
-                  placeholder="Seleccionar tipo..."
-                  error={errors.type?.message}
-                />
-              )}
-            />
+            <select
+              {...register('type')}
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Seleccionar...</option>
+              {COMPANY_TYPE_OPTIONS.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
       </div>
@@ -353,17 +366,11 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             error={errors.email?.message}
             description="Email principal de la empresa"
           >
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  type="email"
-                  placeholder="contacto@empresa.com"
-                  error={errors.email?.message}
-                />
-              )}
+            <input
+              {...register('email')}
+              type="email"
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="contacto@empresa.com"
             />
           </FormField>
 
@@ -372,7 +379,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             name="phone"
             icon={<Phone className="h-4 w-4" />}
             error={errors.phone?.message}
-            description="Teléfono principal con formato E164"
+            description="Teléfono principal con formato E164 estándar"
           >
             <SmartPhoneInput
               value={currentPhone || ''}
@@ -391,17 +398,11 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
           error={errors.website?.message}
           description="URL del sitio web de la empresa"
         >
-          <Controller
-            name="website"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="url"
-                placeholder="https://www.empresa.com"
-                error={errors.website?.message}
-              />
-            )}
+          <input
+            {...register('website')}
+            type="url"
+            className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="https://www.empresa.com"
           />
         </FormField>
       </div>
@@ -413,44 +414,44 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* ✅ INDUSTRY OPCIONAL COMO GÉNERO */}
           <FormField
             label="Industria"
             name="industry"
             icon={<Building2 className="h-4 w-4" />}
             error={errors.industry?.message}
           >
-            <Controller
-              name="industry"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  options={INDUSTRY_OPTIONS}
-                  placeholder="Seleccionar industria..."
-                  error={errors.industry?.message}
-                />
-              )}
-            />
+            <select
+              {...register('industry')}
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Seleccionar...</option>
+              {INDUSTRY_OPTIONS.map(industry => (
+                <option key={industry.value} value={industry.value}>
+                  {industry.label}
+                </option>
+              ))}
+            </select>
           </FormField>
 
+          {/* ✅ COMPANYSIZE OPCIONAL COMO GÉNERO */}
           <FormField
             label="Tamaño de la empresa"
-            name="size"
+            name="companySize"
             icon={<Users className="h-4 w-4" />}
-            error={errors.size?.message}
+            error={errors.companySize?.message}
           >
-            <Controller
-              name="size"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  options={COMPANY_SIZE_OPTIONS}
-                  placeholder="Seleccionar tamaño..."
-                  error={errors.size?.message}
-                />
-              )}
-            />
+            <select
+              {...register('companySize')}
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Seleccionar...</option>
+              {COMPANY_SIZE_OPTIONS.map(size => (
+                <option key={size.value} value={size.value}>
+                  {size.label}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
       </div>
@@ -482,155 +483,141 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
                 name="annualRevenue"
                 control={control}
                 render={({ field }) => (
-                  <Input
+                  <input
                     {...field}
                     type="number"
                     step="0.01"
                     min="0"
+                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="1000000"
                     onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                    error={errors.annualRevenue?.message}
                   />
                 )}
               />
             </FormField>
 
-            {/* Address */}
-            {selectedCountryFromPhone && (
-              <div className="space-y-4">
-                <h4 className="text-md font-medium text-app-gray-200 flex items-center">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Dirección
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                  
-                  <div className="col-span-1">
-                    <FormField 
-                      label="País" 
-                      name="address.country" 
-                      error={errors.address?.country?.message}
-                    >
-                      <Controller
-                        name="address.country"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            readOnly
-                            placeholder="Automático desde teléfono"
-                            className="cursor-not-allowed opacity-75"
-                          />
-                        )}
-                      />
-                    </FormField>
-                  </div>
-                  
-                  <div className="col-span-1">
-                    <FormField 
-                      label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
-                      name="address.state" 
-                      error={errors.address?.state?.message}
-                    >
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
-                        onCityChange={() => {}}
-                        disabled={loading || !selectedCountryFromPhone}
-                        layout="separate"
-                        renderStateOnly
-                        errorState={errors.address?.state?.message}
-                      />
-                    </FormField>
-                  </div>
+            {/* Address - SIGUIENDO LAYOUT CONTACTFORM */}
+            <div className="space-y-4">
+              <h4 className="text-md font-medium text-app-gray-200 flex items-center">
+                <MapPin className="h-4 w-4 mr-2" />
+                Dirección
+              </h4>
+              
+              {selectedCountryFromPhone && (
+                <>
+                  <h5 className="text-sm font-medium text-app-gray-300 pt-2">
+                    Ubicación Geográfica
+                  </h5>
 
-                  <div className="col-span-1">
-                    <FormField 
-                      label="Ciudad" 
-                      name="address.city" 
-                      error={errors.address?.city?.message}
-                    >
-                      <GeographySelector
-                        countryCode={selectedCountryFromPhone}
-                        selectedState={watch('address.state') || ''}
-                        selectedCity={watch('address.city') || ''}
-                        onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
-                        onStateChange={() => {}}
-                        onPostalCodeAutoFill={(postalCode) => {
-                          setValue('address.postalCode', postalCode, { shouldValidate: true });
-                        }}
-                        disabled={loading || !watch('address.state')}
-                        layout="separate"
-                        renderCityOnly
-                        errorCity={errors.address?.city?.message}
-                        showPostalCodeHint={true}
-                      />
-                    </FormField>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    
+                    <div className="col-span-1">
+                      <FormField 
+                        label="País" 
+                        name="address.country" 
+                        error={errors.address?.country?.message}
+                      >
+                        <input 
+                          {...register('address.country')} 
+                          type="text" 
+                          readOnly 
+                          className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed" 
+                          placeholder="Automático desde teléfono"
+                        />
+                      </FormField>
+                    </div>
+                    
+                    <div className="col-span-1">
+                      <FormField 
+                        label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
+                        name="address.state" 
+                        error={errors.address?.state?.message}
+                      >
+                        <GeographySelector
+                          countryCode={selectedCountryFromPhone}
+                          selectedState={watch('address.state') || ''}
+                          onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
+                          onCityChange={() => {}}
+                          disabled={loading || !selectedCountryFromPhone}
+                          layout="separate"
+                          renderStateOnly
+                          errorState={errors.address?.state?.message}
+                        />
+                      </FormField>
+                    </div>
 
-                  <div className="col-span-1">
-                    <FormField 
-                      label="Código postal" 
-                      name="address.postalCode" 
-                      error={errors.address?.postalCode?.message}
-                    >
-                      <Controller
-                        name="address.postalCode"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            placeholder="760001"
-                            error={errors.address?.postalCode?.message}
-                          />
-                        )}
-                      />
-                    </FormField>
-                  </div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Ciudad" 
+                        name="address.city" 
+                        error={errors.address?.city?.message}
+                      >
+                        <GeographySelector
+                          countryCode={selectedCountryFromPhone}
+                          selectedState={watch('address.state') || ''}
+                          selectedCity={watch('address.city') || ''}
+                          onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
+                          onStateChange={() => {}}
+                          onPostalCodeAutoFill={(postalCode) => {
+                            setValue('address.postalCode', postalCode, { shouldValidate: true });
+                          }}
+                          disabled={loading || !watch('address.state')}
+                          layout="separate"
+                          renderCityOnly
+                          errorCity={errors.address?.city?.message}
+                          showPostalCodeHint={true}
+                        />
+                      </FormField>
+                    </div>
 
-                  <div className="col-span-1">
-                    <FormField 
-                      label="Dirección principal" 
-                      name="address.addressLine1" 
-                      error={errors.address?.addressLine1?.message}
-                    >
-                      <Controller
-                        name="address.addressLine1"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            placeholder="Calle 123 #45-67"
-                            error={errors.address?.addressLine1?.message}
-                          />
-                        )}
-                      />
-                    </FormField>
-                  </div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Código postal" 
+                        name="address.postalCode" 
+                        error={errors.address?.postalCode?.message}
+                      >
+                        <input 
+                          {...register('address.postalCode')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="760001"
+                        />
+                      </FormField>
+                    </div>
 
-                  <div className="col-span-1">
-                    <FormField 
-                      label="Dirección secundaria" 
-                      name="address.addressLine2" 
-                      error={errors.address?.addressLine2?.message}
-                    >
-                      <Controller
-                        name="address.addressLine2"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            {...field}
-                            placeholder="Oficina, piso, etc."
-                            error={errors.address?.addressLine2?.message}
-                          />
-                        )}
-                      />
-                    </FormField>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Dirección principal" 
+                        name="address.addressLine1" 
+                        error={errors.address?.addressLine1?.message}
+                      >
+                        <input 
+                          {...register('address.addressLine1')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="Calle 123 #45-67"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Dirección secundaria" 
+                        name="address.addressLine2" 
+                        error={errors.address?.addressLine2?.message}
+                      >
+                        <input 
+                          {...register('address.addressLine2')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="Oficina, piso, etc."
+                        />
+                      </FormField>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
