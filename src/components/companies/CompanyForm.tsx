@@ -60,7 +60,7 @@ const companyFormSchema = z.object({
     .max(255, 'El nombre no puede tener más de 255 caracteres'),
   
   // ✅ SIMPLIFICADO: string opcional que se convierte a null si está vacío
-  type: z.string().optional(),
+  type: z.string().optional().or(z.literal('')),
   
   email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
@@ -242,7 +242,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
     // ✅ PAYLOAD MAPPING - CONVERSIÓN CORRECTA DE STRINGS VACÍAS
     const payload: any = {
       name: data.name.trim(),
-      ...(data.type && data.type.trim() && { type: data.type as CompanyType }),
+      ...(data.type && data.type.trim() !== '' && { type: data.type as CompanyType }),
       email: data.email?.trim() || null,
       phone: phoneValidation.e164Phone || null,
       phoneRegion: phoneRegion || null,
