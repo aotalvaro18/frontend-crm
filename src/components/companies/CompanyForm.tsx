@@ -77,7 +77,8 @@ const companyFormSchema = z.object({
   annualRevenue: z.number()
     .min(0, 'El revenue debe ser mayor o igual a 0')
     .max(999999999999999, 'El revenue es demasiado grande')
-    .optional(),
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
   
   customFields: z.record(z.any()).optional(),
 });
@@ -250,7 +251,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       address: data.address,
       ...(data.industry && data.industry.trim() && { industry: data.industry as Industry }),
       ...(data.companySize && data.companySize.trim() && { size: data.companySize as CompanySize }),
-      annualRevenue: data.annualRevenue,
+      ...(data.annualRevenue !== undefined && { annualRevenue: data.annualRevenue }),
       customFields: data.customFields,
     };
 
