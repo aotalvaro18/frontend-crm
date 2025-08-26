@@ -122,20 +122,12 @@ const CompanyListPage: React.FC = () => {
   // ============================================
   // STATS CARDS CONFIGURATION
   // ============================================
-  const companyStatItems = useMemo((): StatCardConfig[] => {
-    const configs: StatCardConfig[] = [
-      { key: 'total', title: 'Total Empresas', description: 'Número total de organizaciones en el sistema.', icon: Building2, variant: 'default', format: 'number' },
-      { key: 'COMPANY', title: 'Tipo Empresa', description: 'Organizaciones de tipo comercial.', icon: Building2, variant: 'info', format: 'number' },
-      { key: 'FAMILY', title: 'Tipo Familia', description: 'Grupos familiares registrados.', icon: UsersIcon, variant: 'success', format: 'number' },
-      { key: 'LARGE_ENTERPRISE', title: 'Empresas Grandes', description: 'Organizaciones con más de 50 empleados.', icon: Star, variant: 'warning', format: 'number' },
-    ];
-    
-    // Filtra las tarjetas que no tienen valor para no renderizarlas
-    return configs.filter(c => {
-      const statValue = stats?.[c.key as keyof typeof stats];
-      return statValue !== undefined && statValue !== null;
-    });
-  }, [stats, totalCompanies]);
+  const companyStatConfigs: StatCardConfig[] = [
+    { key: 'total', title: 'Total Empresas', description: 'Número total de organizaciones en el sistema.', icon: Building2, variant: 'default', format: 'number' },
+    { key: 'companyTypeCount', title: 'Tipo Empresa', description: 'Organizaciones de tipo comercial.', icon: Building2, variant: 'info', format: 'number' },
+    { key: 'familyTypeCount', title: 'Tipo Familia', description: 'Grupos familiares registrados.', icon: UsersIcon, variant: 'success', format: 'number' },
+    { key: 'largeCompanyCount', title: 'Empresas Grandes', description: 'Organizaciones con más de 50 empleados.', icon: Star, variant: 'warning', format: 'number' },
+  ];
 
   useEffect(() => {
     // Cada vez que el término de búsqueda o los filtros cambien,
@@ -224,22 +216,35 @@ const CompanyListPage: React.FC = () => {
     { id: 'import', label: 'Importar empresas', icon: Upload, onClick: () => navigate('/companies/import') }
   ];
 
+  // Segundo, creamos el objeto de datos "mapeado" usando useMemo.
+  const mappedStats = useMemo(() => {
+    if (!stats) return undefined; // Si no hay datos de stats, devolvemos undefined
+    
+    return {
+        total: totalCompanies,
+        companyType: stats.byType?.COMPANY || 0,
+        familyType: stats.byType?.FAMILY || 0,
+        largeCompanies: (stats.bySize?.LARGE || 0) + (stats.bySize?.ENTERPRISE || 0),
+    };
+}, [stats, totalCompanies]);
+
   // ============================================
   // RENDER HELPERS
   // ============================================
   const renderHeader = () => (
     <div className="space-y-6">
+      {/* 
+        ✅ CORRECCIÓN: 
+        1. Pasamos `companyStatConfigs` a la prop `configs`.
+        2. Pasamos el nuevo objeto `mappedStats` a la prop `stats`.
+      */}
       <StatsCards 
-        configs={companyStatItems}
-        stats={stats ? {
-          total: totalCompanies,
-          COMPANY: stats.byType?.COMPANY,
-          FAMILY: stats.byType?.FAMILY,
-          LARGE_ENTERPRISE: (stats.bySize?.LARGE || 0) + (stats.bySize?.ENTERPRISE || 0)
-        } : undefined}
+        configs={companyStatConfigs}
+        stats={mappedStats}
         isLoading={isLoadingStats}
         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
       />
+      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-crm-company-500/10 rounded-lg">
@@ -267,6 +272,7 @@ const CompanyListPage: React.FC = () => {
           </Button>
         </div>
       </div>
+      
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <SearchInput 
@@ -283,6 +289,7 @@ const CompanyListPage: React.FC = () => {
           </Button>
         </div>
       </div>
+      
       {showFilters && (
         <CompaniesFilters 
           searchCriteria={searchCriteria} 
@@ -291,6 +298,7 @@ const CompanyListPage: React.FC = () => {
           className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800" 
         />
       )}
+      
       {hasSelection && (
         <CompaniesBulkActions 
           selectedCount={selectionCount} 
