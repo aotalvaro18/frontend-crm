@@ -242,7 +242,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
     // ✅ PAYLOAD MAPPING - CONVERSIÓN CORRECTA DE STRINGS VACÍAS
     const payload: any = {
       name: data.name.trim(),
-      ...(data.type && data.type.trim() !== '' && { type: data.type as CompanyType }),
+      type: (data.type && data.type.trim() !== '') ? data.type as CompanyType : 'COMPANY',
       email: data.email?.trim() || null,
       phone: phoneValidation.e164Phone || null,
       phoneRegion: phoneRegion || null,
