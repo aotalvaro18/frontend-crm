@@ -181,7 +181,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
           // Modo creación - valores por defecto mínimos
           return { 
             name: '',
-            type: '',
+            type: undefined,
             email: '',
             phone: '',
             website: '',
@@ -201,7 +201,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
         // Modo edición - cargar datos existentes
         return {
           name: company.name || '',
-          type: company.type || '',
+          type: company.type || undefined,
           email: company.email || '',
           phone: '', // SmartPhoneInput maneja esto
           website: company.website || '',
