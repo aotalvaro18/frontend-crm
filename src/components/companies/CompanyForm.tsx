@@ -466,7 +466,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
 
           <FormField
             label="Tamaño de la empresa"
-            name="size"
+            name="companySize"
             icon={<Users className="h-4 w-4" />}
             error={errors.companySize?.message}
           >
