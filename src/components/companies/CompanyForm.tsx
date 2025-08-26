@@ -82,8 +82,9 @@ const companyFormSchema = z.object({
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(255, 'El nombre no puede tener más de 255 caracteres'),
   
-  type: z.enum(['COMPANY', 'FAMILY', 'INSTITUTION', 'OTHER'], {
-    required_error: 'El tipo de empresa es requerido'
+  // ✅ CORRECCIÓN: Usa `refine` para la validación de campos obligatorios
+  type: z.string().refine(val => val !== '', {
+    message: 'Debe seleccionar un tipo de organización'
   }),
   
   email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
@@ -93,7 +94,9 @@ const companyFormSchema = z.object({
   address: addressSchema.optional(),
   
   industry: z.string().max(100).optional().or(z.literal('')),
-  size: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().or(z.literal('')),
+  
+  // ✅ CORRECCIÓN: companySize es opcional, así que no necesita refine
+  companySize: z.enum(['SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE']).optional().or(z.literal('')),
   
   annualRevenue: z.number()
     .min(0, 'El revenue debe ser mayor o igual a 0')
@@ -176,17 +179,36 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       resolver: zodResolver(companyFormSchema),
       defaultValues: useMemo(() => {
         if (!company) {
-            return { 
-              type: 'COMPANY',
-              size: 'SMALL',
-              customFields: {}
-            };
+          // --- MODO CREACIÓN ---
+          // Inicializa los campos con valores vacíos para que el formulario
+          // no tenga valores por defecto seleccionados.
+          return { 
+            name: '',
+            type: '',
+            email: '',
+            phone: '',
+            website: '',
+            address: {
+              addressLine1: '',
+              addressLine2: '',
+              city: '',
+              state: '',
+              postalCode: '',
+              country: '',
+            },
+            industry: '',
+            companySize: '',
+            annualRevenue: undefined,
+            customFields: {},
+          };
         }
+        // --- MODO EDICIÓN ---
+        // Puebla el formulario con los datos del `company` existente.
         return {
             name: company.name || '',
-            type: company.type || 'COMPANY',
+            type: company.type || '',
             email: company.email || '',
-            phone: '',
+            phone: '', // SmartPhoneInput se encarga de poblar este campo a través de initialE164
             website: company.website || '',
             address: {
               addressLine1: company.address?.addressLine1 || '',
@@ -197,10 +219,10 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
               country: company.address?.country || '',
             },
             industry: company.industry || '',
-            companySize: company.companySize || 'SMALL',
+            companySize: company.companySize || '', // <-- Estandarizado
             annualRevenue: company.annualRevenue,
             customFields: company.customFields || {},
-        };
+          };
     }, [company]),
   });
 
@@ -210,6 +232,15 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   // ✅ MEJORADO: handleFormSubmit simplificado y optimizado
   // ============================================
   const handleFormSubmit = async (data: CompanyFormData) => {
+    // ✅ VALIDACIÓN CRUZADA (COPIADA DE CONTACTFORM)
+    if (!data.email?.trim() && !phoneValidation.e164Phone && !data.website?.trim()) {
+      setError('email', { message: 'Debe proporcionar al menos email, teléfono o sitio web' });
+      // Opcional: También marcar los otros campos
+      setError('phone', { message: ' ' }); 
+      setError('website', { message: ' ' });
+      return;
+    }
+    // FIN DE LA VALIDACIÓN
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
       return;
@@ -218,14 +249,14 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
     // ✅ OPTIMIZADO: Conversión más limpia, aprovechando que zod ya maneja opcional
     const payload = {
       name: data.name.trim(),
-      type: data.type,
+      type: data.type as CompanyType, // <-- AÑADE ESTA ASERCIÓN
       email: data.email?.trim() || undefined,
       phone: phoneValidation.e164Phone || undefined,
       phoneRegion: phoneRegion || undefined,
       website: data.website?.trim() || undefined,
       address: data.address,
       industry: data.industry?.trim() || undefined,
-      size: data.size || undefined,
+      companySize: data.companySize as CompanySize || undefined, // <-- Aserción similar aquí por seguridad
       annualRevenue: data.annualRevenue,
       customFields: data.customFields,
     };
@@ -437,17 +468,17 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             label="Tamaño de la empresa"
             name="size"
             icon={<Users className="h-4 w-4" />}
-            error={errors.size?.message}
+            error={errors.companySize?.message}
           >
             <Controller
-              name="size"
+              name="companySize"
               control={control}
               render={({ field }) => (
                 <Select
                   {...field}
                   options={COMPANY_SIZE_OPTIONS}
                   placeholder="Seleccionar tamaño..."
-                  error={errors.size?.message}
+                  error={errors.companySize?.message}
                 />
               )}
             />
