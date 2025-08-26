@@ -483,15 +483,16 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
                 name="annualRevenue"
                 control={control}
                 render={({ field }) => (
-                  <input
-                    {...field}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="1000000"
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                  />
+                <input
+                  {...field}
+                  value={field.value || ''}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="1000000"
+                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                />
                 )}
               />
             </FormField>
