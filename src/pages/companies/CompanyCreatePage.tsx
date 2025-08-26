@@ -61,7 +61,8 @@ const CompanyCreatePage: React.FC = () => {
     try {
       // Le decimos a TypeScript: "Confía en mí, en esta página, 'data' siempre será de este tipo"
       await createCompany(data as CreateCompanyRequest, (newCompany) => {
-        toastSuccess(`Empresa "${newCompany.name}" creada exitosamente`);
+        //toastSuccess(`Empresa "${newCompany.name}" creada exitosamente`);
+        //el toast se maneja desde el store
         navigate(`/companies/${newCompany.id}`);
       });
     } catch (error: unknown) {

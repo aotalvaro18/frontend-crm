@@ -74,11 +74,15 @@ const companyFormSchema = z.object({
   // ✅ SIMPLIFICADO: string opcional
   companySize: z.string().optional(),
   
-  annualRevenue: z.number()
-    .min(0, 'El revenue debe ser mayor o igual a 0')
-    .max(999999999999999, 'El revenue es demasiado grande')
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
+  annualRevenue: z.preprocess(
+    (val) => (String(val).trim() === '' ? undefined : Number(val)),
+    z.number({
+        invalid_type_error: 'Debe ser un número',
+      })
+      .min(0, 'El revenue no puede ser negativo')
+      .optional()
+      .nullable()
+  ),
   
   customFields: z.record(z.any()).optional(),
 });
