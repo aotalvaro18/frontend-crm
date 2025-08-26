@@ -73,17 +73,38 @@ const CompanyDetailPage: React.FC = () => {
     setShowEditModal(false);
   }, []);
 
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!company) return;
-    deleteCompany(company.id, () => {
+    try {
+      // La función del store ya es async, así que podemos esperarla
+      await deleteCompany(company.id); 
+      
+      // El toast y la navegación solo ocurren si no hay error
       toastSuccess(`La empresa "${getDisplayName(company)}" ha sido eliminada.`);
       navigate('/companies');
-    });
+  
+    } catch (error) {
+      // El store ya muestra un toast de error, así que aquí no necesitamos hacer nada
+      // más que loguearlo si queremos.
+      console.error("Delete operation failed, staying on page.", error);
+    }
   }, [company, deleteCompany, navigate]);
 
   // ============================================
   // RENDER STATES
   // ============================================
+  // ✅ NUEVO: Estado de Carga Específico para la Eliminación
+    if (isDeleting(companyId)) {
+        return (
+            <Page title="Eliminando...">
+                <div className="flex flex-col items-center justify-center py-24">
+                    <LoadingSpinner size="lg" />
+                    <p className="mt-4 text-app-gray-400">Eliminando empresa...</p>
+                </div>
+            </Page>
+        );
+    }
+  
   if (isLoading) {
     return (
       <Page title="Cargando...">
