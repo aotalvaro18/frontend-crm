@@ -5,6 +5,7 @@ import React from 'react';
 import { User, Calendar, MapPin, Building, Tag } from 'lucide-react';
 import type { ContactDTO } from '@/types/contact.types';
 import { formatDate } from '@/utils/formatters';
+import { Link } from 'react-router-dom';
 
 // ============================================
 // TYPES
@@ -170,7 +171,13 @@ const ContactBasicInfo: React.FC<ContactBasicInfoProps> = ({ contact }) => {
             label="Empresa"
             value={
               contact.companyId ? (
-                <span>Empresa #{contact.companyId}</span>
+                <Link 
+                  to={`/companies/${contact.companyId}`}
+                  className="text-primary-400 hover:text-primary-300 hover:underline transition-colors inline-flex items-center"
+                >
+                  <Building className="h-3 w-3 mr-1" />
+                  Empresa #{contact.companyId}
+                </Link>
               ) : (
                 <span className="text-app-gray-500">Sin empresa asignada</span>
               )

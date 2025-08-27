@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import toast from 'react-hot-toast';
 import { queryClient } from '@/lib/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { 
   companyApi, 
@@ -214,6 +215,17 @@ export const useCompanyOperations = () => {
     isUpdating: (id: number) => operations.updating.has(id),
     isDeleting: (id: number) => operations.deleting.has(id),
   };
+};
+
+/**
+ * Hook para obtener empresa por ID
+ */
+export const useCompanyById = (id: number) => {
+  return useQuery({
+    queryKey: COMPANY_DETAIL_QUERY_KEY(id),
+    queryFn: () => companyApi.getCompanyById(id),
+    enabled: !!id && id > 0,
+  });
 };
 
 /**
