@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { companyApi } from '@/services/api/companyApi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { queryClient } from '@/lib/react-query';
 
 import { 
   User, Mail, Phone, MapPin, Building2, 
@@ -26,6 +27,8 @@ import type {
     UpdateContactRequest,
     CommunicationPreferences
   } from '@/types/contact.types';
+
+  import QuickCreateCompanyModal from '@/components/companies/QuickCreateCompanyModal';
 
 
 // ============================================
@@ -245,6 +248,8 @@ interface ContactFormProps {
     queryFn: () => companyApi.searchCompanies({ size: 100 }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const [showCreateCompanyModal, setShowCreateCompanyModal] = useState(false);
  
   const handleFormSubmit = async (data: ContactFormData) => {
     if (data.phone && !phoneValidation.isValid) {
@@ -413,26 +418,51 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
 
       {/* Campo de Empresa */}
       <div className="grid grid-cols-1 gap-6">
-            <FormField
-              label="Empresa"
-              name="companyId"
-              icon={<Building2 className="h-4 w-4" />}
-              error={errors.companyId?.message}
-              description="Opcional - empresa a la que pertenece el contacto"
+        <FormField
+          label="Empresa"
+          name="companyId"
+          icon={<Building2 className="h-4 w-4" />}
+          error={errors.companyId?.message}
+          description="Opcional - empresa donde trabaja el contacto"
+        >
+          <div className="relative">
+            <select
+              {...register('companyId', {
+                setValueAs: (value) => value === '' ? null : parseInt(value, 10)
+              })}
+              className="w-full px-3 py-2 pr-20 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
-              <select
-                {...register('companyId', {
-                  setValueAs: (value) => value === '' ? null : parseInt(value, 10)
-                })}
-                className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">Sin empresa asignada</option>
-                {/* TODO: Cargar empresas desde API */}
-                <option value="1">Empresa Demo 1</option>
-                <option value="2">Empresa Demo 2</option>
-              </select>
-            </FormField>
+              <option value="">Sin empresa asignada</option>
+              {companies?.content?.map(company => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateCompanyModal(true)}
+              className="absolute right-1 top-1 h-8"
+              disabled={loading}
+            >
+              + Nueva
+            </Button>
           </div>
+        </FormField>
+      </div>
+
+      {/* Quick Create Modal */}
+      <QuickCreateCompanyModal
+        isOpen={showCreateCompanyModal}
+        onClose={() => setShowCreateCompanyModal(false)}
+        onSuccess={(newCompany) => {
+          setValue('companyId', newCompany.id);
+          // Invalidar y refetch empresas para actualizar selector
+          queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
+        }}
+      />
 
 
       </div>
