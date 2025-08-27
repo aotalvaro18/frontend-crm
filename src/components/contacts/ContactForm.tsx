@@ -1,8 +1,8 @@
 // src/components/contacts/ContactForm.tsx
 // ✅ VERSIÓN FINAL: Contact form enterprise - E164 estándar y limpio
-//Nota: tengo el original funcional antes de refactorizacion phoneinput en docs
+// ✅ ACTUALIZADO: Campo empresa con autocomplete + error de ref solucionado
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react'; // ✅ AGREGADO: useEffect (eliminado useRef)
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { companyApi } from '@/services/api/companyApi';
@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-//import { COUNTRY_CODES } from '@/utils/constants';
 import { GeographySelector } from '@/components/shared/GeographySelector';
 import { getCountryName } from '@/utils/geography';
 import { FormField } from '@/components/forms/FormField';
@@ -28,11 +27,11 @@ import type {
     CommunicationPreferences
   } from '@/types/contact.types';
 
-  import QuickCreateCompanyModal from '@/components/companies/QuickCreateCompanyModal';
-
+import QuickCreateCompanyModal from '@/components/companies/QuickCreateCompanyModal';
+import CompanySelector from '@/components/companies/CompanySelector'; // ✅ AGREGADO: Import del CompanySelector
 
 // ============================================
-// VALIDATION SCHEMAS (🔥 AJUSTADO)
+// VALIDATION SCHEMAS (Sin cambios)
 // ============================================
 
 const addressSchema = z.object({
@@ -44,17 +43,14 @@ const addressSchema = z.object({
   country: z.string().max(50).optional().or(z.literal('')),
 });
 
-// ✅ NUEVO ESQUEMA ESPECÍFICO
 const communicationPreferencesSchema = z.object({
     allowEmail: z.boolean().optional(),
     allowSms: z.boolean().optional(),
     allowPhone: z.boolean().optional(),
     allowWhatsapp: z.boolean().optional(),
     marketingConsent: z.boolean().optional(),
-    // Añade aquí cualquier otra propiedad de tu interfaz CommunicationPreferences
   }).optional();
 
-// 🔥 phoneRegion ELIMINADO del esquema. Ahora es estado de UI.
 const contactFormSchema = z.object({
   firstName: z.string()
     .min(1, 'El nombre es requerido')
@@ -68,13 +64,12 @@ const contactFormSchema = z.object({
   
   email: z.string().email('Formato de email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
-  companyId: z.number().nullish(), // Acepta null o undefined
+  companyId: z.number().nullish(),
   
   address: addressSchema.optional(),
   
   birthDate: z.string().optional().or(z.literal('')),
   
-  // ✅ LA SOLUCIÓN AL ERROR DE GÉNERO: Añadimos .nullable()
   gender: z.union([
     z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
     z.literal(''),
@@ -94,7 +89,7 @@ const contactFormSchema = z.object({
 type ContactFormData = z.infer<typeof contactFormSchema>;
 
 // ============================================
-// TYPES
+// TYPES (Sin cambios)
 // ============================================
 
 interface ContactFormProps {
@@ -104,9 +99,8 @@ interface ContactFormProps {
   loading: boolean;
   error?: string | null;
   mode: 'create' | 'edit';
-  showActions?: boolean; // Para controlar la visibilidad de los botones
+  showActions?: boolean;
 }
-
 
  // ============================================
  // CONSTANTS (Sin cambios)
@@ -133,7 +127,7 @@ interface ContactFormProps {
   ];
   
   // ============================================
-  // COMMUNICATION PREFERENCES COMPONENT
+  // COMMUNICATION PREFERENCES COMPONENT (Sin cambios)
   // ============================================
   
   interface CommunicationPreferencesProps {
@@ -175,7 +169,7 @@ interface ContactFormProps {
   };
  
  // ============================================
- // MAIN COMPONENT (🔥 COMPLETADO Y AJUSTADO)
+ // MAIN COMPONENT (Actualizado solo lo necesario)
  // ============================================
  
  const ContactForm = React.forwardRef<HTMLFormElement, ContactFormProps>(
@@ -187,12 +181,29 @@ interface ContactFormProps {
     error,
     mode,
     showActions = true,
-  }, ref) => { // <-- Se añade 'ref' aquí
+  }, ref) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
-  //const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
+
+  // ✅ SOLUCIÓN QUIRÚRGICA: useEffect para focus sin conflicto de refs
+  useEffect(() => {
+    // Función para enfocar el campo fuente
+    const focusSourceField = () => {
+      const sourceField = document.querySelector('select[name="source"]') as HTMLSelectElement;
+      if (sourceField) {
+        sourceField.focus();
+      }
+    };
+
+    // Guardar la referencia para usar en el onSuccess del modal
+    (window as any).focusSourceField = focusSourceField;
+
+    return () => {
+      delete (window as any).focusSourceField;
+    };
+  }, []);
  
   const {
     register, control, handleSubmit,
@@ -208,9 +219,8 @@ interface ContactFormProps {
             firstName: contact.firstName || '',
             lastName: contact.lastName || '',
             email: contact.email || '',
-            phone: '', // SmartPhoneInput se encarga de esto
+            phone: '',
             companyId: contact.companyId,
-            // LA CLAVE: Inicializamos el address completo para que se cargue
             address: {
               addressLine1: contact.address?.addressLine1 || '',
               addressLine2: contact.address?.addressLine2 || '',
@@ -242,13 +252,6 @@ interface ContactFormProps {
 
   const currentPhone = watch('phone');
 
-  // Hook para cargar empresas
-  const { data: companies } = useQuery({
-    queryKey: ['companies', 'list'],
-    queryFn: () => companyApi.searchCompanies({ size: 100 }),
-    staleTime: 5 * 60 * 1000,
-  });
-
   const [showCreateCompanyModal, setShowCreateCompanyModal] = useState(false);
  
   const handleFormSubmit = async (data: ContactFormData) => {
@@ -262,8 +265,6 @@ interface ContactFormProps {
       return;
     }
 
-    // "Traducimos" los datos del formulario al formato de la API
-    
     const payload: any = {
       firstName: data.firstName.trim(),
       lastName: data.lastName.trim(),
@@ -273,12 +274,11 @@ interface ContactFormProps {
       companyId: data.companyId,
       address: data.address,
       birthDate: data.birthDate === '' ? null : data.birthDate,
-      gender: data.gender || null, // Zod ya se encargó de null/undefined
+      gender: data.gender || null,
       source: data.source,
       sourceDetails: data.sourceDetails,
       customFields: data.customFields,
       communicationPreferences: data.communicationPreferences,
-      // Se omiten los tags hasta que se aclare el mapeo number[] -> string[]
     };
  
     if (mode === 'edit' && contact) {
@@ -292,21 +292,19 @@ interface ContactFormProps {
       await onSubmit(createData);
     }
 };
- 
+
 const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
   setPhoneValidation(result);
   
     if (result.isValid && result.e164Phone) {
       const region = getRegionFromE164(result.e164Phone);
 
-      // --- AQUÍ SE INSERTA TU CÓDIGO ---
       if (mode === 'create' && region !== phoneRegion) {
         setValue('address.state', '');
         setValue('address.city', '');
       }
-      // --- FIN DE LA INSERCIÓN ---
 
-      setPhoneRegion(region); // ✅ Guardamos la región
+      setPhoneRegion(region);
       setSelectedCountryFromPhone(region);
       setValue('address.country', getCountryName(region));
     }
@@ -318,14 +316,12 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
     }
 }, [currentPhone, setError, clearErrors, setValue, mode, phoneRegion]);
 
-  //finalmente
   const handlePhoneChange = useCallback((phone: string) => {
     setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
   }, [setValue]);
  
   return (
     <form ref={ref} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
-      {/* Error Message */}
       {error && (
         <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
           <div className="flex items-center">
@@ -335,7 +331,7 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
         </div>
       )}
  
-      {/* Basic Information */}
+      {/* Basic Information (Sin cambios) */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información Básica
@@ -374,7 +370,7 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
         </div>
       </div>
  
-      {/* Contact Information */}
+      {/* Contact Information (Sin cambios excepto empresa) */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Información de Contacto
@@ -395,79 +391,63 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
               placeholder="ejemplo@correo.com"
             />
           </FormField>
- 
-      {/* 🔥 La única parte del JSX que cambia es el FormField del Teléfono */}
-      
-      <FormField
-        label="Teléfono"
-        name="phone"
-        icon={<Phone className="h-4 w-4" />}
-        error={errors.phone?.message}
-        description="Validación automática con formato E164 estándar"
-      >
-        <SmartPhoneInput
-          value={currentPhone || ''}
-          onChange={handlePhoneChange}
-          onValidationChange={handlePhoneValidation}
-          disabled={loading}
-          initialE164={contact?.phone} // 🔥 Pasamos el E164 del contacto existente aquí
-        />
-      </FormField>
-      
-      </div>
 
-      {/* Campo de Empresa */}
-      <div className="grid grid-cols-1 gap-6">
-        <FormField
-          label="Empresa"
-          name="companyId"
-          icon={<Building2 className="h-4 w-4" />}
-          error={errors.companyId?.message}
-          description="Opcional - empresa donde trabaja el contacto"
-        >
-          <div className="relative">
-            <select
-              {...register('companyId', {
-                setValueAs: (value) => value === '' ? null : parseInt(value, 10)
-              })}
-              className="w-full px-3 py-2 pr-20 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">Sin empresa asignada</option>
-              {companies?.content?.map(company => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateCompanyModal(true)}
-              className="absolute right-1 top-1 h-8"
+          <FormField
+            label="Teléfono"
+            name="phone"
+            icon={<Phone className="h-4 w-4" />}
+            error={errors.phone?.message}
+            description="Validación automática con formato E164 estándar"
+          >
+            <SmartPhoneInput
+              value={currentPhone || ''}
+              onChange={handlePhoneChange}
+              onValidationChange={handlePhoneValidation}
               disabled={loading}
-            >
-              + Nueva
-            </Button>
-          </div>
-        </FormField>
+              initialE164={contact?.phone}
+            />
+          </FormField>
       </div>
 
-      {/* Quick Create Modal */}
+      {/* ✅ REEMPLAZADO COMPLETAMENTE: Campo de Empresa con Autocomplete */}
+      <div className="grid grid-cols-1 gap-6">
+        <Controller
+          name="companyId"
+          control={control}
+          render={({ field }) => (
+            <CompanySelector
+              value={field.value}
+              onValueChange={field.onChange}
+              name="companyId"
+              error={errors.companyId?.message}
+              description="Empieza a escribir para buscar empresas existentes"
+              disabled={loading}
+              onCreateNew={() => setShowCreateCompanyModal(true)}
+            />
+          )}
+        />
+      </div>
+
+      {/* ✅ ACTUALIZADO: QuickCreateCompanyModal con focus quirúrgico */}
       <QuickCreateCompanyModal
         isOpen={showCreateCompanyModal}
         onClose={() => setShowCreateCompanyModal(false)}
         onSuccess={(newCompany) => {
           setValue('companyId', newCompany.id);
-          // Invalidar y refetch empresas para actualizar selector
           queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
+          
+          // ✅ SOLUCIÓN QUIRÚRGICA: Focus usando función guardada en window
+          setTimeout(() => {
+            if ((window as any).focusSourceField) {
+              (window as any).focusSourceField();
+            }
+          }, 100);
         }}
       />
 
-
       </div>
  
-      {/* Source Information */}
+      {/* Source Information (Sin cambios - campo fuente mantiene su register original) */}
       <div className="space-y-6">
         <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">
           Origen del Contacto
@@ -482,7 +462,7 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
             error={errors.source?.message}
           >
             <select
-              {...register('source')}
+              {...register('source')} // ✅ SIN CAMBIOS: Mantiene el register original sin ref personalizado
               className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {CONTACT_SOURCES.map(source => (
@@ -509,7 +489,7 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
         </div>
       </div>
  
-      {/* Advanced Information */}
+      {/* Advanced Information (Sin cambios) */}
       <div className="space-y-6">
         <button
           type="button"
@@ -524,7 +504,6 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
  
         {showAdvanced && (
           <div className="space-y-6 p-4 bg-app-dark-700/50 rounded-lg border border-app-dark-600">
-            {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 label="Fecha de nacimiento"
@@ -559,134 +538,128 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
               </FormField>
             </div>
  
-            {/* Address - ✅ LAYOUT CORREGIDO Y SIN BUCLES */}
-<div className="space-y-4">
-  <h4 className="text-md font-medium text-app-gray-200 flex items-center">
-    <MapPin className="h-4 w-4 mr-2" />
-    Dirección
-  </h4>
-  
-  {selectedCountryFromPhone && (
-    <>
-      <h5 className="text-sm font-medium text-app-gray-300 pt-2">
-        Ubicación Geográfica
-      </h5>
+            <div className="space-y-4">
+              <h4 className="text-md font-medium text-app-gray-200 flex items-center">
+                <MapPin className="h-4 w-4 mr-2" />
+                Dirección
+              </h4>
+              
+              {selectedCountryFromPhone && (
+                <>
+                  <h5 className="text-sm font-medium text-app-gray-300 pt-2">
+                    Ubicación Geográfica
+                  </h5>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        
-        {/* --- Fila 1: País y Departamento/Estado --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="País" 
-            name="address.country" 
-            error={errors.address?.country?.message}
-          >
-            <input 
-              {...register('address.country')} 
-              type="text" 
-              readOnly 
-              className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed" 
-              placeholder="Automático desde teléfono"
-            />
-          </FormField>
-        </div>
-        
-        <div className="col-span-1">
-          <FormField 
-            label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
-            name="address.state" 
-            error={errors.address?.state?.message}
-          >
-            <GeographySelector
-              countryCode={selectedCountryFromPhone}
-              selectedState={watch('address.state') || ''}
-              onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
-              onCityChange={() => {}} // No hace nada aquí
-              disabled={loading || !selectedCountryFromPhone}
-              layout="separate"
-              renderStateOnly
-              errorState={errors.address?.state?.message}
-            />
-          </FormField>
-        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    
+                    <div className="col-span-1">
+                      <FormField 
+                        label="País" 
+                        name="address.country" 
+                        error={errors.address?.country?.message}
+                      >
+                        <input 
+                          {...register('address.country')} 
+                          type="text" 
+                          readOnly 
+                          className="w-full px-3 py-2 bg-app-dark-800 border border-app-dark-600 rounded text-app-gray-400 cursor-not-allowed" 
+                          placeholder="Automático desde teléfono"
+                        />
+                      </FormField>
+                    </div>
+                    
+                    <div className="col-span-1">
+                      <FormField 
+                        label={selectedCountryFromPhone === 'CO' ? 'Departamento' : 'Estado/Provincia'} 
+                        name="address.state" 
+                        error={errors.address?.state?.message}
+                      >
+                        <GeographySelector
+                          countryCode={selectedCountryFromPhone}
+                          selectedState={watch('address.state') || ''}
+                          onStateChange={(state) => setValue('address.state', state, { shouldValidate: true })}
+                          onCityChange={() => {}}
+                          disabled={loading || !selectedCountryFromPhone}
+                          layout="separate"
+                          renderStateOnly
+                          errorState={errors.address?.state?.message}
+                        />
+                      </FormField>
+                    </div>
 
-        {/* --- Fila 2: Ciudad y Código Postal --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="Ciudad" 
-            name="address.city" 
-            error={errors.address?.city?.message}
-          >
-            <GeographySelector
-              countryCode={selectedCountryFromPhone}
-              selectedState={watch('address.state') || ''}
-              selectedCity={watch('address.city') || ''}
-              onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
-              onStateChange={() => {}} // No hace nada aquí
-              // ✅ NUEVO: Auto-llenar código postal
-              onPostalCodeAutoFill={(postalCode) => {
-                setValue('address.postalCode', postalCode, { shouldValidate: true });
-              }}
-              disabled={loading || !watch('address.state')}
-              layout="separate"
-              renderCityOnly
-              errorCity={errors.address?.city?.message}
-              showPostalCodeHint={true}
-            />
-          </FormField>
-        </div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Ciudad" 
+                        name="address.city" 
+                        error={errors.address?.city?.message}
+                      >
+                        <GeographySelector
+                          countryCode={selectedCountryFromPhone}
+                          selectedState={watch('address.state') || ''}
+                          selectedCity={watch('address.city') || ''}
+                          onCityChange={(city) => setValue('address.city', city, { shouldValidate: true })}
+                          onStateChange={() => {}}
+                          onPostalCodeAutoFill={(postalCode) => {
+                            setValue('address.postalCode', postalCode, { shouldValidate: true });
+                          }}
+                          disabled={loading || !watch('address.state')}
+                          layout="separate"
+                          renderCityOnly
+                          errorCity={errors.address?.city?.message}
+                          showPostalCodeHint={true}
+                        />
+                      </FormField>
+                    </div>
 
-        <div className="col-span-1">
-          <FormField 
-            label="Código postal" 
-            name="address.postalCode" 
-            error={errors.address?.postalCode?.message}
-          >
-            <input 
-              {...register('address.postalCode')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="760001"
-            />
-          </FormField>
-        </div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Código postal" 
+                        name="address.postalCode" 
+                        error={errors.address?.postalCode?.message}
+                      >
+                        <input 
+                          {...register('address.postalCode')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="760001"
+                        />
+                      </FormField>
+                    </div>
 
-        {/* --- Fila 3: Direcciones --- */}
-        <div className="col-span-1">
-          <FormField 
-            label="Dirección principal" 
-            name="address.addressLine1" 
-            error={errors.address?.addressLine1?.message}
-          >
-            <input 
-              {...register('address.addressLine1')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="Calle 123 #45-67"
-            />
-          </FormField>
-        </div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Dirección principal" 
+                        name="address.addressLine1" 
+                        error={errors.address?.addressLine1?.message}
+                      >
+                        <input 
+                          {...register('address.addressLine1')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="Calle 123 #45-67"
+                        />
+                      </FormField>
+                    </div>
 
-        <div className="col-span-1">
-          <FormField 
-            label="Dirección secundaria" 
-            name="address.addressLine2" 
-            error={errors.address?.addressLine2?.message}
-          >
-            <input 
-              {...register('address.addressLine2')} 
-              type="text" 
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
-              placeholder="Apartamento, suite, etc."
-            />
-          </FormField>
-        </div>
-      </div>
-    </>
-  )}
-</div>
+                    <div className="col-span-1">
+                      <FormField 
+                        label="Dirección secundaria" 
+                        name="address.addressLine2" 
+                        error={errors.address?.addressLine2?.message}
+                      >
+                        <input 
+                          {...register('address.addressLine2')} 
+                          type="text" 
+                          className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" 
+                          placeholder="Apartamento, suite, etc."
+                        />
+                      </FormField>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
  
-            {/* Communication Preferences */}
             <FormField
               label="Preferencias de comunicación"
               name="communicationPreferences"
