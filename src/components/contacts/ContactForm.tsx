@@ -2,16 +2,13 @@
 // ✅ VERSIÓN FINAL: Contact form enterprise - E164 estándar y limpio
 // ✅ ACTUALIZADO: Campo empresa con autocomplete + error de ref solucionado
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // ✅ AGREGADO: useEffect (eliminado useRef)
+import React, { useState, useCallback, useMemo } from 'react'; // ✅ AGREGADO: useEffect (eliminado useRef)
 import { useForm, Controller } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
-import { companyApi } from '@/services/api/companyApi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { queryClient } from '@/lib/react-query';
 
 import { 
-  User, Mail, Phone, MapPin, Building2, 
+  User, Mail, Phone, MapPin, 
   Save, X, AlertCircle, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +24,6 @@ import type {
     CommunicationPreferences
   } from '@/types/contact.types';
 
-import QuickCreateCompanyModal from '@/components/companies/QuickCreateCompanyModal';
 import CompanySelector from '@/components/companies/CompanySelector'; // ✅ AGREGADO: Import del CompanySelector
 
 // ============================================
@@ -187,24 +183,6 @@ interface ContactFormProps {
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
 
-  // ✅ SOLUCIÓN QUIRÚRGICA: useEffect para focus sin conflicto de refs
-  useEffect(() => {
-    // Función para enfocar el campo fuente
-    const focusSourceField = () => {
-      const sourceField = document.querySelector('select[name="source"]') as HTMLSelectElement;
-      if (sourceField) {
-        sourceField.focus();
-      }
-    };
-
-    // Guardar la referencia para usar en el onSuccess del modal
-    (window as any).focusSourceField = focusSourceField;
-
-    return () => {
-      delete (window as any).focusSourceField;
-    };
-  }, []);
- 
   const {
     register, control, handleSubmit,
     formState: { errors },
@@ -252,8 +230,6 @@ interface ContactFormProps {
 
   const currentPhone = watch('phone');
 
-  const [showCreateCompanyModal, setShowCreateCompanyModal] = useState(false);
- 
   const handleFormSubmit = async (data: ContactFormData) => {
     if (data.phone && !phoneValidation.isValid) {
       setError('phone', { message: 'El teléfono debe ser válido antes de guardar' });
@@ -422,28 +398,11 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
               error={errors.companyId?.message}
               description="Empieza a escribir para buscar empresas existentes"
               disabled={loading}
-              onCreateNew={() => setShowCreateCompanyModal(true)}
+              // La prop onCreateNew se ha eliminado de aquí
             />
           )}
         />
       </div>
-
-      {/* ✅ ACTUALIZADO: QuickCreateCompanyModal con focus quirúrgico */}
-      <QuickCreateCompanyModal
-        isOpen={showCreateCompanyModal}
-        onClose={() => setShowCreateCompanyModal(false)}
-        onSuccess={(newCompany) => {
-          setValue('companyId', newCompany.id);
-          queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
-          
-          // ✅ SOLUCIÓN QUIRÚRGICA: Focus usando función guardada en window
-          setTimeout(() => {
-            if ((window as any).focusSourceField) {
-              (window as any).focusSourceField();
-            }
-          }, 100);
-        }}
-      />
 
       </div>
  
