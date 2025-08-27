@@ -173,11 +173,11 @@ const ContactBasicInfo: React.FC<ContactBasicInfoProps> = ({ contact }) => {
               contact.companyId ? (
                 <Link 
                   to={`/companies/${contact.companyId}`}
-                  className="text-primary-400 hover:text-primary-300 hover:underline transition-colors inline-flex items-center"
+                  className="font-medium text-blue-500 hover:text-blue-400 hover:underline transition-colors inline-flex items-center"
                 >
                   <Building className="h-3 w-3 mr-1" />
                   {/* 👇 ESTA ES LA LÍNEA CLAVE A CAMBIAR 👇 */}
-                  {contact.companyName || `Empresa #${contact.companyId}`}
+                  {contact.companyName || `${contact.companyName}`}
                 </Link>
               ) : (
                 <span className="text-app-gray-500">Sin empresa asignada</span>
