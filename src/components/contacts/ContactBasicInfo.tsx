@@ -176,7 +176,7 @@ const ContactBasicInfo: React.FC<ContactBasicInfoProps> = ({ contact }) => {
                   className="text-primary-400 hover:text-primary-300 hover:underline transition-colors inline-flex items-center"
                 >
                   <Building className="h-3 w-3 mr-1" />
-                  Empresa #{contact.companyId}
+                  Empresa {contact.companyName}
                 </Link>
               ) : (
                 <span className="text-app-gray-500">Sin empresa asignada</span>
