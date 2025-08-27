@@ -4,11 +4,13 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { companyApi } from '@/services/api/companyApi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { 
-  User, Mail, Phone, MapPin, 
+  User, Mail, Phone, MapPin, Building2, 
   Save, X, AlertCircle, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -236,6 +238,13 @@ interface ContactFormProps {
   });
 
   const currentPhone = watch('phone');
+
+  // Hook para cargar empresas
+  const { data: companies } = useQuery({
+    queryKey: ['companies', 'list'],
+    queryFn: () => companyApi.searchCompanies({ size: 100 }),
+    staleTime: 5 * 60 * 1000,
+  });
  
   const handleFormSubmit = async (data: ContactFormData) => {
     if (data.phone && !phoneValidation.isValid) {
@@ -401,6 +410,31 @@ const handlePhoneValidation = useCallback((result: PhoneValidationResult) => {
       </FormField>
       
       </div>
+
+      {/* Campo de Empresa */}
+      <div className="grid grid-cols-1 gap-6">
+            <FormField
+              label="Empresa"
+              name="companyId"
+              icon={<Building2 className="h-4 w-4" />}
+              error={errors.companyId?.message}
+              description="Opcional - empresa a la que pertenece el contacto"
+            >
+              <select
+                {...register('companyId', {
+                  setValueAs: (value) => value === '' ? null : parseInt(value, 10)
+                })}
+                className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">Sin empresa asignada</option>
+                {/* TODO: Cargar empresas desde API */}
+                <option value="1">Empresa Demo 1</option>
+                <option value="2">Empresa Demo 2</option>
+              </select>
+            </FormField>
+          </div>
+
+
       </div>
  
       {/* Source Information */}
