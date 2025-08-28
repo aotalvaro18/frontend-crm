@@ -265,7 +265,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       website: data.website?.trim() || null,
       address: data.address,
       ...(data.industry && data.industry.trim() && { industry: data.industry as Industry }),
-      ...(data.companySize && data.companySize.trim() && { size: data.companySize as CompanySize }),
+      ...(data.companySize && data.companySize.trim() && { companySize: data.companySize as CompanySize }),
       ...(data.annualRevenue !== undefined && { annualRevenue: data.annualRevenue }),
       customFields: data.customFields,
     };
