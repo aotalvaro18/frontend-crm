@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { useCompanyOperations } from '@/hooks/useCompanies';
+import { useCompanyOperations } from '@/stores/companyStore';
 import CompanyForm from '@/components/companies/CompanyForm';
 import { getDisplayName } from '@/types/company.types';
 import type { 
@@ -25,18 +25,18 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { updateCompany, isUpdating: isUpdatingById } = useCompanyOperations();
-// El estado de error general del store ya no es necesario aquí, 
-// porque el store ahora muestra toasts directamente.
+  const { updateCompany, isUpdating } = useCompanyOperations();
 
 const handleClose = () => {
   onClose();
 };
 
 const handleSubmit = async (data: CreateCompanyRequest | UpdateCompanyRequest) => {
-  // La función updateCompany del store ya devuelve una Promise.
-  // Al usar await, nos aseguramos de que handleSubmit también devuelva una Promise.
-  await updateCompany(company.id, data as UpdateCompanyRequest, onSuccess);
+  // Llama a la función del store. La invalidación de caché y toasts se manejan solos.
+  await updateCompany(company.id, data as UpdateCompanyRequest, () => {
+    // Este callback se ejecuta solo si la actualización es exitosa.
+    onSuccess(); // Cierra el modal, refresca la página, etc.
+  });
 };
 
   if (!isOpen) return null;
@@ -61,15 +61,12 @@ const handleSubmit = async (data: CreateCompanyRequest | UpdateCompanyRequest) =
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          
-          
-          {/* ✅ SOLUCIÓN: Pasar solo las props que CompanyForm espera */}
           <CompanyForm
             company={company}
             mode="edit"
             onSubmit={handleSubmit}
             onCancel={handleClose}
-            loading={isUpdatingById(company.id)}
+            loading={isUpdating(company.id)} // ✅ FUNCIÓN QUE VERIFICA SI *ESTA* EMPRESA SE ESTÁ ACTUALIZANDO
             showActions={true}
           />
         </div>

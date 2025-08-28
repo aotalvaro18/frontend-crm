@@ -5,6 +5,7 @@
 import React, { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2 } from 'lucide-react';
+import { useCompanyOperations } from '@/stores/companyStore';
 
 // ============================================
 // UI & LAYOUT COMPONENTS
@@ -20,7 +21,6 @@ import CompanyForm from '@/components/companies/CompanyForm';
 // ============================================
 // HOOKS & SERVICES
 // ============================================
-import { useCompanyOperations } from '@/hooks/useCompanies';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
@@ -44,6 +44,7 @@ const CompanyCreatePage: React.FC = () => {
   // ============================================
   // HOOKS DE ZUSTAND (Para acciones)
   // ============================================
+  // ✅ USA EL HOOK PARA OBTENER LA LÓGICA DE MUTACIÓN Y EL ESTADO DE CARGA
   const { createCompany, isCreating } = useCompanyOperations();
 
   // ============================================
@@ -58,18 +59,13 @@ const CompanyCreatePage: React.FC = () => {
   }, [navigate]);
 
   const handleSubmit = useCallback(async (data: CreateCompanyRequest | UpdateCompanyRequest) => {
-    try {
-      // Le decimos a TypeScript: "Confía en mí, en esta página, 'data' siempre será de este tipo"
-      await createCompany(data as CreateCompanyRequest, (newCompany) => {
-        //toastSuccess(`Empresa "${newCompany.name}" creada exitosamente`);
-        //el toast se maneja desde el store
-        navigate(`/companies/${newCompany.id}`);
-      });
-    } catch (error: unknown) {
-      console.error('Error creating company:', error);
-      handleError(error, 'Error al crear la empresa');
-    }
-  }, [createCompany, navigate, handleError]);
+    // Llama a la función del store. La invalidación y los toasts se manejan solos.
+    createCompany(data as CreateCompanyRequest, (newCompany) => {
+      // Este callback se ejecuta solo si la creación es exitosa.
+      // Ideal para la navegación.
+      navigate(`/companies/${newCompany.id}`);
+    });
+  }, [createCompany, navigate]);
 
   // ============================================
   // RENDER
@@ -120,7 +116,7 @@ const CompanyCreatePage: React.FC = () => {
             mode="create"
             onSubmit={handleSubmit}
             onCancel={handleCancel}
-            loading={isCreating}
+            loading={isCreating} // ✅ CONECTA EL ESTADO DE CARGA DEL HOOK
             showActions={true}
           />
         </div>
