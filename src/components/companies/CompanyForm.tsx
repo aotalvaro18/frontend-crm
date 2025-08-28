@@ -5,6 +5,8 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { companyApi } from '@/services/api/companyApi';
 
 import { 
   Building2, Mail, Phone, MapPin, Globe, DollarSign,
@@ -113,13 +115,6 @@ interface CompanyFormProps {
 // CONSTANTS - SIGUIENDO PATRON CONTACTFORM
 // ============================================
 
-const COMPANY_TYPE_OPTIONS = [
-  { value: 'COMPANY', label: 'Empresa' },
-  { value: 'FAMILY', label: 'Familia' },
-  { value: 'INSTITUTION', label: 'Institución' },
-  { value: 'OTHER', label: 'Otro' },
-];
-
 const COMPANY_SIZE_OPTIONS = [
   { value: 'SMALL', label: 'Pequeña' },
   { value: 'MEDIUM', label: 'Mediana' },
@@ -180,6 +175,16 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   const [phoneValidation, setPhoneValidation] = useState<PhoneValidationResult>({ isValid: true });
   const [selectedCountryFromPhone, setSelectedCountryFromPhone] = useState<string>('');
   const [phoneRegion, setPhoneRegion] = useState<string>('');
+
+  // ✅ CAMBIO 2: OBTENER LOS TIPOS DE ORGANIZACIÓN DESDE LA API
+  const { 
+    data: companyTypes, 
+    isLoading: isLoadingTypes 
+  } = useQuery({
+    queryKey: ['activeCompanyTypes'], // Clave única para el caché de react-query
+    queryFn: () => companyApi.getActiveCompanyTypes(), // Llama al nuevo método del servicio
+    staleTime: 1000 * 60 * 60, // Opcional: Cachear por 1 hora, ya que no cambian a menudo
+  });
 
   const {
     register, control, handleSubmit,
@@ -341,7 +346,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             />
           </FormField>
 
-          {/* ✅ TIPO OPCIONAL COMO GÉNERO */}
+          {/* ✅ CAMBIO 3: SELECT DINÁMICO CON ESTADO DE CARGA */}
           <FormField
             label="Tipo de organización"
             name="type"
@@ -350,10 +355,12 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
           >
             <select
               {...register('type')}
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoadingTypes} // Deshabilitar mientras carga
             >
-              <option value="">Seleccionar...</option>
-              {COMPANY_TYPE_OPTIONS.map(type => (
+              <option value="">{isLoadingTypes ? 'Cargando...' : 'Seleccionar...'}</option>
+              {/* Usar los datos de useQuery. El '?' previene errores si los datos aún no llegan */}
+              {companyTypes?.map(type => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>

@@ -139,7 +139,7 @@ export const CompanySelector: React.FC<CompanySelectorProps> = ({
       return `Escribe al menos ${MIN_SEARCH_LENGTH} caracteres`;
     }
     if (debouncedSearchTerm.length >= MIN_SEARCH_LENGTH && !isSearching) {
-      return 'No se encontraron empresas';
+      return 'No se encontraron empresas, el Admin debe crearla primero';
     }
     return 'Empieza a escribir para buscar empresas';
   }, [debouncedSearchTerm, isSearching, searchError]);

@@ -50,6 +50,7 @@ export const APP_CONFIG = {
     CONTACT_AUTOCOMPLETE: '/api/crm/contacts/autocomplete',
     CONTACT_CHECK_EMAIL: '/api/crm/contacts/check-email',
     CONTACT_STATS: '/api/crm/contacts/stats',
+    COMPANY_TYPES: '/api/crm/companies/types',
     CONTACT_EXPORT_CSV: '/api/crm/contacts/export/csv',
     CONTACT_EXPORT_EXCEL: '/api/crm/contacts/export/excel',
     CONTACT_IMPORT_TURNS: '/api/crm/contacts/import/turns-service',

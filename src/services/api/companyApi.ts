@@ -98,6 +98,27 @@ export class CompanyApiService {
     return apiClient.get<CompanyDTO[]>(url);
   }
 
+   // ============================================
+  // ✅ CAMBIO 1: AÑADIR NUEVA SECCIÓN Y MÉTODO
+  // ============================================
+
+  /**
+   * Obtiene los tipos de organización activos y filtrados desde el backend.
+   * Llama al endpoint GET /api/crm/companies/types, que devuelve una lista
+   * curada de tipos (ej. Empresa, Iglesia) para ser usados en formularios.
+   *
+   * @returns Una promesa que resuelve a un array de objetos con `value` y `label`.
+   */
+  async getActiveCompanyTypes(): Promise<{ value: string; label: string }[]> {
+    // La URL debe coincidir con el endpoint creado en CompanyController.
+    // Asumo que tu constante API_ENDPOINTS tendrá o puedes añadir 'COMPANY_TYPES'.
+    // Si no, puedes usar la ruta directa.
+    const url = API_ENDPOINTS.COMPANY_TYPES;
+    
+    // El apiClient se encarga del resto (autenticación, errores, etc.)
+    return apiClient.get<{ value: string; label: string }[]>(url);
+  }
+
   // ============================================
   // INDIVIDUAL COMPANY OPERATIONS
   // ============================================
