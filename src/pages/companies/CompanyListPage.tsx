@@ -70,10 +70,15 @@ const CompanyListPage: React.FC = () => {
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
 
-  const searchCriteria = useMemo((): CompanySearchCriteria => ({
-    search: debouncedSearchTerm || undefined,
-    ...filters, // Incluir los filtros aplicados
-  }), [debouncedSearchTerm, filters]); // filters como dependencia
+  const searchCriteria = useMemo((): CompanySearchCriteria => {
+    const criteria: CompanySearchCriteria = { ...filters };
+    if (debouncedSearchTerm) {
+      criteria.search = debouncedSearchTerm;
+    } else {
+      delete criteria.search;
+    }
+    return criteria;
+  }, [debouncedSearchTerm, filters]);
 
   // ============================================
   // DATA FETCHING CON REACT QUERY (ÚNICA FUENTE DE VERDAD)
