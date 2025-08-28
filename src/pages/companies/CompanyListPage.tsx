@@ -91,8 +91,12 @@ const CompanyListPage: React.FC = () => {
     error: companiesError,
     refetch: refetchCompanies,
   } = useQuery({
-    queryKey: COMPANIES_LIST_QUERY_KEY(searchCriteria, currentPage),
-    queryFn: () => companyApi.searchCompanies({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['updatedAt,desc'] }),
+    // ✅ LA SOLUCIÓN: La queryKey ahora depende DIRECTAMENTE de los estados, no de un objeto intermedio.
+    queryKey: ['companies', 'list', debouncedSearchTerm, filters, currentPage],
+    queryFn: () => companyApi.searchCompanies(
+      { search: debouncedSearchTerm || undefined, ...filters }, 
+      { page: currentPage, size: 25, sort: ['updatedAt,desc'] }
+    ),
     placeholderData: (previousData) => previousData,
     refetchOnMount: true,
     refetchOnReconnect: true,
