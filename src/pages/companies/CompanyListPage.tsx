@@ -70,15 +70,10 @@ const CompanyListPage: React.FC = () => {
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
 
-  const searchCriteria = useMemo((): CompanySearchCriteria => {
-    const criteria: CompanySearchCriteria = { ...filters };
-    if (debouncedSearchTerm) {
-      criteria.search = debouncedSearchTerm;
-    } else {
-      delete criteria.search;
-    }
-    return criteria;
-  }, [debouncedSearchTerm, filters]);
+  const searchCriteria = useMemo((): CompanySearchCriteria => ({
+    search: debouncedSearchTerm || undefined,
+    ...filters, // Incluir los filtros aplicados
+  }), [debouncedSearchTerm, filters]); // filters como dependencia
 
   // ============================================
   // DATA FETCHING CON REACT QUERY (ÚNICA FUENTE DE VERDAD)
@@ -91,12 +86,8 @@ const CompanyListPage: React.FC = () => {
     error: companiesError,
     refetch: refetchCompanies,
   } = useQuery({
-    // ✅ LA SOLUCIÓN: La queryKey ahora depende DIRECTAMENTE de los estados, no de un objeto intermedio.
-    queryKey: ['companies', 'list', debouncedSearchTerm, filters, currentPage],
-    queryFn: () => companyApi.searchCompanies(
-      { search: debouncedSearchTerm || undefined, ...filters }, 
-      { page: currentPage, size: 25, sort: ['updatedAt,desc'] }
-    ),
+    queryKey: COMPANIES_LIST_QUERY_KEY(searchCriteria, currentPage),
+    queryFn: () => companyApi.searchCompanies({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['updatedAt,desc'] }),
     placeholderData: (previousData) => previousData,
     refetchOnMount: true,
     refetchOnReconnect: true,
