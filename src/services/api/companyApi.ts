@@ -43,39 +43,43 @@ export class CompanyApiService {
    */
   async searchCompanies(
     criteria: CompanySearchCriteria = {},
-    pagination: PageRequest = { page: 0, size: 20, sort: ['name,asc'] }
+    pagination: PageRequest = { page: 0, size: 25, sort: ['name,asc'] }
   ): Promise<PageResponse<CompanyDTO>> {
     
+    // CASO 1: El usuario está buscando en la barra de búsqueda de la PÁGINA DE LISTA.
+    if (criteria.search && criteria.search.trim() !== '') {
+      
+      const params = new URLSearchParams();
+      params.append('search', criteria.search.trim());
+      
+      // ✅ CORRECTO: Llama al endpoint de búsqueda para la tabla
+      const url = `${API_ENDPOINTS.COMPANIES}/search?${params.toString()}`;
+      
+      const results: CompanyDTO[] = await apiClient.get<CompanyDTO[]>(url);
+      
+      // Simulamos una respuesta paginada para que la tabla y la paginación no se rompan
+      return {
+        content: results,
+        totalElements: results.length,
+        totalPages: 1,
+        size: results.length,
+        number: 0, // La página actual es la 0 (la primera)
+        numberOfElements: results.length,
+        first: true, // Es la primera página
+        last: true,  // Es la última página
+        empty: results.length === 0,
+      };
+    }
+
+    // CASO 2: La barra de búsqueda está vacía, se muestra la lista completa.
     const params = new URLSearchParams();
-    
-    // Search criteria
-    if (criteria.search) params.append('search', criteria.search);
-    if (criteria.type) params.append('type', criteria.type);
-    if (criteria.industry) params.append('industry', criteria.industry);
-    if (criteria.companySize) params.append('companySize', String(criteria.companySize));
-    if (criteria.onlyOwned !== undefined) params.append('onlyOwned', String(criteria.onlyOwned));
-    if (criteria.includeDeleted !== undefined) params.append('includeDeleted', String(criteria.includeDeleted));
-    if (criteria.hasContacts !== undefined) params.append('hasContacts', String(criteria.hasContacts));
-    if (criteria.hasActiveContacts !== undefined) params.append('hasActiveContacts', String(criteria.hasActiveContacts));
-    if (criteria.hasDeals !== undefined) params.append('hasDeals', String(criteria.hasDeals));
-    if (criteria.minRevenue !== undefined) params.append('minRevenue', String(criteria.minRevenue));
-    if (criteria.maxRevenue !== undefined) params.append('maxRevenue', String(criteria.maxRevenue));
-    if (criteria.city) params.append('city', criteria.city);
-    if (criteria.state) params.append('state', criteria.state);
-    if (criteria.country) params.append('country', criteria.country);
-    
-    // Pagination
     params.append('page', String(pagination.page));
-    params.append('size', String(Math.min(pagination.size, APP_CONFIG.MAX_PAGE_SIZE)));
+    params.append('size', String(pagination.size));
     params.append('sort', pagination.sort.join(','));
 
-    try {
-      const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
-      return await apiClient.get<PageResponse<CompanyDTO>>(url);
-    } catch (error: unknown) {
-      this.handleSearchError(error, criteria);
-      throw error;
-    }
+    // ✅ CORRECTO: Llama al endpoint principal paginado
+    const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
+    return apiClient.get<PageResponse<CompanyDTO>>(url);
   }
 
   /**
