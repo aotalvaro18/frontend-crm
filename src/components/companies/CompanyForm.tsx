@@ -1,7 +1,7 @@
 // src/components/companies/CompanyForm.tsx
 // ✅ REFACTORIZADO: Siguiendo exactamente los patrones del ContactForm funcional
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -238,6 +238,21 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
   });
 
   const currentPhone = watch('phone');
+
+  // SINCRONIZACIÓN: Actualiza valores del formulario cuando llegan los datos de la API
+  useEffect(() => {
+    if (company && companyTypes) {
+      // Asegurar que el tipo seleccionado esté sincronizado
+      if (company.type) {
+        setValue('type', company.type, { shouldValidate: false });
+      }
+      
+      // Asegurar que el tamaño seleccionado esté sincronizado  
+      if (company.companySize) {
+        setValue('companySize', company.companySize, { shouldValidate: false });
+      }
+    }
+  }, [company, companyTypes, setValue]);
 
   // ============================================
   // ✅ VALIDACIÓN CRUZADA EMAIL/PHONE - IGUAL QUE CONTACTFORM
