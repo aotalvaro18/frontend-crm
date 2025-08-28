@@ -262,7 +262,7 @@ export class CompanyApiService {
    */
   async bulkUpdateCompanies(
     companyIds: number[],
-    updates: Partial<Pick<UpdateCompanyRequest, 'type' | 'industry' | 'companySize'>>
+    updates: Partial<Pick<UpdateCompanyRequest, 'type' | 'industry' | 'size'>>
   ): Promise<BulkOperationResult> {
     
     if (companyIds.length > 100) {

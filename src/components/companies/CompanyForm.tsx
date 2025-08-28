@@ -71,7 +71,7 @@ const companyFormSchema = z.object({
   industry: z.string().optional(),
   
   // ✅ SIMPLIFICADO: string opcional
-  companySize: z.string().optional(),
+  size: z.string().optional(),
   
   annualRevenue: z.preprocess(
     // Paso 1: Preparar el valor antes de validar.
@@ -230,7 +230,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
             country: company.address?.country || '',
           },
           industry: company.industry || '',
-          companySize: company.companySize || '',
+          size: company.size || '',
           annualRevenue: company.annualRevenue,
           customFields: company.customFields || {},
         };
@@ -248,8 +248,8 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       }
       
       // Asegurar que el tamaño seleccionado esté sincronizado  
-      if (company.companySize) {
-        setValue('companySize', company.companySize, { shouldValidate: false });
+      if (company.size) {
+        setValue('size', company.size, { shouldValidate: false });
       }
     }
   }, [company, companyTypes, setValue]);
@@ -280,7 +280,7 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
       website: data.website?.trim() || null,
       address: data.address,
       ...(data.industry && data.industry.trim() && { industry: data.industry as Industry }),
-      ...(data.companySize && data.companySize.trim() && { companySize: data.companySize as CompanySize }),
+      ...(data.size && data.size.trim() && { size: data.size as CompanySize }),
       ...(data.annualRevenue !== undefined && { annualRevenue: data.annualRevenue }),
       customFields: data.customFields,
     };
@@ -470,12 +470,12 @@ const CompanyForm = React.forwardRef<HTMLFormElement, CompanyFormProps>(
           {/* ✅ COMPANYSIZE OPCIONAL COMO GÉNERO */}
           <FormField
             label="Tamaño de la empresa"
-            name="companySize"
+            name="size"
             icon={<Users className="h-4 w-4" />}
-            error={errors.companySize?.message}
+            error={errors.size?.message}
           >
             <select
-              {...register('companySize')}
+              {...register('size')}
               className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Seleccionar...</option>
