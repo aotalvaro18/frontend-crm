@@ -11,6 +11,7 @@ import {
 } from '@/types/company.types';
 import { CompanyTypeBadge, CompanySizeBadge } from '@/components/companies/CompanyBadges';
 import { TagsDisplay } from '@/components/shared/TagBadge'; // ✅ Importado el componente compartido
+import { INDUSTRY_LABELS } from '@/types/company.types';
 
 // ============================================
 // TYPES
@@ -185,7 +186,8 @@ const CompanyBasicInfo: React.FC<CompanyBasicInfoProps> = ({ company }) => {
               label="Industria"
               value={
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-app-dark-600 text-app-gray-300">
-                  {company.industry}
+                  {/* ✅ CAMBIO: Usar el objeto de etiquetas para traducir el valor */}
+                  {INDUSTRY_LABELS[company.industry as keyof typeof INDUSTRY_LABELS] || company.industry}
                 </span>
               }
             />
