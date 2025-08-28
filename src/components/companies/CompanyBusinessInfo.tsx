@@ -269,8 +269,9 @@ const CompanyBusinessInfo: React.FC<CompanyBusinessInfoProps> = ({ company }) =>
           <div>
             <dt className="text-sm font-medium text-app-gray-400 mb-2">Tamaño de Empresa</dt>
             <dd>
-              {company.companySize ? (
-                <CompanySizeBadge size={company.companySize} />
+              {/* ✅ CORRECCIÓN: Usar la propiedad 'size' que ahora es la fuente de verdad */}
+              {company.size ? (
+                <CompanySizeBadge size={company.size} />
               ) : (
                 <span className="text-sm text-app-gray-500">No especificado</span>
               )}

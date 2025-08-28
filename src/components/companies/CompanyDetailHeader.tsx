@@ -85,8 +85,8 @@ const CompanyDetailHeader: React.FC<CompanyDetailHeaderProps> = ({
                   </Badge>
                 )}
 
-                {company.companySize && (
-                  <CompanySizeBadge size={company.companySize} />
+                {company.size && (
+                  <CompanySizeBadge size={company.size} />
                 )}
               </div>
             </div>

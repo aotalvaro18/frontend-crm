@@ -55,7 +55,7 @@ const CompanyTypeDisplay: React.FC<{ type: CompanyDTO['type'] }> = ({ type }) =>
 // COMPANY SIZE DISPLAY
 // ============================================
 
-const CompanySizeDisplay: React.FC<{ size?: CompanyDTO['companySize'] }> = ({ size }) => {
+const CompanySizeDisplay: React.FC<{ size?: CompanyDTO['size'] }> = ({ size }) => {
   if (!size) return <span className="text-app-gray-500">No especificado</span>;
   
   return <CompanySizeBadge size={size} />;
@@ -170,11 +170,11 @@ const CompanyBasicInfo: React.FC<CompanyBasicInfoProps> = ({ company }) => {
           />
 
           {/* Tamaño de empresa */}
-          {company.companySize && (
+          {company.size && (
             <InfoField
               icon={<Users className="h-4 w-4" />}
               label="Tamaño de empresa"
-              value={<CompanySizeDisplay size={company.companySize} />}
+              value={<CompanySizeDisplay size={company.size} />}
             />
           )}
 

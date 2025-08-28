@@ -291,13 +291,13 @@ const CompaniesTable: React.FC<CompaniesTableProps> = ({
     { 
       id: 'companySize', 
       header: 'Tamaño', 
-      accessorKey: 'companySize', 
+      accessorKey: 'size', 
       sortable: true, 
       width: '120px', 
       hideOnMobile: true, 
       align: 'center', 
       cell: ({ row }) => ( 
-                        <CompanySizeBadge size={row.companySize} /> 
+        <CompanySizeBadge size={row.size} /> 
       ), 
     },
     { 
