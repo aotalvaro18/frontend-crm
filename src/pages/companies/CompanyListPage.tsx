@@ -60,20 +60,19 @@ const CompanyListPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ============================================
-  // LOCAL STATE para UI y Filtros
+  // LOCAL STATE para UI y Filtros - SIMPLIFICADO
   // ============================================
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 0); // 0-based
   const [companyToDelete, setCompanyToDelete] = useState<CompanyDTO | null>(null);
-  const [filters, setFilters] = useState<CompanySearchCriteria>({});
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
 
+  // ✅ SIMPLIFICADO - IGUAL QUE CONTACTLISTPAGE
   const searchCriteria = useMemo((): CompanySearchCriteria => ({
     search: debouncedSearchTerm || undefined,
-    ...filters, // Incluir los filtros aplicados
-  }), [debouncedSearchTerm, filters]); // filters como dependencia
+  }), [debouncedSearchTerm]);
 
   // ============================================
   // DATA FETCHING CON REACT QUERY (ÚNICA FUENTE DE VERDAD)
@@ -129,11 +128,10 @@ const CompanyListPage: React.FC = () => {
     { key: 'largeCompanyCount', title: 'Empresas Grandes', description: 'Organizaciones con más de 50 empleados.', icon: Star, variant: 'warning', format: 'number' },
   ];
 
+  // ✅ SIMPLIFICADO - SOLO DEPENDE DEL SEARCH TERM
   useEffect(() => {
-    // Cada vez que el término de búsqueda o los filtros cambien,
-    // volvemos a la primera página.
     setCurrentPage(0);
-  }, [debouncedSearchTerm, filters]); // Depende de los valores que afectan la búsqueda
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -202,11 +200,10 @@ const CompanyListPage: React.FC = () => {
     }
   }, [bulkDeleteCompanies, handleError]);
 
-  const handleClearAllFilters = useCallback(() => {
+  // ✅ SIMPLIFICADO - IGUAL QUE CONTACTLISTPAGE
+  const handleClearSearch = useCallback(() => {
     setSearchTerm('');
-    setFilters({});
     setCurrentPage(0);
-    setShowFilters(false);
   }, []);
 
   const exportDropdownItems = [
@@ -279,7 +276,7 @@ const CompanyListPage: React.FC = () => {
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
             placeholder="Buscar empresas por nombre, email o teléfono..." 
-            onClear={handleClearAllFilters} 
+            onClear={handleClearSearch} 
             className="w-full" 
           />
         </div>
@@ -293,7 +290,7 @@ const CompanyListPage: React.FC = () => {
       {showFilters && (
         <CompaniesFilters 
           searchCriteria={searchCriteria} 
-          onCriteriaChange={setFilters} 
+          onCriteriaChange={() => {}} 
           onClose={() => setShowFilters(false)} 
           className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800" 
         />
