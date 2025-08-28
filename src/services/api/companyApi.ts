@@ -70,7 +70,7 @@ export class CompanyApiService {
     params.append('sort', pagination.sort.join(','));
 
     try {
-      const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
+      const url = `${API_ENDPOINTS.COMPANIES}/search?${params.toString()}`;
       return await apiClient.get<PageResponse<CompanyDTO>>(url);
     } catch (error: unknown) {
       this.handleSearchError(error, criteria);
