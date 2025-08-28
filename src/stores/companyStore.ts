@@ -9,19 +9,13 @@ import type { CompanySearchCriteria, CompanyDTO } from '@/types/company.types';
 import toast from 'react-hot-toast';
 import { queryClient } from '@/lib/react-query';
 import { 
-  companyApi
+  companyApi, 
+  handleCompanyApiError // Asegúrate de tener un manejador de errores similar para company
 } from '@/services/api/companyApi';
 import type {
   CreateCompanyRequest,
   UpdateCompanyRequest
 } from '@/types/company.types';
-
-import { 
-  // ¡Importa las keys desde donde las hayas definido!
-  // Probablemente en un archivo como `hooks/useCompanies` o `lib/queryKeys`
-  COMPANIES_LIST_QUERY_KEY, 
-  COMPANY_DETAIL_QUERY_KEY 
-} from '@/hooks/useCompanies';
 
 // ============================================
 // TYPES - Solo para UI state
@@ -145,13 +139,15 @@ export const useCompanyUIStore = create<CompanyUIState>()(
           set({ isCreating: true });
           try {
             const newCompany = await companyApi.createCompany(request);
-            toast.success(`Empresa "${newCompany.name}" creada`);
-            
-            // ✅ Solo necesitamos invalidar la lista al crear una nueva.
-            await queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
-            
+            // Invalida y refresca todo lo relacionado con empresas
+            await queryClient.invalidateQueries();
+            await queryClient.refetchQueries({
+              predicate: (query) => query.queryKey[0] === 'companies'
+            });
+            toast.success('Empresa creada exitosamente');
             onSuccess?.(newCompany);
           } catch (error: unknown) {
+            // Asegúrate de tener un handleCompanyApiError o usa un mensaje genérico
             toast.error('Error al crear la empresa'); 
           } finally {
             set({ isCreating: false });
@@ -161,15 +157,13 @@ export const useCompanyUIStore = create<CompanyUIState>()(
         updateCompany: async (id, request, onSuccess) => {
           set(state => ({ updating: new Set(state.updating).add(id) }));
           try {
-            const updatedCompany = await companyApi.updateCompany(id, request);
-            toast.success(`Empresa "${updatedCompany.name}" actualizada`);
-  
-            // ✅ LA SOLUCIÓN PRECISA Y ROBUSTA
-            // Invalida la caché de todas las listas de empresas.
-            await queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
-            // Invalida la caché de ESTA empresa específica.
-            await queryClient.invalidateQueries({ queryKey: ['companies', 'detail', id] });
-  
+            await companyApi.updateCompany(id, request);
+            // Invalida y refresca todo lo relacionado con empresas
+            await queryClient.invalidateQueries();
+            await queryClient.refetchQueries({
+              predicate: (query) => query.queryKey[0] === 'companies'
+            });
+            toast.success('Empresa actualizada exitosamente');
             onSuccess?.();
           } catch (error: unknown) {
             toast.error('Error al actualizar la empresa');
@@ -187,18 +181,21 @@ export const useCompanyUIStore = create<CompanyUIState>()(
           set(state => ({ deleting: new Set(state.deleting).add(id) }));
           try {
             await companyApi.deleteCompany(id);
-            toast.success('Empresa eliminada');
-            
-            // ✅ Invalidar tanto la lista como el detalle (que ahora ya no existe).
-            await queryClient.invalidateQueries({ queryKey: ['companies', 'list'] });
-            await queryClient.invalidateQueries({ queryKey: ['companies', 'detail', id] });
-            
+            // Invalida y refresca todo lo relacionado con empresas
+            await queryClient.invalidateQueries();
+            await queryClient.refetchQueries({
+              predicate: (query) => query.queryKey[0] === 'companies'
+            });
             onSuccess?.();
           } catch (error: unknown) {
             toast.error('Error al eliminar la empresa');
             throw error;
           } finally {
-            // ...
+            set(state => {
+              const newDeleting = new Set(state.deleting);
+              newDeleting.delete(id);
+              return { deleting: newDeleting };
+            });
           }
         },
 
