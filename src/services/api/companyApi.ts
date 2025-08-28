@@ -70,15 +70,8 @@ export class CompanyApiService {
     params.append('sort', pagination.sort.join(','));
 
     try {
-      // Si hay término de búsqueda, usar endpoint /search  
-      if (criteria.search && criteria.search.trim()) {
-        const url = `${API_ENDPOINTS.COMPANIES}/search?${params.toString()}`;
-        return await apiClient.get<PageResponse<CompanyDTO>>(url);
-      } else {
-        // Sin búsqueda, usar endpoint básico /companies
-        const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
-        return await apiClient.get<PageResponse<CompanyDTO>>(url);
-      }
+      const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
+      return await apiClient.get<PageResponse<CompanyDTO>>(url);
     } catch (error: unknown) {
       this.handleSearchError(error, criteria);
       throw error;
