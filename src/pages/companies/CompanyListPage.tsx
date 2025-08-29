@@ -1,5 +1,5 @@
 // src/pages/companies/CompanyListPage.tsx
-// ✅ COMPANY LIST PAGE - Con paginación integrada debajo de la tabla
+// ✅ COMPANY LIST PAGE - SINCRONIZADO con endpoint unificado del backend
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -22,7 +22,7 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import Dropdown from '@/components/ui/Dropdown';
-import { Pagination } from '@/components/ui/Pagination'; // ✅ AÑADIDO
+import { Pagination } from '@/components/ui/Pagination';
 import Page from '@/components/layout/Page';
 
 // ============================================
@@ -41,8 +41,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 // ============================================
 import { 
   useBulkCompanyOperations, 
-  useCompanyOperations,
-  COMPANIES_LIST_QUERY_KEY, 
+  useCompanyOperations, 
   COMPANY_STATS_QUERY_KEY 
 } from '@/hooks/useCompanies';
 import { companyApi } from '@/services/api/companyApi';
@@ -60,7 +59,7 @@ const CompanyListPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ============================================
-  // LOCAL STATE para UI y Filtros - SIMPLIFICADO
+  // LOCAL STATE para UI y Filtros
   // ============================================
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -69,10 +68,14 @@ const CompanyListPage: React.FC = () => {
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
 
-  // ✅ SIMPLIFICADO - IGUAL QUE CONTACTLISTPAGE
-  const searchCriteria = useMemo((): CompanySearchCriteria => ({
-    search: debouncedSearchTerm || undefined,
-  }), [debouncedSearchTerm]);
+  // 🔧 CORREGIDO: searchCriteria limpio y usando searchTerm (no search)
+  const searchCriteria = useMemo((): CompanySearchCriteria => {
+    const criteria: CompanySearchCriteria = {};
+    if (debouncedSearchTerm) {
+      criteria.search = debouncedSearchTerm;
+    }
+    return criteria;
+  }, [debouncedSearchTerm]);
 
   // ============================================
   // DATA FETCHING CON REACT QUERY (ÚNICA FUENTE DE VERDAD)
@@ -85,8 +88,14 @@ const CompanyListPage: React.FC = () => {
     error: companiesError,
     refetch: refetchCompanies,
   } = useQuery({
-    queryKey: COMPANIES_LIST_QUERY_KEY(searchCriteria, currentPage),
-    queryFn: () => companyApi.searchCompanies({ ...searchCriteria }, { page: currentPage, size: 25, sort: ['updatedAt,desc'] }),
+    // 🔧 CORREGIDO: Query key más explícita
+    queryKey: ['companies', 'list', searchCriteria, currentPage],
+    queryFn: () => companyApi.searchCompanies(searchCriteria, { page: currentPage, size: 25, sort: ['updatedAt,desc'] }),
+    
+    // 🔧 AÑADIDO: Condición enabled para prevenir llamadas innecesarias
+    // No ejecutar la query si el debouncing aún no ha terminado la primera vez
+    enabled: !!debouncedSearchTerm || searchTerm === '',
+    
     placeholderData: (previousData) => previousData,
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -128,11 +137,28 @@ const CompanyListPage: React.FC = () => {
     { key: 'largeCompanyCount', title: 'Empresas Grandes', description: 'Organizaciones con más de 50 empleados.', icon: Star, variant: 'warning', format: 'number' },
   ];
 
-  // ✅ SIMPLIFICADO - SOLO DEPENDE DEL SEARCH TERM
+  // Mapear stats a formato esperado por StatsCards
+  const mappedStats = useMemo(() => {
+    if (!stats) return undefined;
+    
+    return {
+      total: totalCompanies,
+      companyTypeCount: stats.byType?.COMPANY || 0,
+      familyTypeCount: stats.byType?.FAMILY || 0,
+      largeCompanyCount: (stats.bySize?.LARGE || 0) + (stats.bySize?.ENTERPRISE || 0),
+    };
+  }, [stats, totalCompanies]);
+
+  // ============================================
+  // EFFECTS
+  // ============================================
+  
+  // Reset page when search term changes
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm]);
 
+  // Sync URL params
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('search', searchTerm);
@@ -200,7 +226,6 @@ const CompanyListPage: React.FC = () => {
     }
   }, [bulkDeleteCompanies, handleError]);
 
-  // ✅ SIMPLIFICADO - IGUAL QUE CONTACTLISTPAGE
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
     setCurrentPage(0);
@@ -213,28 +238,11 @@ const CompanyListPage: React.FC = () => {
     { id: 'import', label: 'Importar empresas', icon: Upload, onClick: () => navigate('/companies/import') }
   ];
 
-  // Segundo, creamos el objeto de datos "mapeado" usando useMemo.
-  const mappedStats = useMemo(() => {
-    if (!stats) return undefined; // Si no hay datos de stats, devolvemos undefined
-    
-    return {
-        total: totalCompanies,
-        companyType: stats.byType?.COMPANY || 0,
-        familyType: stats.byType?.FAMILY || 0,
-        largeCompanies: (stats.bySize?.LARGE || 0) + (stats.bySize?.ENTERPRISE || 0),
-    };
-}, [stats, totalCompanies]);
-
   // ============================================
   // RENDER HELPERS
   // ============================================
   const renderHeader = () => (
     <div className="space-y-6">
-      {/* 
-        ✅ CORRECCIÓN: 
-        1. Pasamos `companyStatConfigs` a la prop `configs`.
-        2. Pasamos el nuevo objeto `mappedStats` a la prop `stats`.
-      */}
       <StatsCards 
         configs={companyStatConfigs}
         stats={mappedStats}
@@ -290,7 +298,7 @@ const CompanyListPage: React.FC = () => {
       {showFilters && (
         <CompaniesFilters 
           searchCriteria={searchCriteria} 
-          onCriteriaChange={() => {}} 
+          onCriteriaChange={() => {}} // 🔧 MANTENIDO: Placeholder por ahora
           onClose={() => setShowFilters(false)} 
           className="border border-app-dark-600 rounded-lg p-4 bg-app-dark-800" 
         />
@@ -327,7 +335,6 @@ const CompanyListPage: React.FC = () => {
           selectedCompanyIds={selectedCompanyIds}
           onSelectAll={() => selectAllCompanies(companies.map(c => c.id))}
           onDeselectAll={deselectAllCompanies}
-          // La prop `pagination` ya no es necesaria aquí
         />
         
         {totalPages > 1 && (

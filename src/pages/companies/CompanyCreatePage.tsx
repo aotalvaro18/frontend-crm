@@ -32,8 +32,6 @@ import type { CreateCompanyRequest, UpdateCompanyRequest } from '@/types/company
 // UTILS
 // ============================================
 
-import { toastSuccess } from '@/services/notifications/toastService';
-
 // ============================================
 // MAIN COMPONENT
 // ============================================
