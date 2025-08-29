@@ -1,6 +1,6 @@
 // src/services/api/companyApi.ts
 // Company API service enterprise mobile-first - TypeScript-Safe
-// Replicando exactamente el patrón de contactApi.ts
+// 🔧 ACTUALIZADO: Usa endpoint unificado del backend
 
 import { apiClient } from './baseApi';
 import { APP_CONFIG, API_ENDPOINTS, ERROR_CODES } from '@/utils/constants';
@@ -35,55 +35,67 @@ interface CompanyAvailability {
 export class CompanyApiService {
   
   // ============================================
-  // SEARCH & LIST OPERATIONS
+  // SEARCH & LIST OPERATIONS - SIMPLIFICADOS
   // ============================================
 
   /**
-   * Búsqueda avanzada de empresas
+   * 🔧 SIMPLIFICADO: Única función para buscar y listar empresas.
+   * 
+   * Ahora usa el endpoint unificado GET /api/crm/companies que maneja
+   * todos los casos: listado, búsqueda y filtros avanzados.
+   * 
+   * @param criteria Criterios de búsqueda opcionales
+   * @param pagination Configuración de paginación
+   * @returns Página de empresas que coinciden con los criterios
    */
   async searchCompanies(
     criteria: CompanySearchCriteria = {},
     pagination: PageRequest = { page: 0, size: 25, sort: ['name,asc'] }
   ): Promise<PageResponse<CompanyDTO>> {
     
-    // CASO 1: El usuario está buscando en la barra de búsqueda de la PÁGINA DE LISTA.
-    if (criteria.search && criteria.search.trim() !== '') {
-      
-      const params = new URLSearchParams();
-      params.append('search', criteria.search.trim());
-      
-      // ✅ CORRECTO: Llama al endpoint de búsqueda para la tabla
-      const url = `${API_ENDPOINTS.COMPANIES}/search?${params.toString()}`;
-      
-      const results: CompanyDTO[] = await apiClient.get<CompanyDTO[]>(url);
-      
-      // Simulamos una respuesta paginada para que la tabla y la paginación no se rompan
-      return {
-        content: results,
-        totalElements: results.length,
-        totalPages: 1,
-        size: results.length,
-        number: 0, // La página actual es la 0 (la primera)
-        numberOfElements: results.length,
-        first: true, // Es la primera página
-        last: true,  // Es la última página
-        empty: results.length === 0,
-      };
-    }
-
-    // CASO 2: La barra de búsqueda está vacía, se muestra la lista completa.
     const params = new URLSearchParams();
+    
+    // Añadir todos los criterios de búsqueda que existan
+    if (criteria.search) params.append('search', criteria.search);
+    if (criteria.type) params.append('type', criteria.type);
+    if (criteria.industry) params.append('industry', criteria.industry);
+    if (criteria.size) params.append('size', String(criteria.size));
+    if (criteria.city) params.append('city', criteria.city);
+    if (criteria.state) params.append('state', criteria.state);
+    if (criteria.country) params.append('country', criteria.country);
+    if (criteria.minRevenue !== undefined) params.append('minRevenue', String(criteria.minRevenue));
+    if (criteria.maxRevenue !== undefined) params.append('maxRevenue', String(criteria.maxRevenue));
+    if (criteria.onlyOwned !== undefined) params.append('onlyOwned', String(criteria.onlyOwned));
+    if (criteria.hasContacts !== undefined) params.append('hasContacts', String(criteria.hasContacts));
+    if (criteria.hasActiveContacts !== undefined) params.append('hasActiveContacts', String(criteria.hasActiveContacts));
+    if (criteria.hasDeals !== undefined) params.append('hasDeals', String(criteria.hasDeals));
+    if (criteria.includeDeleted !== undefined) params.append('includeDeleted', String(criteria.includeDeleted));
+    
+    // Añadir la paginación
     params.append('page', String(pagination.page));
     params.append('size', String(pagination.size));
     params.append('sort', pagination.sort.join(','));
 
-    // ✅ CORRECTO: Llama al endpoint principal paginado
+    // 🔧 ACTUALIZADO: Usar siempre el endpoint principal unificado
     const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
-    return apiClient.get<PageResponse<CompanyDTO>>(url);
+    
+    try {
+      return await apiClient.get<PageResponse<CompanyDTO>>(url);
+    } catch (error: unknown) {
+      this.handleSearchError(error, criteria);
+      throw error;
+    }
   }
 
   /**
-   * Autocompletar empresas
+   * 🔧 SIMPLIFICADO: Autocompletar ahora usa el mismo endpoint.
+   * 
+   * Utiliza el endpoint unificado con el parámetro 'limit' para obtener
+   * resultados optimizados para componentes de autocompletado.
+   * 
+   * @param term Término de búsqueda
+   * @param limit Máximo número de resultados
+   * @returns Array de empresas para autocompletado
    */
   async autocompleteCompanies(
     term: string, 
@@ -95,15 +107,23 @@ export class CompanyApiService {
     }
 
     const params = new URLSearchParams();
-    params.append('term', term.trim());
+    params.append('search', term.trim()); // Usar searchTerm para consistencia
     params.append('limit', String(limit));
 
-    const url = `${API_ENDPOINTS.COMPANY_AUTOCOMPLETE}?${params.toString()}`;
-    return apiClient.get<CompanyDTO[]>(url);
+    // 🔧 ACTUALIZADO: Usar el endpoint unificado con parámetro limit
+    const url = `${API_ENDPOINTS.COMPANIES}?${params.toString()}`;
+    
+    try {
+      const pageResponse = await apiClient.get<PageResponse<CompanyDTO>>(url);
+      return pageResponse.content; // Extraer solo el array de empresas
+    } catch (error: unknown) {
+      this.handleSearchError(error, { search: term });
+      throw error;
+    }
   }
 
-   // ============================================
-  // ✅ CAMBIO 1: AÑADIR NUEVA SECCIÓN Y MÉTODO
+  // ============================================
+  // COMPANY TYPES OPERATION
   // ============================================
 
   /**
@@ -114,12 +134,7 @@ export class CompanyApiService {
    * @returns Una promesa que resuelve a un array de objetos con `value` y `label`.
    */
   async getActiveCompanyTypes(): Promise<{ value: string; label: string }[]> {
-    // La URL debe coincidir con el endpoint creado en CompanyController.
-    // Asumo que tu constante API_ENDPOINTS tendrá o puedes añadir 'COMPANY_TYPES'.
-    // Si no, puedes usar la ruta directa.
-    const url = API_ENDPOINTS.COMPANY_TYPES;
-    
-    // El apiClient se encarga del resto (autenticación, errores, etc.)
+    const url = `${API_ENDPOINTS.COMPANIES}/types`;
     return apiClient.get<{ value: string; label: string }[]>(url);
   }
 
@@ -132,7 +147,7 @@ export class CompanyApiService {
    */
   async getCompanyById(id: number): Promise<CompanyDTO> {
     try {
-      return await apiClient.get<CompanyDTO>(API_ENDPOINTS.COMPANY_BY_ID(id));
+      return await apiClient.get<CompanyDTO>(`${API_ENDPOINTS.COMPANIES}/${id}`);
     } catch (error: unknown) {
       this.handleCompanyError(error, id);
       throw error;
@@ -172,7 +187,7 @@ export class CompanyApiService {
     
     try {
       const result = await apiClient.put<CompanyDTO>(
-        API_ENDPOINTS.COMPANY_BY_ID(id), 
+        `${API_ENDPOINTS.COMPANIES}/${id}`, 
         request
       );
       return result;
@@ -189,7 +204,7 @@ export class CompanyApiService {
    */
   async deleteCompany(id: number): Promise<void> {
     try {
-      await apiClient.delete<void>(API_ENDPOINTS.COMPANY_BY_ID(id));
+      await apiClient.delete<void>(`${API_ENDPOINTS.COMPANIES}/${id}`);
     } catch (error: unknown) {
       this.handleCompanyError(error, id);
       throw error;
@@ -205,7 +220,7 @@ export class CompanyApiService {
    */
   async getCompanyContacts(companyId: number): Promise<any[]> {
     try {
-      return await apiClient.get<any[]>(API_ENDPOINTS.COMPANY_CONTACTS(companyId));
+      return await apiClient.get<any[]>(`${API_ENDPOINTS.COMPANIES}/${companyId}/contacts`);
     } catch (error: unknown) {
       this.handleCompanyError(error, companyId);
       throw error;
@@ -217,7 +232,7 @@ export class CompanyApiService {
    */
   async getCompanyDeals(companyId: number): Promise<any[]> {
     try {
-      return await apiClient.get<any[]>(API_ENDPOINTS.COMPANY_DEALS(companyId));
+      return await apiClient.get<any[]>(`${API_ENDPOINTS.COMPANIES}/${companyId}/deals`);
     } catch (error: unknown) {
       this.handleCompanyError(error, companyId);
       throw error;
@@ -239,7 +254,6 @@ export class CompanyApiService {
     const params = new URLSearchParams();
     params.append('name', name.trim());
     
-    // Asumiendo endpoint similar al de contactos
     const url = `${API_ENDPOINTS.COMPANIES}/check-name?${params.toString()}`;
     
     try {
@@ -254,7 +268,7 @@ export class CompanyApiService {
    * Estadísticas generales de empresas
    */
   async getCompanyStats(): Promise<CompanyStats> {
-    return apiClient.get<CompanyStats>(API_ENDPOINTS.COMPANY_STATS);
+    return apiClient.get<CompanyStats>(`${API_ENDPOINTS.COMPANIES}/stats`);
   }
 
   // ============================================
@@ -409,7 +423,7 @@ export class CompanyApiService {
   private handleSearchError(error: unknown, criteria: CompanySearchCriteria): void {
     if (this.isApiError(error)) {
       if (error.code === ERROR_CODES.NETWORK_ERROR) {
-        console.warn('🏢 Search failed offline, using cached results if available');
+        console.warn('Search failed offline, using cached results if available');
       } else if (error.status === 400) {
         console.error('Invalid search criteria:', criteria);
       }
@@ -438,7 +452,7 @@ export class CompanyApiService {
   private handleConcurrencyError(error: unknown, companyId: number): void {
     if (!this.isApiError(error)) return;
     
-    console.warn(`🔄 Concurrency conflict for company ${companyId}:`, {
+    console.warn(`Concurrency conflict for company ${companyId}:`, {
       currentVersion: this.safeGetProperty(error, 'currentVersion'),
       attemptedVersion: this.safeGetProperty(error, 'attemptedVersion'),
     });
@@ -579,7 +593,7 @@ export const buildMobileCompanySearchCriteria = (filters: {
   includeArchived?: boolean;
 }): CompanySearchCriteria => {
   return {
-    search: filters.search?.trim() || undefined,
+    search: filters.search?.trim() || undefined, // Cambio: usar searchTerm
     type: filters.types?.[0] as CompanyType | undefined,
     industry: filters.industries?.[0],
     size: filters.sizes?.[0] as any,
@@ -686,4 +700,4 @@ export const handleCompanyApiError = (error: unknown) => {
   };
 };
 
-export default companyApi; 
+export default companyApi;
