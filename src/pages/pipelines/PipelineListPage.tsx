@@ -1,6 +1,7 @@
 // src/pages/pipelines/PipelineListPage.tsx
 // ✅ PIPELINE LIST PAGE - Replicando exactamente CompanyListPage.tsx
 // EL KANBAN PRINCIPAL - Donde se muestran los deals fluyendo por las etapas
+// ✅ ACTUALIZADO: Con barra de acciones inteligente según análisis UX
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -117,6 +118,9 @@ const PipelineListPage: React.FC = () => {
   const pipelines = pipelinesData?.content || [];
   //const totalPipelines = pipelinesData?.totalElements || 0;
 
+  // ✅ PASO 1: AÑADIR VARIABLE DE ESTADO UX
+  const hasPipelines = pipelines.length > 0;
+
   // Obtener el pipeline seleccionado (el primero por defecto si no hay uno específico)
   const currentPipeline = useMemo(() => {
     if (selectedPipelineId) {
@@ -200,6 +204,13 @@ const PipelineListPage: React.FC = () => {
     navigate('/pipelines/new');
   };
 
+  // ✅ NUEVO HANDLER: Para crear nueva oportunidad cuando hay pipelines
+  const handleCreateNewDeal = () => {
+    // TODO: Implementar cuando tengamos el formulario de deals
+    console.log('Crear nueva oportunidad en pipeline:', currentPipeline?.id);
+    // navigate('/deals/new?pipeline=' + currentPipeline?.id);
+  };
+
   const handlePipelineEdit = (pipeline: PipelineDTO) => {
     navigate(`/pipelines/${pipeline.id}/edit`);
   };
@@ -244,6 +255,8 @@ const PipelineListPage: React.FC = () => {
     { id: 'edit', label: 'Editar Pipeline', icon: Edit3, onClick: () => handlePipelineEdit(pipeline) },
     { type: 'separator' as const },
     { id: 'duplicate', label: 'Duplicar Pipeline', icon: Copy, onClick: () => navigate(`/pipelines/new?template=${pipeline.id}`) },
+    { id: 'manage', label: 'Gestionar todos los Pipelines...', icon: Settings, onClick: () => navigate('/settings/pipelines') },
+    { type: 'separator' as const },
     { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400 hover:text-red-300' },
   ];
 
@@ -285,80 +298,94 @@ const PipelineListPage: React.FC = () => {
       />
 
       {/* ============================================ */}
-      {/* ACTIONS BAR - Selector de Pipeline + Acciones */}
+      {/* ACTIONS BAR - ✅ PASO 2: AHORA ADAPTATIVA */}
       {/* ============================================ */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        {/* Pipeline Selector y controles */}
-        <div className="flex items-center gap-3 flex-1">
-          {/* Pipeline Selector - Usando componente reutilizable */}
-          <PipelineSelector
-            pipelines={pipelines}
-            selectedPipeline={currentPipeline}
-            onPipelineChange={(pipeline) => handlePipelineChange(pipeline.id)}
-            onCreateNew={handleCreateNewPipeline}
-            onManagePipelines={handleManagePipelines}
-            loading={isLoadingPipelines}
-            showCreateButton={true}
-            showManageButton={true}
-            showMetrics={true}
-            size="md"
-            placeholder="Seleccionar pipeline..."
-          />
-          
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-app-gray-400" />
-            <Input
-              placeholder="Buscar en deals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        {hasPipelines ? (
+          // === VISTA CUANDO SÍ HAY PIPELINES ===
+          <>
+            {/* --- Lado Izquierdo: Controles de Vista --- */}
+            <div className="flex items-center gap-3 flex-1">
+              {/* Pipeline Selector - Usando componente reutilizable */}
+              <PipelineSelector
+                pipelines={pipelines}
+                selectedPipeline={currentPipeline}
+                onPipelineChange={(pipeline) => handlePipelineChange(pipeline.id)}
+                onCreateNew={handleCreateNewPipeline}
+                onManagePipelines={handleManagePipelines}
+                loading={isLoadingPipelines}
+                showCreateButton={true}
+                showManageButton={true}
+                showMetrics={true}
+                size="md"
+                placeholder="Seleccionar pipeline..."
+              />
+              
+              {/* Search */}
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-app-gray-400" />
+                <Input
+                  placeholder="Buscar en deals..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(showFilters && "bg-primary-500/10 border-primary-500/30")}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* --- Lado Derecho: Acciones --- */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isFetchingPipelines}
+              >
+                <RefreshCw className={cn("h-4 w-4", isFetchingPipelines && "animate-spin")} />
+              </Button>
+
+              {/* Pipeline Actions */}
+              {currentPipeline && (
+                <Dropdown
+                  trigger={
+                    <Button variant="outline">
+                      <Settings className="h-4 w-4" />
+                      Pipeline
+                    </Button>
+                  }
+                  items={getPipelineActionItems(currentPipeline)}
+                />
+              )}
+              
+              <Button onClick={handleCreateNewDeal}>
+                <Plus className="h-4 w-4" />
+                Nueva Oportunidad
+              </Button>
+            </div>
+          </>
+        ) : (
+          // === VISTA CUANDO NO HAY PIPELINES (ESTADO INICIAL) ===
+          <div className="w-full flex justify-end">
+            <Button onClick={() => navigate('/settings/pipelines')}>
+              <Settings className="h-4 w-4 mr-2" />
+              Configurar Pipelines
+            </Button>
           </div>
-          
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(showFilters && "bg-primary-500/10 border-primary-500/30")}
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isFetchingPipelines}
-          >
-            <RefreshCw className={cn("h-4 w-4", isFetchingPipelines && "animate-spin")} />
-          </Button>
-
-          {/* Pipeline Actions - ✅ CORRECCIÓN QUIRÚRGICA */}
-          {currentPipeline && (
-            <Dropdown
-              trigger={
-                <Button variant="outline">
-                  <Settings className="h-4 w-4" />
-                  Pipeline
-                </Button>
-              }
-              items={getPipelineActionItems(currentPipeline)}
-            />
-          )}
-          
-          <Button onClick={handleCreateNew}>
-            <Plus className="h-4 w-4" />
-            Nueva Oportunidad
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* ============================================ */}
       {/* FILTERS PANEL (Condicional) - Mismo patrón que Companies */}
+      {/* Solo se muestra cuando HAY pipelines */}
       {/* ============================================ */}
-      {showFilters && (
+      {showFilters && hasPipelines && (
         <div className="p-4 mb-6 border-app-dark-600 bg-app-dark-800/50">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-app-gray-200">Filtros de Oportunidades</h3>
@@ -432,9 +459,10 @@ const PipelineListPage: React.FC = () => {
           title="No hay pipelines disponibles"
           description="Crea tu primer pipeline para empezar a gestionar oportunidades."
           action={
-            <Button onClick={handleCreateNewPipeline}>
-              <Plus className="h-4 w-4" />
-              Crear Primer Pipeline
+            // ✅ PASO 3: CAMBIAR BOTÓN DEL EMPTY STATE
+            <Button onClick={() => navigate('/settings/pipelines')}>
+              <Settings className="h-4 w-4 mr-2" />
+              Ir a Configuración
             </Button>
           }
         />
@@ -487,7 +515,7 @@ const PipelineListPage: React.FC = () => {
               El componente DealKanbanView se integrará aquí para mostrar las oportunidades fluyendo por las etapas del pipeline.
             </p>
             <div className="flex items-center justify-center gap-3">
-              <Button variant="outline" onClick={handleCreateNewPipeline}>
+              <Button variant="outline" onClick={handleCreateNewDeal}>
                 <Plus className="h-4 w-4" />
                 Crear Nueva Oportunidad
               </Button>
