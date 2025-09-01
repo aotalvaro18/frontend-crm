@@ -1,6 +1,7 @@
- // src/components/layout/Layout.tsx
+// src/components/layout/Layout.tsx
 // Layout principal del CRM siguiendo la guía arquitectónica
 // Mobile-first, enterprise-grade layout with responsive sidebar
+// ✅ ACTUALIZADO: Nueva estrategia UX - Oportunidades para usuario diario, Pipelines en configuración
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -31,20 +32,21 @@ interface NavigationItem {
   children?: NavigationItem[];
 }
 
+// ✅ PASO 1: SOLUCIÓN DE ERROR - children opcional
 interface LayoutProps {
-  children?: React.ReactNode;
+  children?: React.ReactNode; // El '?' hace que el prop sea opcional
 }
 
 // ============================================
-// NAVIGATION CONFIGURATION
+// NAVIGATION CONFIGURATION - ✅ VERSIÓN FINAL
 // ============================================
 
 const getNavigationItems = (currentPath: string): NavigationItem[] => [
   {
     name: 'Dashboard',
-    href: '/',
+    href: '/dashboard', // Asumimos que esta ruta existirá
     icon: Home,
-    isActive: currentPath === '/',
+    isActive: currentPath === '/dashboard',
   },
   {
     name: 'Contactos',
@@ -53,20 +55,18 @@ const getNavigationItems = (currentPath: string): NavigationItem[] => [
     isActive: currentPath.startsWith('/contacts'),
   },
   {
-    name: 'Oportunidades',
-    href: '/deals',
-    icon: Target,
-    isActive: currentPath.startsWith('/deals'),
-    children: [
-      { name: 'Lista', href: '/deals', icon: BarChart3 },
-      { name: 'Pipeline', href: '/deals/kanban', icon: Target },
-    ],
-  },
-  {
     name: 'Empresas',
     href: '/companies',
     icon: Building2,
     isActive: currentPath.startsWith('/companies'),
+  },
+  // ✅ ACTUALIZADO: "Oportunidades" es el enlace principal y apunta a la vista Kanban/Lista.
+  //    Se elimina el submenú para simplificar.
+  {
+    name: 'Oportunidades',
+    href: '/deals', // La ruta principal del Kanban para el usuario diario
+    icon: Target,
+    isActive: currentPath.startsWith('/deals'),
   },
   {
     name: 'Reportes',
@@ -176,7 +176,7 @@ const MobileNavigation: React.FC<{
                 )}
               </button>
 
-              {/* Submenu */}
+              {/* Submenu - Simplificado según nueva estrategia */}
               {item.children && item.isActive && (
                 <div className="ml-8 mt-2 space-y-1">
                   {item.children.map((child) => (
@@ -197,6 +197,7 @@ const MobileNavigation: React.FC<{
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-app-dark-600 space-y-2">
+          {/* ✅ PASO 3: Enlace a configuración actualizado */}
           <Button
             variant="ghost"
             size="sm"
@@ -298,7 +299,7 @@ const DesktopSidebar: React.FC<{
               )}
             </button>
 
-            {/* Submenu */}
+            {/* Submenu - Simplificado según nueva estrategia */}
             {item.children && item.isActive && !isCollapsed && (
               <div className="ml-8 mt-2 space-y-1">
                 {item.children.map((child) => (
@@ -427,6 +428,7 @@ const Header: React.FC<{
                     <User className="h-4 w-4 mr-3" />
                     Mi Perfil
                   </button>
+                  {/* ✅ PASO 3: Enlace de configuración en dropdown actualizado */}
                   <button
                     onClick={() => {
                       navigate('/settings');
@@ -462,11 +464,10 @@ const Header: React.FC<{
 // MAIN LAYOUT COMPONENT
 // ============================================
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = () => {
   const location = useLocation();
   const { user, logout, isLoading } = useAuthStore();
 
- 
   // UI state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -542,9 +543,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
 
         {/* Page Content */}
+        {/* ✅ PASO 1: Solución con Outlet únicamente */}
         <main className="min-h-[calc(100vh-4rem)]">
           <div className="p-4 sm:p-6 lg:p-8">
-            {children || <Outlet />}
+            <Outlet />
           </div>
         </main>
       </div>

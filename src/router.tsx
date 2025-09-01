@@ -1,5 +1,5 @@
 // src/router.tsx
-// ✅ ROUTER QUIRÚRGICO - Solo páginas que existen
+// ✅ ROUTER FINAL - Estrategia UX consolidada: /deals para usuarios, /settings/pipelines para admins
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from './App';
@@ -8,16 +8,16 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { authLogger } from '@/types/auth.types';
 
 // ============================================
-// LAZY IMPORTS - SOLO PÁGINAS EXISTENTES
+// LAZY IMPORTS - ARQUITECTURA FINAL
 // ============================================
 
-// ✅ Auth pages (solo las que necesitas)
+// ✅ Auth pages
 const LoginPage = lazy(() => {
   authLogger.info('Loading LoginPage...');
   return import('@/pages/auth/LoginPage');
 });
 
-// ✅ CRM pages (solo las que existen)
+// ✅ Contact pages
 const ContactListPage = lazy(() => {
   authLogger.info('Loading ContactListPage...');
   return import('@/pages/contacts/ContactListPage');
@@ -26,7 +26,6 @@ const ContactListPage = lazy(() => {
 const ContactDetailPage = lazy(() => {
   authLogger.info('Loading ContactDetailPage...');
   return import('@/pages/contacts/ContactDetailPage').catch(() => {
-    // Fallback si no existe
     return { default: () => <div>ContactDetailPage - En desarrollo</div> };
   });
 });
@@ -38,7 +37,7 @@ const ContactCreatePage = lazy(() => {
   });
 });
 
-// ✅ COMPANY pages (las que ya existen)
+// ✅ Company pages
 const CompanyListPage = lazy(() => {
   authLogger.info('Loading CompanyListPage...');
   return import('@/pages/companies/CompanyListPage');
@@ -54,12 +53,47 @@ const CompanyCreatePage = lazy(() => {
   return import('@/pages/companies/CompanyCreatePage');
 });
 
+// ✅ Pipeline pages (para /deals = usuario diario)
+const PipelineListPage = lazy(() => {
+  authLogger.info('Loading PipelineListPage...');
+  return import('@/pages/pipelines/PipelineListPage');
+});
+
+const PipelineDetailPage = lazy(() => {
+  authLogger.info('Loading PipelineDetailPage...');
+  return import('@/pages/pipelines/PipelineDetailPage');
+});
+
+// ✅ Settings pages (hub + pipeline admin)
+const SettingsPage = lazy(() => {
+  authLogger.info('Loading SettingsPage...');
+  return import('@/pages/settings/SettingsPage');
+});
+
+const PipelinesSettingsPage = lazy(() => {
+  authLogger.info('Loading PipelinesSettingsPage...');
+  return import('@/pages/settings/PipelinesSettingsPage');
+});
+
+const PipelineCreatePage = lazy(() => {
+  authLogger.info('Loading PipelineCreatePage...');
+  return import('@/pages/pipelines/PipelineCreatePage');
+});
+
+const PipelineEditPage = lazy(() => {
+  authLogger.info('Loading PipelineEditPage...');
+  return import('@/pages/pipelines/PipelineEditPage');
+});
+
+// ✅ Layout
 const MainLayout = lazy(() => {
+  authLogger.info('Loading MainLayout...');
   return import('@/components/layout/Layout').catch(() => {
-    // Simple fallback layout
-    const FallbackMainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    const FallbackMainLayout: React.FC = () => (
       <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">{children}</div>
+        <div className="container mx-auto px-4 py-8">
+          <div>Layout fallback - Error cargando Layout principal</div>
+        </div>
       </div>
     );
     return { default: FallbackMainLayout };
@@ -141,7 +175,7 @@ const PlaceholderPage: React.FC<{ title: string }> = ({ title }) => (
 );
 
 // ============================================
-// ROUTER CONFIGURATION
+// ROUTER CONFIGURATION - VERSIÓN FINAL
 // ============================================
 
 const router = createBrowserRouter([
@@ -151,7 +185,7 @@ const router = createBrowserRouter([
     errorElement: <RouterErrorElement />,
     children: [
       // ============================================
-      // AUTH ROUTES
+      // RUTAS PÚBLICAS
       // ============================================
       {
         path: 'login',
@@ -161,120 +195,205 @@ const router = createBrowserRouter([
           </SuspenseWrapper>
         ),
       },
+      
+      // ============================================
+      // RUTAS PROTEGIDAS (DENTRO DEL LAYOUT)
+      // ============================================
+      {
+        path: '',
+        element: (
+          <SuspenseWrapper fallbackText="Cargando aplicación...">
+            <MainLayout />
+          </SuspenseWrapper>
+        ),
+        children: [
+          // --- ROOT REDIRECT ---
+          {
+            index: true,
+            element: <Navigate to="/contacts" replace />,
+          },
+
+          // ============================================
+          // MÓDULO DE CONTACTOS
+          // ============================================
+          {
+            path: 'contacts',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando contactos...">
+                <ContactListPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'contacts/new',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando formulario...">
+                <ContactCreatePage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'contacts/:id',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando contacto...">
+                <ContactDetailPage />
+              </SuspenseWrapper>
+            ),
+          },
+
+          // ============================================
+          // MÓDULO DE EMPRESAS
+          // ============================================
+          {
+            path: 'companies',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando empresas...">
+                <CompanyListPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'companies/new',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando formulario...">
+                <CompanyCreatePage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'companies/:id',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando empresa...">
+                <CompanyDetailPage />
+              </SuspenseWrapper>
+            ),
+          },
+
+          // ============================================
+          // MÓDULO DE OPORTUNIDADES (USUARIO DIARIO)
+          // URL: /deals → Renderiza PipelineListPage (Kanban)
+          // ============================================
+          {
+            path: 'deals',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando oportunidades...">
+                <PipelineListPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'deals/:id',
+            element: (
+              <SuspenseWrapper fallbackText="Cargando oportunidad...">
+                <PipelineDetailPage />
+              </SuspenseWrapper>
+            ),
+          },
+
+          // ============================================
+          // MÓDULO DE REPORTES (PLACEHOLDER)
+          // ============================================
+          {
+            path: 'reports',
+            element: <PlaceholderPage title="Reportes y Analytics" />,
+          },
+
+          // ============================================
+          // MÓDULO DE CONFIGURACIÓN (ADMINISTRADOR)
+          // ============================================
+          {
+            path: 'settings',
+            children: [
+              // --- HUB DE CONFIGURACIÓN ---
+              {
+                index: true,
+                element: (
+                  <SuspenseWrapper fallbackText="Cargando configuración...">
+                    <SettingsPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              // --- GESTIÓN DE PIPELINES (ADMIN) ---
+              {
+                path: 'pipelines',
+                element: (
+                  <SuspenseWrapper fallbackText="Cargando configuración de pipelines...">
+                    <PipelinesSettingsPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'pipelines/new',
+                element: (
+                  <SuspenseWrapper fallbackText="Cargando formulario...">
+                    <PipelineCreatePage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'pipelines/:id/edit',
+                element: (
+                  <SuspenseWrapper fallbackText="Cargando editor...">
+                    <PipelineEditPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'pipelines/:id',
+                element: (
+                  <SuspenseWrapper fallbackText="Cargando detalles...">
+                    <PipelineDetailPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              // --- OTROS PLACEHOLDERS DE CONFIGURACIÓN ---
+              { 
+                path: 'billing', 
+                element: <PlaceholderPage title="Facturación y Suscripción" /> 
+              },
+              { 
+                path: 'team', 
+                element: <PlaceholderPage title="Gestión de Equipo" /> 
+              },
+              { 
+                path: 'profile', 
+                element: <PlaceholderPage title="Mi Perfil" /> 
+              },
+              { 
+                path: 'notifications', 
+                element: <PlaceholderPage title="Notificaciones" /> 
+              },
+              { 
+                path: 'organization', 
+                element: <PlaceholderPage title="Datos de la Organización" /> 
+              },
+              { 
+                path: 'security', 
+                element: <PlaceholderPage title="Seguridad y Acceso" /> 
+              },
+              { 
+                path: 'integrations', 
+                element: <PlaceholderPage title="Integraciones" /> 
+              },
+              { 
+                path: 'custom-fields', 
+                element: <PlaceholderPage title="Campos Personalizados" /> 
+              },
+              { 
+                path: 'reports', 
+                element: <PlaceholderPage title="Configuración de Reportes" /> 
+              },
+              { 
+                path: 'analytics', 
+                element: <PlaceholderPage title="Analytics Avanzados" /> 
+              },
+            ],
+          },
+        ],
+      },
 
       // ============================================
-      // CONTACTS ROUTES (EXISTENTES)
-      // ============================================
-      {
-        path: 'contacts',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando contactos...">
-            <MainLayout>
-              <ContactListPage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'contacts/new',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando formulario...">
-            <MainLayout>
-              <ContactCreatePage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'contacts/:id',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando contacto...">
-            <MainLayout>
-              <ContactDetailPage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-
-      // ============================================
-      // PLACEHOLDER ROUTES (PARA DESARROLLO)
-      // ============================================
-      {
-        path: 'deals',
-        element: (
-          <MainLayout>
-            <PlaceholderPage title="Gestión de Oportunidades" />
-          </MainLayout>
-        ),
-      },
-      {
-        path: 'deals/:id',
-        element: (
-          <MainLayout>
-            <PlaceholderPage title="Detalle de Oportunidad" />
-          </MainLayout>
-        ),
-      },
-      // ============================================
-      // COMPANIES ROUTES (ACTIVADAS)
-      // ============================================
-      {
-        path: 'companies',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando empresas...">
-            <MainLayout>
-              <CompanyListPage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'companies/new',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando formulario...">
-            <MainLayout>
-              <CompanyCreatePage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'companies/:id',
-        element: (
-          <SuspenseWrapper fallbackText="Cargando empresa...">
-            <MainLayout>
-              <CompanyDetailPage />
-            </MainLayout>
-          </SuspenseWrapper>
-        ),
-      },
-      {
-        path: 'reports',
-        element: (
-          <MainLayout>
-            <PlaceholderPage title="Reportes y Analytics" />
-          </MainLayout>
-        ),
-      },
-      {
-        path: 'settings',
-        element: (
-          <MainLayout>
-            <PlaceholderPage title="Configuración" />
-          </MainLayout>
-        ),
-      },
-
-      // ============================================
-      // ROOT REDIRECT
-      // ============================================
-      {
-        index: true,
-        element: <Navigate to="/contacts" replace />,
-      },
-
-      // ============================================
-      // CATCH-ALL ROUTE
+      // CATCH-ALL ROUTE / 404
       // ============================================
       {
         path: '*',

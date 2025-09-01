@@ -15,6 +15,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   isConfirming?: boolean; // Para mostrar el estado de carga
+  children?: React.ReactNode;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -26,6 +27,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   isConfirming = false,
+  children,
 }) => {
   if (!isOpen) {
     return null;
@@ -46,6 +48,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               {description}
             </p>
           </div>
+          {children} {/* ✅ AÑADIDO: Renderizar el contenido extra */}
         </div>
       </div>
       <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">

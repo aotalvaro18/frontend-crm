@@ -1,4 +1,4 @@
-// src/shared/StatsCards.tsx
+// src/components/shared/StatsCards.tsx
 // ✅ STATS CARDS - ENTERPRISE DASHBOARD COMPONENT
 // Reutilización total de types ContactStats + Mobile-first + Performance optimized
 //OJO: ESTE STATS CARD ES USADO EN TODOS LOS MODUOLOS EXCEPTO EN CONTACTS QUE TOCA REFACTORIZAR DESPUES
@@ -24,37 +24,39 @@ import { Tooltip } from '@/components/ui/Tooltip';
 // ============================================
 
 import { cn } from '@/utils/cn';
-import formatters from '@/utils/formatters';
+import { formatters } from '@/utils/formatters';
 
 // ============================================
 // COMPONENT PROPS
 // ============================================
 
 export interface StatCardConfig {
-    key: string;
-    title: string;
-    description: string;
-    icon: React.ElementType;
-    variant: 'default' | 'success' | 'info' | 'warning' | 'accent';
-    format: 'number' | 'percentage' | 'decimal';
-  }
+  key: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  variant: 'default' | 'success' | 'info' | 'warning' | 'accent';
   
-  export interface StatsCardsProps {
-    stats?: Record<string, number | undefined> | null;
-    configs: StatCardConfig[];
-    isLoading?: boolean;
-    showTrends?: boolean;
-    showTooltips?: boolean;
-    variant?: 'default' | 'compact' | 'minimal';
-    className?: string;
-    cardClassName?: string;
-    onCardClick?: (statKey: string) => void;
-  }
-
-// ============================================
-// STAT CARD CONFIGURATION
-// ============================================
-
+  // ✅ CAMBIO 1: Añadir 'currency' a la lista de formatos permitidos
+  format: 'number' | 'percentage' | 'decimal' | 'currency';
+  
+  // ✅ CAMBIO 2: Añadir propiedades opcionales para prefijos y sufijos
+  prefix?: string; // Para símbolos como '$'
+  suffix?: string; // Para texto como ' días'
+}
+  
+export interface StatsCardsProps {
+  // ✅ CAMBIO QUIRÚRGICO: Tipo más flexible para aceptar PipelineStats y otros tipos
+  stats?: Record<string, any> | null | undefined;
+  configs: StatCardConfig[];
+  isLoading?: boolean;
+  showTrends?: boolean;
+  showTooltips?: boolean;
+  variant?: 'default' | 'compact' | 'minimal';
+  className?: string;
+  cardClassName?: string;
+  onCardClick?: (statKey: string) => void;
+}
 
 // ============================================
 // STAT CARD COMPONENT
@@ -62,7 +64,8 @@ export interface StatCardConfig {
 
 interface StatCardProps {
   config: StatCardConfig;
-  value: number | undefined;
+  // ✅ CAMBIO QUIRÚRGICO: Tipo más flexible
+  value: any;
   trend?: number; // Cambio porcentual respecto al período anterior
   isLoading?: boolean;
   showTrend?: boolean;
@@ -90,16 +93,31 @@ const StatCard: React.FC<StatCardProps> = ({
   const formattedValue = useMemo(() => {
     if (value === undefined || value === null) return '-';
     
+    let formattedString: string; // Variable para almacenar el valor formateado
+
     switch (config.format) {
+      // ✅ NUEVO CASO AÑADIDO
+      case 'currency':
+        // Usa tu helper existente si lo tienes, o Intl.NumberFormat
+        formattedString = formatters.currency(value); 
+        break;
       case 'percentage':
-        return formatters.percentage(value / 100); // ContactStats viene en formato 0-100
+        // ✅ CORRECCIÓN CRÍTICA: No dividir por 100, formatters.percentage ya lo hace
+        formattedString = formatters.percentage(value);
+        break;
       case 'decimal':
-        return formatters.decimal(value, 1);
+        formattedString = formatters.decimal(value, 1);
+        break;
       case 'number':
       default:
-        return formatters.number(value);
+        formattedString = formatters.number(value);
+        break;
     }
-  }, [value, config.format]);
+
+    // ✅ NUEVA LÓGICA AÑADIDA: Aplicar prefijo y sufijo
+    return `${config.prefix || ''}${formattedString}${config.suffix || ''}`;
+
+  }, [value, config]);
 
   const trendIcon = useMemo(() => {
     if (!trend || trend === 0) return Minus;
@@ -260,23 +278,23 @@ const StatCard: React.FC<StatCardProps> = ({
 // ============================================
 
 export const StatsCards: React.FC<StatsCardsProps> = ({
-    stats,
-    configs, // <-- Nueva prop
-    isLoading: isLoadingProp,
-    showTrends = false,
-    showTooltips = true,
-    variant = 'default',
-    className,
-    cardClassName,
-    onCardClick,
-  }) => {
-    const isLoading = isLoadingProp ?? !stats;
-  
-    // La lógica de trends y handleCardClick se puede mantener o simplificar
-    // Por ahora, la mantenemos simple.
-    const handleCardClick = (statKey: string) => {
-      onCardClick?.(statKey);
-    };
+  stats,
+  configs, // <-- Nueva prop
+  isLoading: isLoadingProp,
+  showTrends = false,
+  showTooltips = true,
+  variant = 'default',
+  className,
+  cardClassName,
+  onCardClick,
+}) => {
+  const isLoading = isLoadingProp ?? !stats;
+
+  // La lógica de trends y handleCardClick se puede mantener o simplificar
+  // Por ahora, la mantenemos simple.
+  const handleCardClick = (statKey: string) => {
+    onCardClick?.(statKey);
+  };
 
   // ============================================
   // RENDER
@@ -339,15 +357,15 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
  * Compact Stats Cards - Para dashboards densos
  */
 export const CompactStatsCards: React.FC<Omit<StatsCardsProps, 'variant'>> = (props) => (
-    <StatsCards {...props} variant="compact" />
-  );
-  
-  export const MinimalStatsCards: React.FC<Omit<StatsCardsProps, 'variant'>> = (props) => (
-    <StatsCards {...props} variant="minimal" />
-  );
-  
-  export const TrendingStatsCards: React.FC<Omit<StatsCardsProps, 'showTrends'>> = (props) => (
-    <StatsCards {...props} showTrends={true} />
-  );
-  
-  export default StatsCards;
+  <StatsCards {...props} variant="compact" />
+);
+
+export const MinimalStatsCards: React.FC<Omit<StatsCardsProps, 'variant'>> = (props) => (
+  <StatsCards {...props} variant="minimal" />
+);
+
+export const TrendingStatsCards: React.FC<Omit<StatsCardsProps, 'showTrends'>> = (props) => (
+  <StatsCards {...props} showTrends={true} />
+);
+
+export default StatsCards;
