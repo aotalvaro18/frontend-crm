@@ -415,31 +415,86 @@ import {
   ];
   
   /**
-   * Configuraciones de pipeline predefinidas
-   */
+ * ✅ PLANTILLAS DE PROCESOS DE CLASE MUNDIAL
+ * 
+ * Configuraciones de pipeline predefinidas y supervisadas que se ofrecen
+ * al usuario. Cada plantilla está diseñada para un vertical de negocio y un
+ * caso de uso específico, proporcionando valor inmediato.
+ */
+
   export const DEFAULT_PIPELINE_TEMPLATES = {
-    SALES: {
-      name: 'Pipeline de Ventas',
-      description: 'Proceso estándar de ventas B2B',
+  
+    // ===============================================
+    // PLANTILLAS PARA EMPRESAS (Vertical: BUSINESS)
+    // ===============================================
+  
+    BUSINESS_SALES: {
+      key: 'BUSINESS_SALES',
+      name: 'Proceso de Ventas B2B',
+      description: 'Un embudo de ventas estándar para seguir oportunidades comerciales desde el lead hasta el cierre.',
+      icon: 'TrendingUp', // Sugerencia de icono (nombre de Lucide React)
       stages: [
-        { name: 'Prospecto', probability: 10, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Calificado', probability: 25, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'Propuesta', probability: 50, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Negociación', probability: 75, color: DEFAULT_STAGE_COLORS[3] },
-        { name: 'Cerrado Ganado', probability: 100, color: DEFAULT_STAGE_COLORS[4], isClosedWon: true },
-        { name: 'Cerrado Perdido', probability: 0, color: DEFAULT_STAGE_COLORS[5], isClosedLost: true },
+        { name: 'Lead', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
+        { name: 'Contacto Establecido', order: 1, probability: 20, color: DEFAULT_STAGE_COLORS[1] },
+        { name: 'Calificado', order: 2, probability: 40, color: DEFAULT_STAGE_COLORS[2] },
+        { name: 'Propuesta Presentada', order: 3, probability: 60, color: DEFAULT_STAGE_COLORS[3] },
+        { name: 'En Negociación', order: 4, probability: 80, color: DEFAULT_STAGE_COLORS[4] },
+        { name: 'Ganado', order: 5, probability: 100, color: DEFAULT_STAGE_COLORS[5], isClosedWon: true },
+        { name: 'Perdido', order: 6, probability: 0, color: DEFAULT_STAGE_COLORS[6], isClosedLost: true },
       ],
     },
-    LEAD_NURTURING: {
-      name: 'Cultivo de Leads',
-      description: 'Proceso de maduración de leads hasta la conversión',
+  
+    BUSINESS_SERVICE_DELIVERY: {
+      key: 'BUSINESS_SERVICE_DELIVERY',
+      name: 'Proceso de Entrega de Servicio',
+      description: 'Flujo de trabajo para gestionar la entrega de un proyecto o servicio desde la orden hasta la facturación.',
+      icon: 'ClipboardCheck',
       stages: [
-        { name: 'Lead Frío', probability: 5, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Lead Interesado', probability: 15, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'Lead Caliente', probability: 35, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Marketing Qualified Lead', probability: 60, color: DEFAULT_STAGE_COLORS[3] },
-        { name: 'Sales Qualified Lead', probability: 85, color: DEFAULT_STAGE_COLORS[4] },
-        { name: 'Convertido', probability: 100, color: DEFAULT_STAGE_COLORS[5], isClosedWon: true },
+        { name: 'Costos Aprobados', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
+        { name: 'Orden de Servicio Generada', order: 1, probability: 30, color: DEFAULT_STAGE_COLORS[1] },
+        { name: 'En Desarrollo / Ejecución', order: 2, probability: 60, color: DEFAULT_STAGE_COLORS[2] },
+        { name: 'Control de Calidad / QA', order: 3, probability: 80, color: DEFAULT_STAGE_COLORS[3] },
+        { name: 'Acta de Entrega Firmada', order: 4, probability: 95, color: DEFAULT_STAGE_COLORS[4] },
+        { name: 'Facturado y Cerrado', order: 5, probability: 100, color: DEFAULT_STAGE_COLORS[5], isClosedWon: true },
+        { name: 'Cancelado', order: 6, probability: 0, color: DEFAULT_STAGE_COLORS[6], isClosedLost: true },
       ],
     },
+    
+    // ===============================================
+    // PLANTILLA PARA IGLESIAS (Vertical: CHURCH)
+    // ===============================================
+  
+    CHURCH_CONSOLIDATION: {
+      key: 'CHURCH_CONSOLIDATION',
+      name: 'Proceso de Consolidación',
+      description: 'Seguimiento de nuevos contactos hasta que se consolidan como miembros activos en la comunidad.',
+      icon: 'HeartHandshake',
+      stages: [
+        { name: 'Nuevo Contacto', order: 0, color: DEFAULT_STAGE_COLORS[0] },
+        { name: 'En Seguimiento Personal', order: 1, color: DEFAULT_STAGE_COLORS[1] },
+        { name: 'Asistente Regular', order: 2, color: DEFAULT_STAGE_COLORS[2] },
+        { name: 'Asistió a Encuentro/Retiro', order: 3, color: DEFAULT_STAGE_COLORS[3] },
+        { name: 'Consolidado', order: 4, color: DEFAULT_STAGE_COLORS[4], isClosedWon: true },
+        { name: 'No Interesado / Inactivo', order: 5, color: DEFAULT_STAGE_COLORS[5], isClosedLost: true },
+      ],
+    },
+    
+    // ===============================================
+    // PLANTILLA PARA ORGANIZACIONES CÍVICAS
+    // ===============================================
+  
+    CIVIC_VOLUNTEER_MANAGEMENT: {
+      key: 'CIVIC_VOLUNTEER_MANAGEMENT',
+      name: 'Gestión de Voluntarios',
+      description: 'Proceso para reclutar, entrenar e integrar voluntarios a una causa o campaña.',
+      icon: 'Megaphone',
+      stages: [
+        { name: 'Interesado Registrado', order: 0, color: DEFAULT_STAGE_COLORS[0] },
+        { name: 'Entrevista / Contacto', order: 1, color: DEFAULT_STAGE_COLORS[1] },
+        { name: 'En Entrenamiento', order: 2, color: DEFAULT_STAGE_COLORS[2] },
+        { name: 'Voluntario Activo', order: 3, color: DEFAULT_STAGE_COLORS[3], isClosedWon: true },
+        { name: 'No Disponible / Descartado', order: 4, color: DEFAULT_STAGE_COLORS[4], isClosedLost: true },
+      ],
+    },
+  
   } as const; 
