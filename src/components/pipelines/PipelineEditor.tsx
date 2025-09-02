@@ -1,6 +1,6 @@
 // src/components/pipelines/PipelineEditor.tsx
 // ✅ PIPELINE EDITOR - Componente central para crear/editar pipelines con drag-and-drop
-// Siguiendo los patrones de formularios existentes pero con funcionalidad avanzada
+// 🔥 ACTUALIZADO: Soporte para plantillas con selectedTemplate prop
 
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -8,8 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   Plus, Trash2, GripVertical, Settings, Target, 
-  Percent, Save,
-  X, AlertCircle, CheckCircle, Info
+  Save,
+  X, CheckCircle
 } from 'lucide-react';
 
 // ============================================
@@ -29,7 +29,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 // ============================================
 import { 
   usePipelineOperations,
-  usePipelineStageOperations,
   usePipelineTypes 
 } from '@/hooks/usePipelines';
 
@@ -44,7 +43,8 @@ import type {
 } from '@/types/pipeline.types';
 
 import { 
-    DEFAULT_STAGE_COLORS // <-- Importa la constante como un VALOR
+    DEFAULT_STAGE_COLORS, // <-- Importa la constante como un VALOR
+    DEFAULT_PIPELINE_TEMPLATES // 🔥 AÑADIDO: Importar plantillas
   } from '@/types/pipeline.types';
 
 import { cn } from '@/utils/cn';
@@ -55,31 +55,32 @@ import { cn } from '@/utils/cn';
 
 const StageSchema = z.object({
   id: z.number().optional(),
-  name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(50, 'Máximo 50 caracteres'),
-  description: z.string().max(200, 'Máximo 200 caracteres').optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido').optional(),
+  name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
+  description: z.string().optional(),
+  color: z.string().min(1, 'El color es obligatorio'),
   probability: z.number().min(0).max(100).optional(),
-  isClosedWon: z.boolean().optional(),
-  isClosedLost: z.boolean().optional(),
-  order: z.number(),
+  isClosedWon: z.boolean().optional().default(false),
+  isClosedLost: z.boolean().optional().default(false),
+  order: z.number().min(0).optional().default(0),
 });
 
 const PipelineEditorSchema = z.object({
-  name: z.string().min(2, 'El nombre del pipeline es obligatorio').max(100, 'Máximo 100 caracteres'),
-  description: z.string().max(500, 'Máximo 500 caracteres').optional(),
-  isDefault: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-  type: z.string().optional(),
-  stages: z.array(StageSchema).min(2, 'Un pipeline debe tener al menos 2 etapas').max(20, 'Máximo 20 etapas'),
+  name: z.string().min(1, 'El nombre del pipeline es obligatorio').max(255),
+  description: z.string().max(1000).optional(),
+  isDefault: z.boolean().optional().default(false),
+  isActive: z.boolean().optional().default(true),
+  type: z.string().min(1, 'El tipo de pipeline es obligatorio'),
+  stages: z.array(StageSchema).min(1, 'Debe tener al menos una etapa'),
 });
 
 type PipelineEditorForm = z.infer<typeof PipelineEditorSchema>;
 
 // ============================================
-// COMPONENT PROPS
+// COMPONENT PROPS - 🔥 AÑADIDO selectedTemplate
 // ============================================
-interface PipelineEditorProps {
+export interface PipelineEditorProps {
   pipeline?: PipelineDTO;
+  selectedTemplate?: string; // 🔥 AÑADIDO: Para cargar plantillas
   mode: 'create' | 'edit';
   onSave?: (pipeline: PipelineDTO) => void;
   onCancel?: () => void;
@@ -161,15 +162,17 @@ const StageItem: React.FC<StageItemProps> = ({
               </div>
               
               {stage.description && (
-                <p className="text-sm text-app-gray-400 mt-1">{stage.description}</p>
+                <p className="text-sm text-app-gray-400 mt-1">
+                  {stage.description}
+                </p>
               )}
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-1">
               <Tooltip content="Configurar etapa">
-                <IconButton
-                  variant="ghost"
+                <IconButton 
+                  variant="ghost" 
                   size="sm"
                   onClick={() => setIsExpanded(!isExpanded)}
                 >
@@ -178,8 +181,8 @@ const StageItem: React.FC<StageItemProps> = ({
               </Tooltip>
               
               <Tooltip content="Eliminar etapa">
-                <IconButton
-                  variant="ghost"
+                <IconButton 
+                  variant="ghost" 
                   size="sm"
                   onClick={() => setShowDeleteConfirm(true)}
                   className="text-red-400 hover:text-red-300"
@@ -189,82 +192,84 @@ const StageItem: React.FC<StageItemProps> = ({
               </Tooltip>
             </div>
           </div>
-        </div>
 
-        {/* Panel expandido de configuración */}
-        {isExpanded && (
-          <div className="px-4 pb-4 border-t border-app-dark-600 bg-app-dark-800/30">
-            <div className="pt-4 space-y-4">
-              {/* Descripción */}
-              <FormField label="Descripción (opcional)" name={`stage-description-${index}`}>
-                <Input
-                  value={stage.description || ''}
-                  onChange={(e) => onUpdate({ description: e.target.value })}
-                  placeholder="Descripción opcional de la etapa"
-                />
-              </FormField>
-
+          {/* Expanded settings */}
+          {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                {/* Probabilidad */}
-                <FormField label="Probabilidad de Cierre (%)" name={`stage-probability-${index}`}>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={stage.probability || ''}
-                      onChange={(e) => onUpdate({ probability: Number(e.target.value) || 0 })}
-                      placeholder="0-100"
-                      className="flex-1"
-                    />
-                    <Percent className="h-4 w-4 text-app-gray-400" />
-                  </div>
-                </FormField>
-
-                {/* Color */}
-                <FormField label="Color de la Etapa" name={`stage-color-${index}`}>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]}
-                      onChange={(e) => handleColorChange(e.target.value)}
-                      className="w-8 h-8 border border-app-dark-600 rounded cursor-pointer"
-                    />
-                    <Input
-                      value={stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]}
-                      onChange={(e) => handleColorChange(e.target.value)}
-                      placeholder="#FF5733"
-                      className="flex-1 font-mono text-sm"
-                    />
-                  </div>
-                </FormField>
+                <div>
+                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                    Descripción
+                  </label>
+                  <Input
+                    value={stage.description || ''}
+                    onChange={(e) => onUpdate({ description: e.target.value })}
+                    placeholder="Describe esta etapa..."
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                    Probabilidad %
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={stage.probability || 0}
+                    onChange={(e) => onUpdate({ probability: parseInt(e.target.value) || 0 })}
+                    className="text-sm"
+                  />
+                </div>
               </div>
 
-              {/* Opciones de cierre */}
-              <div className="flex items-center gap-6">
+              {/* Color picker */}
+              <div>
+                <label className="block text-sm font-medium text-app-gray-300 mb-2">
+                  Color de la etapa
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {DEFAULT_STAGE_COLORS.map((color, colorIndex) => (
+                    <button
+                      key={colorIndex}
+                      type="button"
+                      onClick={() => handleColorChange(color)}
+                      className={cn(
+                        "w-8 h-8 rounded border-2 transition-all",
+                        stage.color === color 
+                          ? "border-white scale-110" 
+                          : "border-app-dark-400 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Stage type flags */}
+              <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={stage.isClosedWon || false}
                     onChange={(e) => onUpdate({ 
                       isClosedWon: e.target.checked,
-                      // Si se marca como ganado, desmarcar perdido
-                      ...(e.target.checked && { isClosedLost: false })
+                      isClosedLost: e.target.checked ? false : stage.isClosedLost
                     })}
                     className="rounded border-app-dark-600 text-green-600 focus:ring-green-500"
                   />
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span className="text-sm text-app-gray-300">Etapa de cierre ganado</span>
                 </label>
-
+                
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={stage.isClosedLost || false}
                     onChange={(e) => onUpdate({ 
                       isClosedLost: e.target.checked,
-                      // Si se marca como perdido, desmarcar ganado
-                      ...(e.target.checked && { isClosedWon: false })
+                      isClosedWon: e.target.checked ? false : stage.isClosedWon
                     })}
                     className="rounded border-app-dark-600 text-red-600 focus:ring-red-500"
                   />
@@ -273,8 +278,8 @@ const StageItem: React.FC<StageItemProps> = ({
                 </label>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Confirm Delete Dialog */}
@@ -297,6 +302,7 @@ const StageItem: React.FC<StageItemProps> = ({
 // ============================================
 const PipelineEditor: React.FC<PipelineEditorProps> = ({
   pipeline,
+  selectedTemplate, // 🔥 AÑADIDO: Prop para plantillas
   mode,
   onSave,
   onCancel,
@@ -307,7 +313,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   // HOOKS
   // ============================================
   const { createPipeline, updatePipeline, isCreating } = usePipelineOperations();
-  const { reorderingStages } = usePipelineStageOperations();
+  //const { reorderingStages } = usePipelineStageOperations();
   const { data: pipelineTypes, isLoading: isLoadingTypes } = usePipelineTypes();
 
   // ============================================
@@ -334,10 +340,22 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   });
 
   // ============================================
-  // EFFECTS - Sincronizar con datos del pipeline existente
+  // 🔥 EFFECTS - Sincronizar con pipeline existente Y plantillas
   // ============================================
+
+  // 🔥 AÑADIR esta función utilitaria ANTES del useEffect:
+    const normalizeTemplateStage = (stage: any, index: number) => ({
+        name: stage.name,
+        order: stage.order,
+        probability: stage.probability ?? 0, // Valor por defecto para Church/Civic
+        color: stage.color,
+        isClosedWon: stage.isClosedWon ?? false,
+        isClosedLost: stage.isClosedLost ?? false,
+    });
+
   useEffect(() => {
     if (pipeline && mode === 'edit') {
+      // Edición: cargar datos del pipeline existente
       form.reset({
         name: pipeline.name,
         description: pipeline.description || '',
@@ -355,8 +373,21 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           order: stage.order || index,
         })) || [],
       });
+    } else if (selectedTemplate && mode === 'create') {
+      // 🔥 AÑADIDO: Creación con plantilla seleccionada
+      const template = DEFAULT_PIPELINE_TEMPLATES[selectedTemplate as keyof typeof DEFAULT_PIPELINE_TEMPLATES];
+      if (template) {
+        form.reset({
+        name: template.name,
+        description: template.description,
+        isDefault: false,
+        isActive: true,
+        type: 'SALES',
+        stages: template.stages.map((stage, index) => normalizeTemplateStage(stage, index)),
+        });
+      }
     }
-  }, [pipeline, mode, form]);
+  }, [pipeline, selectedTemplate, mode, form]); // 🔥 AÑADIDO selectedTemplate a las dependencias
 
   // ============================================
   // HANDLERS
@@ -370,6 +401,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       order: newOrder,
       probability: Math.min(10 + (newOrder * 20), 90),
       color: defaultColor,
+      isClosedWon: false, // ✅ AÑADIDO
+      isClosedLost: false, // ✅ AÑADIDO
     });
   };
 
@@ -419,7 +452,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         };
 
         await updatePipeline(pipeline.id, request, () => {
-          onSave?.({ ...pipeline, ...request } as PipelineDTO);
+          onSave?.(pipeline);
         });
       }
     } catch (error) {
@@ -427,209 +460,192 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
     }
   };
 
-  const isSubmitting = loading || isCreating || reorderingStages;
-
   // ============================================
   // RENDER
   // ============================================
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-      {/* ============================================ */}
-      {/* PIPELINE BASIC INFO */}
-      {/* ============================================ */}
-      <div className="border-app-dark-600 bg-app-dark-800/50 p-6">
-        <h3 className="text-lg font-semibold text-app-gray-100 mb-4">
+      {/* Información básica del pipeline */}
+      <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-6">
+        <h3 className="text-lg font-medium text-app-gray-100 mb-4">
           Información Básica del Pipeline
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <FormField 
-              label="Nombre del Pipeline" 
-              name="name"
-              error={form.formState.errors.name?.message}
-              required
-            >
-              <Input
-                {...form.register('name')}
-                placeholder="Ej: Pipeline de Ventas B2B"
-              />
-            </FormField>
-          </div>
-
-          <div className="md:col-span-2">
-            <FormField 
-              label="Descripción (opcional)" 
-              name="description"
-              error={form.formState.errors.description?.message}
-            >
-              <textarea
-                {...form.register('description')}
-                rows={3}
-                className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200 placeholder-app-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
-                placeholder="Describe el propósito y uso de este pipeline..."
-              />
-            </FormField>
-          </div>
-
-          <div>
-            <FormField label="Tipo de Pipeline" name="type">
-              <select
-                {...form.register('type')}
-                className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isLoadingTypes}
+          <Controller
+            name="name"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <FormField
+                label="Nombre del Pipeline"
+                name="name"
+                required
+                error={fieldState.error?.message}
               >
-                {pipelineTypes?.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                )) || (
-                  <>
-                    <option value="SALES">Ventas</option>
-                    <option value="LEAD_NURTURING">Cultivo de Leads</option>
-                    <option value="CUSTOM">Personalizado</option>
-                  </>
-                )}
-              </select>
-            </FormField>
-          </div>
+                <Input
+                  {...field}
+                  placeholder="Ej: Pipeline de Ventas B2B"
+                  className="w-full"
+                />
+              </FormField>
+            )}
+          />
 
-          <div>
-            <FormField label="Configuración" name="config">
-              <div className="space-y-3">
+          <Controller
+            name="type"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <FormField
+                label="Tipo de Pipeline"
+                name="type"
+                error={fieldState.error?.message}
+              >
+                <select
+                  {...field}
+                  className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
+                  disabled={isLoadingTypes}
+                >
+                  <option value="SALES">Ventas</option>
+                  <option value="LEAD_NURTURING">Cultivo de Leads</option>
+                  <option value="SUPPORT">Soporte</option>
+                  <option value="CUSTOM">Personalizado</option>
+                </select>
+              </FormField>
+            )}
+          />
+        </div>
+
+        <div className="mt-4">
+          <Controller
+            name="description"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <FormField
+                label="Descripción (opcional)"
+                name="description"
+                error={fieldState.error?.message}
+              >
+                <textarea
+                  {...field}
+                  placeholder="Describe el propósito y uso de este pipeline..."
+                  rows={3}
+                  className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2 resize-none"
+                />
+              </FormField>
+            )}
+          />
+        </div>
+
+        {/* Configuración adicional */}
+        <div className="flex items-center gap-6 mt-6">
+          <h4 className="font-medium text-app-gray-200">Configuración</h4>
+          
+          <div className="flex items-center gap-4">
+            <Controller
+              name="isDefault"
+              control={form.control}
+              render={({ field }) => (
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Controller
-                    name="isDefault"
-                    control={form.control}
-                    render={({ field }) => (
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="rounded border-app-dark-600 text-primary-600 focus:ring-primary-500"
-                      />
-                    )}
+                  <input
+                    type="checkbox"
+                    checked={field.value || false}
+                    onChange={field.onChange}
+                    className="rounded border-app-dark-600 text-primary-600 focus:ring-primary-500"
                   />
                   <span className="text-sm text-app-gray-300">Pipeline por defecto</span>
                 </label>
+              )}
+            />
 
+            <Controller
+              name="isActive"
+              control={form.control}
+              render={({ field }) => (
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Controller
-                    name="isActive"
-                    control={form.control}
-                    render={({ field }) => (
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="rounded border-app-dark-600 text-primary-600 focus:ring-primary-500"
-                      />
-                    )}
+                  <input
+                    type="checkbox"
+                    checked={field.value !== false}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="rounded border-app-dark-600 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-sm text-app-gray-300">Pipeline activo</span>
                 </label>
-              </div>
-            </FormField>
+              )}
+            />
           </div>
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* PIPELINE STAGES */}
-      {/* ============================================ */}
-      <div className="border-app-dark-600 bg-app-dark-800/50 p-6">
+      {/* Etapas del Pipeline */}
+      <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-app-gray-100">
+          <h3 className="text-lg font-medium text-app-gray-100">
             Etapas del Pipeline ({fields.length})
           </h3>
+          
           <Button
             type="button"
             variant="outline"
             onClick={handleAddStage}
-            disabled={fields.length >= 20}
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Añadir Etapa
           </Button>
         </div>
 
-        {/* Validation errors */}
-        {form.formState.errors.stages?.root && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-400" />
-              <span className="text-sm text-red-400">
-                {form.formState.errors.stages.root.message}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Stages list */}
-        <div className="space-y-4">
+        {/* Lista de etapas */}
+        <div className="space-y-3">
           {fields.map((field, index) => (
-            <div key={field.id} className="relative">
-              <StageItem
-                stage={field}
-                index={index}
-                isFirst={index === 0}
-                isLast={index === fields.length - 1}
-                onUpdate={(updates) => handleUpdateStage(index, updates)}
-                onDelete={() => remove(index)}
-                onMoveUp={() => index > 0 && handleMoveStage(index, index - 1)}
-                onMoveDown={() => index < fields.length - 1 && handleMoveStage(index, index + 1)}
-              />
-            </div>
+            <StageItem
+              key={field.id}
+              stage={field}
+              index={index}
+              isFirst={index === 0}
+              isLast={index === fields.length - 1}
+              onUpdate={(updates) => handleUpdateStage(index, updates)}
+              onDelete={() => remove(index)}
+            />
           ))}
         </div>
 
         {/* Empty state */}
         {fields.length === 0 && (
-          <div className="text-center py-12 border-2 border-dashed border-app-dark-600 rounded-lg">
-            <Target className="h-12 w-12 text-app-gray-400 mx-auto mb-4" />
-            <p className="text-app-gray-400 mb-4">No hay etapas configuradas</p>
-            <Button onClick={handleAddStage}>
-              <Plus className="h-4 w-4" />
-              Crear Primera Etapa
+          <div className="text-center py-8">
+            <Target className="h-12 w-12 text-app-gray-400 mx-auto mb-3" />
+            <p className="text-app-gray-400 mb-4">
+              No hay etapas configuradas
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddStage}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Añadir Primera Etapa
             </Button>
           </div>
         )}
-
-        {/* Info notice */}
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-          <div className="flex items-start gap-2">
-            <Info className="h-4 w-4 text-blue-400 mt-0.5" />
-            <div className="text-sm text-blue-300">
-              <p><strong>Consejos:</strong></p>
-              <ul className="list-disc list-inside mt-1 space-y-1 text-blue-300/80">
-                <li>Arrastra las etapas para reordenarlas</li>
-                <li>Asigna probabilidades de cierre realistas</li>
-                <li>Marca etapas de cierre ganado y perdido</li>
-                <li>Usa colores consistentes para facilitar la identificación</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* ============================================ */}
-      {/* ACTIONS */}
-      {/* ============================================ */}
+      {/* Actions */}
       {showActions && (
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={isSubmitting}
+            disabled={loading || isCreating}
           >
             Cancelar
           </Button>
+          
           <Button
             type="submit"
-            disabled={isSubmitting || !form.formState.isValid}
+            disabled={loading || isCreating || !form.formState.isValid}
+            className="min-w-32"
           >
-            {isSubmitting ? (
+            {loading || isCreating ? (
               <LoadingSpinner size="sm" />
             ) : (
               <Save className="h-4 w-4" />

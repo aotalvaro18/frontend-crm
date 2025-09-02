@@ -1,10 +1,10 @@
-// src/pages/PipelineCreatePage.tsx
+// src/pages/pipelines/PipelineCreatePage.tsx
 // ✅ PIPELINE CREATE PAGE - Siguiendo exactamente el patrón de CompanyCreatePage
-// React Query maneja el fetching, Zustand maneja las acciones y estado de UI
+// 🔥 ACTUALIZADO: Uso correcto de DEFAULT_PIPELINE_TEMPLATES y selectedTemplate
 
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitBranch, Zap, Star, Building } from 'lucide-react';
+import { ArrowLeft, GitBranch, Zap, Star, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
 
 // ============================================
 // UI & LAYOUT COMPONENTS
@@ -22,22 +22,22 @@ import PipelineEditor from '@/components/pipelines/PipelineEditor';
 // HOOKS & SERVICES - Siguiendo patrón Slice Vertical
 // ============================================
 import { usePipelineOperations } from '@/hooks/usePipelines';
-//import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
-// TYPES
+// TYPES & TEMPLATES - 🔥 AÑADIDO: Importar plantillas reales
 // ============================================
 import type { 
   CreatePipelineRequest, 
   UpdatePipelineRequest 
 } from '@/types/pipeline.types';
 
+import { DEFAULT_PIPELINE_TEMPLATES } from '@/types/pipeline.types'; // 🔥 AÑADIDO
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
 const PipelineCreatePage: React.FC = () => {
   const navigate = useNavigate();
-  //const { handleError } = useErrorHandler();
   
   // ============================================
   // LOCAL STATE
@@ -48,9 +48,7 @@ const PipelineCreatePage: React.FC = () => {
   // ============================================
   // HOOKS DE ZUSTAND (Para acciones)
   // ============================================
-  // ✅ USA EL HOOK PARA OBTENER LA LÓGICA DE MUTACIÓN Y EL ESTADO DE CARGA
   const { createPipeline, isCreating } = usePipelineOperations();
-  //const { data: templates, isLoading: isLoadingTemplates } = usePipelineTemplates();
 
   // ============================================
   // HANDLERS
@@ -64,10 +62,7 @@ const PipelineCreatePage: React.FC = () => {
   }, [navigate]);
 
   const handleSubmit = useCallback(async (data: CreatePipelineRequest | UpdatePipelineRequest) => {
-    // Llama a la función del store. La invalidación y los toasts se manejan solos.
     createPipeline(data as CreatePipelineRequest, (newPipeline) => {
-      // Este callback se ejecuta solo si la creación es exitosa.
-      // Ideal para la navegación.
       navigate(`/pipelines/${newPipeline.id}`);
     });
   }, [createPipeline, navigate]);
@@ -83,34 +78,43 @@ const PipelineCreatePage: React.FC = () => {
   }, []);
 
   // ============================================
-  // TEMPLATE DATA
+  // 🔥 TEMPLATE DATA - Usando plantillas reales de DEFAULT_PIPELINE_TEMPLATES
   // ============================================
   const templateOptions = [
     {
-      key: 'SALES',
-      name: 'Pipeline de Ventas B2B',
-      description: 'Proceso estándar de ventas para empresas',
+      key: 'BUSINESS_SALES', // 🔥 CORREGIDO: key correcto
+      name: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.name,
+      description: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.description,
       icon: Building,
       color: 'blue',
-      stages: ['Prospecto', 'Calificado', 'Propuesta', 'Negociación', 'Cerrado Ganado', 'Cerrado Perdido'],
+      stages: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.stages.map(s => s.name), // 🔥 USANDO stages reales
       popular: true,
     },
     {
-      key: 'LEAD_NURTURING', 
-      name: 'Cultivo de Leads',
-      description: 'Proceso de maduración de leads hasta conversión',
-      icon: Zap,
+      key: 'BUSINESS_SERVICE_DELIVERY', // 🔥 AÑADIDO: Nueva plantilla
+      name: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SERVICE_DELIVERY.name,
+      description: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SERVICE_DELIVERY.description,
+      icon: ClipboardCheck,
       color: 'green',
-      stages: ['Lead Frío', 'Lead Interesado', 'Lead Caliente', 'MQL', 'SQL', 'Convertido'],
+      stages: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SERVICE_DELIVERY.stages.map(s => s.name),
       popular: false,
     },
     {
-      key: 'CUSTOM',
-      name: 'Pipeline Personalizado',
-      description: 'Crea tu propio proceso desde cero',
-      icon: Star,
+      key: 'CHURCH_CONSOLIDATION', // 🔥 AÑADIDO: Plantilla de iglesia
+      name: DEFAULT_PIPELINE_TEMPLATES.CHURCH_CONSOLIDATION.name,
+      description: DEFAULT_PIPELINE_TEMPLATES.CHURCH_CONSOLIDATION.description,
+      icon: HeartHandshake,
       color: 'purple',
-      stages: ['Personalizable según tus necesidades'],
+      stages: DEFAULT_PIPELINE_TEMPLATES.CHURCH_CONSOLIDATION.stages.map(s => s.name),
+      popular: false,
+    },
+    {
+      key: 'CIVIC_VOLUNTEER_MANAGEMENT', // 🔥 AÑADIDO: Plantilla cívica
+      name: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.name,
+      description: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.description,
+      icon: Megaphone,
+      color: 'green',
+      stages: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.stages.map(s => s.name),
       popular: false,
     }
   ];
@@ -122,56 +126,38 @@ const PipelineCreatePage: React.FC = () => {
     <Page 
       title="Nuevo Pipeline" 
       breadcrumbs={[
-        { label: 'Dashboard', href: '/dashboard' },
         { label: 'Pipelines', href: '/pipelines' },
         { label: 'Nuevo Pipeline' }
-      ]} 
-      className="space-y-6"
+      ]}
+      actions={
+        <Button 
+          variant="ghost" 
+          onClick={handleBack}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      }
     >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="p-2"
-            disabled={isCreating}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Volver</span>
-          </Button>
-          
-          <div className="p-2 bg-primary-500/10 rounded-lg">
-            <GitBranch className="h-5 w-5 sm:h-6 sm:w-6 text-primary-500" />
-          </div>
-          
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
-              Nuevo Pipeline
-            </h1>
-            <p className="text-sm text-app-gray-400">
-              Crea un nuevo proceso de negocio para gestionar oportunidades
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* ============================================ */}
-      {/* TEMPLATE SELECTION - Nueva funcionalidad */}
+      {/* TEMPLATE SELECTION - Cuando se muestran plantillas */}
       {/* ============================================ */}
       {showTemplates && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold text-app-gray-100 mb-2">
+        <div className="max-w-4xl">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500/10 rounded-full mb-4">
+              <GitBranch className="w-8 h-8 text-primary-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-app-gray-100 mb-2">
               Elige una Plantilla
-            </h2>
+            </h1>
             <p className="text-sm text-app-gray-400">
               Usa una plantilla predefinida o crea tu pipeline desde cero
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {templateOptions.map((template) => {
               const Icon = template.icon;
               const colorClasses = {
@@ -183,7 +169,7 @@ const PipelineCreatePage: React.FC = () => {
               return (
                 <div
                   key={template.key}
-                  className="p-6 border border-app-dark-600 bg-app-dark-800/50 hover:bg-app-dark-700/50 transition-colors cursor-pointer rounded-lg" // <-- AÑADIDO: 'border' y 'rounded-lg'
+                  className="p-6 border border-app-dark-600 bg-app-dark-800/50 hover:bg-app-dark-700/50 transition-colors cursor-pointer rounded-lg"
                   onClick={() => handleUseTemplate(template.key)}
                 >
                   <div className="flex items-start gap-3">
@@ -240,7 +226,8 @@ const PipelineCreatePage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-app-gray-100">
-                {selectedTemplate ? `Pipeline basado en: ${templateOptions.find(t => t.key === selectedTemplate)?.name}` : 'Pipeline Personalizado'}
+                {selectedTemplate ?
+                  `Pipeline basado en: ${templateOptions.find(t => t.key === selectedTemplate)?.name}` : 'Pipeline Personalizado'}
               </h2>
               <p className="text-sm text-app-gray-400">
                 Configura los detalles y etapas de tu nuevo pipeline
@@ -258,6 +245,7 @@ const PipelineCreatePage: React.FC = () => {
 
           <PipelineEditor
             mode="create"
+            selectedTemplate={selectedTemplate} // 🔥 AÑADIDO: Pasar selectedTemplate
             onSave={handleSubmit}
             onCancel={handleCancel}
             loading={isCreating}

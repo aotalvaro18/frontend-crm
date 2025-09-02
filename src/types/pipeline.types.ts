@@ -415,7 +415,7 @@ import {
   ];
   
   /**
- * ✅ PLANTILLAS DE PROCESOS DE CLASE MUNDIAL
+ * ✅ PLANTILLAS DE PROCESOS
  * 
  * Configuraciones de pipeline predefinidas y supervisadas que se ofrecen
  * al usuario. Cada plantilla está diseñada para un vertical de negocio y un
