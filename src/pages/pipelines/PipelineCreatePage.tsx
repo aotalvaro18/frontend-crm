@@ -4,7 +4,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitBranch, Zap, Star, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
+import { ArrowLeft, GitBranch, Star, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
 
 // ============================================
 // UI & LAYOUT COMPONENTS
@@ -22,14 +22,6 @@ import PipelineEditor from '@/components/pipelines/PipelineEditor';
 // HOOKS & SERVICES - Siguiendo patrón Slice Vertical
 // ============================================
 import { usePipelineOperations } from '@/hooks/usePipelines';
-
-// ============================================
-// TYPES & TEMPLATES - 🔥 AÑADIDO: Importar plantillas reales
-// ============================================
-import type { 
-  CreatePipelineRequest, 
-  UpdatePipelineRequest 
-} from '@/types/pipeline.types';
 
 import { DEFAULT_PIPELINE_TEMPLATES } from '@/types/pipeline.types'; // 🔥 AÑADIDO
 
@@ -61,11 +53,10 @@ const PipelineCreatePage: React.FC = () => {
     navigate('/pipelines');
   }, [navigate]);
 
-  const handleSubmit = useCallback(async (data: CreatePipelineRequest | UpdatePipelineRequest) => {
-    createPipeline(data as CreatePipelineRequest, (newPipeline) => {
-      navigate(`/pipelines/${newPipeline.id}`);
-    });
-  }, [createPipeline, navigate]);
+  const handleSubmit = useCallback(() => {
+    // La lógica ya está manejada dentro del PipelineEditor
+    // Este callback se ejecuta cuando el editor termina exitosamente
+  }, []);
 
   const handleUseTemplate = useCallback((templateKey: string) => {
     setSelectedTemplate(templateKey);
@@ -109,13 +100,13 @@ const PipelineCreatePage: React.FC = () => {
       popular: false,
     },
     {
-      key: 'CIVIC_VOLUNTEER_MANAGEMENT', // 🔥 AÑADIDO: Plantilla cívica
-      name: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.name,
-      description: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.description,
-      icon: Megaphone,
-      color: 'green',
-      stages: DEFAULT_PIPELINE_TEMPLATES.CIVIC_VOLUNTEER_MANAGEMENT.stages.map(s => s.name),
-      popular: false,
+        key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',  // 🔥 CAMBIO: era CIVIC_VOLUNTEER_MANAGEMENT
+        name: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.name,
+        description: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.description,
+        icon: Megaphone,
+        color: 'green',
+        stages: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.stages.map(s => s.name),
+        popular: false,
     }
   ];
 
@@ -126,20 +117,43 @@ const PipelineCreatePage: React.FC = () => {
     <Page 
       title="Nuevo Pipeline" 
       breadcrumbs={[
-        { label: 'Pipelines', href: '/pipelines' },
+        { label: 'Pipelines', href: '/pipelines' }, // Asumiendo que /pipelines es la lista Kanban
+        { label: 'Configuración', href: '/settings/pipelines' }, // Enlace a la administración
         { label: 'Nuevo Pipeline' }
       ]}
-      actions={
-        <Button 
-          variant="ghost" 
-          onClick={handleBack}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      }
+      className="space-y-6"
     >
+      {/* ============================================ */}
+      {/* HEADER - SEPARADO DEL COMPONENTE PAGE */}
+      {/* ============================================ */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="p-2"
+            disabled={isCreating}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Volver a Configuración</span>
+          </Button>
+          
+          <div className="p-2 bg-primary-500/10 rounded-lg">
+            <GitBranch className="h-5 w-5 sm:h-6 sm:w-6 text-primary-500" />
+          </div>
+          
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
+              Nuevo Pipeline
+            </h1>
+            <p className="text-sm text-app-gray-400">
+              Crea un nuevo proceso de negocio para gestionar oportunidades
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ============================================ */}
       {/* TEMPLATE SELECTION - Cuando se muestran plantillas */}
       {/* ============================================ */}
@@ -245,7 +259,7 @@ const PipelineCreatePage: React.FC = () => {
 
           <PipelineEditor
             mode="create"
-            selectedTemplate={selectedTemplate} // 🔥 AÑADIDO: Pasar selectedTemplate
+            selectedTemplate={selectedTemplate}
             onSave={handleSubmit}
             onCancel={handleCancel}
             loading={isCreating}
@@ -257,7 +271,7 @@ const PipelineCreatePage: React.FC = () => {
       {/* ============================================ */}
       {/* HELPER TEXT - Información adicional */}
       {/* ============================================ */}
-      <div className="max-w-4xl">
+      <div className="max-w-4xl mt-8"> {/* Añadido margen superior para separación */}
         <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">

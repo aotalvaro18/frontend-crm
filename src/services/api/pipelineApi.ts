@@ -489,10 +489,6 @@ export class PipelineApiService {
       throw new Error('Stage name cannot exceed 50 characters');
     }
 
-    if (!request.pipelineId) {
-      throw new Error('Pipeline ID is required for stage creation');
-    }
-
     if (request.probability !== undefined && (request.probability < 0 || request.probability > 100)) {
       throw new Error('Stage probability must be between 0 and 100');
     }

@@ -27,15 +27,7 @@ import {
   PIPELINE_DETAIL_QUERY_KEY 
 } from '@/hooks/usePipelines';
 import { pipelineApi } from '@/services/api/pipelineApi';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
-
-// ============================================
-// TYPES
-// ============================================
-import type { 
-  CreatePipelineRequest, 
-  UpdatePipelineRequest 
-} from '@/types/pipeline.types';
+//import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
 // MAIN COMPONENT
@@ -43,7 +35,7 @@ import type {
 const PipelineEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { handleError } = useErrorHandler();
+  //const { handleError } = useErrorHandler();
   
   // ============================================
   // DATA FETCHING
@@ -77,16 +69,10 @@ const PipelineEditPage: React.FC = () => {
     navigate(`/pipelines/${pipelineId}`);
   }, [navigate, pipelineId]);
 
-  const handleSubmit = useCallback(async (data: CreatePipelineRequest | UpdatePipelineRequest) => {
-    if (!pipeline) return;
-    
-    // Llama a la función del store. La invalidación y los toasts se manejan solos.
-    updatePipeline(pipelineId, data as UpdatePipelineRequest, () => {
-      // Este callback se ejecuta solo si la actualización es exitosa.
-      // Navegar de vuelta al detalle.
-      navigate(`/pipelines/${pipelineId}`);
-    });
-  }, [updatePipeline, pipelineId, navigate, pipeline]);
+  const handleSubmit = useCallback(() => {
+    // La lógica ya está manejada dentro del PipelineEditor
+    navigate(`/pipelines/${pipelineId}`);
+  }, [navigate, pipelineId]);
 
   // ============================================
   // RENDER STATES

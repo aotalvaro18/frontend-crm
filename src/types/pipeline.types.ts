@@ -13,6 +13,31 @@ import {
     BaseMetrics,
     GroupedMetrics,
   } from './api.types';
+
+// ============================================
+// ENUMS DEL BACKEND
+// ============================================
+
+/**
+ * Categorías de pipeline (matching PipelineCategory del backend)
+ */
+export type PipelineCategory = 
+  | 'CHURCH'       // ⛪ Pipeline para iglesias
+  | 'BUSINESS'     // 🏢 Pipeline empresarial/comercial  
+  | 'NONPROFIT'    // 🤝 Pipeline para ONGs
+  | 'EDUCATION'    // 🎓 Pipeline para instituciones educativas
+  | 'GENERAL';     // 📋 Pipeline general/personalizado
+
+/**
+ * Labels para las categorías (matching backend)
+ */
+export const PIPELINE_CATEGORY_LABELS: Record<PipelineCategory, string> = {
+  CHURCH: 'Iglesia',
+  BUSINESS: 'Empresarial', 
+  NONPROFIT: 'Sin Fines de Lucro',
+  EDUCATION: 'Educativo',
+  GENERAL: 'General',
+};
   
   // ============================================
   // PIPELINE STAGE TYPES (Matching PipelineStageDTO)
@@ -44,15 +69,26 @@ import {
     ownerCognitoSub: CognitoSub;
     ownerName?: string;         // Computed field
   }
+
+/**
+ * Request para crear una nueva etapa (matching StageRequest del backend)
+ */
+export interface CreatePipelineStageRequest {
+  // Información básica
+  name: string;
+  description?: string;
+  position: number;                        // 🔥 CORREGIDO: era 'order'
+  color?: string;
+  probability?: number;
   
-  /**
-   * Request para crear una nueva etapa
-   */
-  export type CreatePipelineStageRequest = Omit<
-    PipelineStage, 
-    keyof BaseEntity | 'dealCount' | 'totalValue' | 'averageDealValue' | 
-    'averageTimeInStage' | 'ownerName'
-  >;
+  // Estados de cierre (matching backend)
+  isWon?: boolean;                         // 🔥 CORREGIDO: era 'isClosedWon'
+  isLost?: boolean;                        // 🔥 CORREGIDO: era 'isClosedLost'
+  
+  // Configuración adicional (matching backend)
+  autoMoveDays?: number;
+  active?: boolean;
+}
   
   /**
    * Request para actualizar una etapa existente
@@ -224,23 +260,34 @@ import {
   // ============================================
   // REQUEST & RESPONSE TYPES (Para APIs)
   // ============================================
+
+/**
+ * Request para crear un nuevo pipeline (matching CreatePipelineRequest del backend)
+ */
+export interface CreatePipelineRequest {
+  // Información básica requerida (matching backend)
+  name: string;
+  category: PipelineCategory;              // 🔥 CORREGIDO: era 'type'
   
-  /**
-   * Request para crear un nuevo pipeline
-   */
+  // Información opcional
+  description?: string;
+  icon?: string;
+  color?: string;
   
-    export type CreatePipelineRequest = Omit<
-    Pipeline, 
-    keyof BaseEntity | 'ownerCognitoSub' | 'stages' | // <-- Omitir ownerCognitoSub temporalmente
-    'totalDeals' | 'totalValue' | 'averageDealsPerStage' | 'averageCloseTime' | 
-    'conversionRate' | 'overallHealthScore' | 'performanceStatus' | 'stageCount' | 
-    'hasClosedWonStage' | 'hasClosedLostStage' | 'canBeDeleted' | 'ownerName'
-    > & {
-    // ✅ HACERLO OPCIONAL AQUÍ: El backend asignará al usuario actual
-    ownerCognitoSub?: CognitoSub; 
-    // Etapas iniciales del pipeline (sin IDs)
-    stages: CreatePipelineStageRequest[];
-    };
+  // Configuración (matching backend)
+  settings?: Record<string, any>;
+  trackingMetrics?: string[];
+  active?: boolean;                        // 🔥 CORREGIDO: era 'isActive'  
+  isDefault?: boolean;
+  
+  // Configuraciones avanzadas (matching backend)
+  enableAutomations?: boolean;
+  enableNotifications?: boolean;
+  enableReports?: boolean;
+  
+  // Etapas iniciales (matching StageRequest del backend)
+  stages: CreatePipelineStageRequest[];
+}
   
   /**
    * Request para actualizar un pipeline existente
@@ -480,13 +527,13 @@ import {
     },
     
     // ===============================================
-    // PLANTILLA PARA ORGANIZACIONES CÍVICAS
+    // PLANTILLA PARA ORGANIZACIONES SIN FINES DE LUCRO
     // ===============================================
   
-    CIVIC_VOLUNTEER_MANAGEMENT: {
-      key: 'CIVIC_VOLUNTEER_MANAGEMENT',
+    NONPROFIT_VOLUNTEER_MANAGEMENT: {
+      key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',
       name: 'Gestión de Voluntarios',
-      description: 'Proceso para reclutar, entrenar e integrar voluntarios a una causa o campaña.',
+      description: 'Proceso para reclutar, entrenar e integrar voluntarios a una causa u ONG.',
       icon: 'Megaphone',
       stages: [
         { name: 'Interesado Registrado', order: 0, color: DEFAULT_STAGE_COLORS[0] },
@@ -497,4 +544,4 @@ import {
       ],
     },
   
-  } as const; 
+  } as const;

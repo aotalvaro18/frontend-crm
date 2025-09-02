@@ -38,8 +38,7 @@ import {
 import type {
   PipelineDTO,
   CreatePipelineRequest,
-  UpdatePipelineRequest,
-  CreatePipelineStageRequest
+  UpdatePipelineRequest
 } from '@/types/pipeline.types';
 
 import { 
@@ -80,9 +79,9 @@ type PipelineEditorForm = z.infer<typeof PipelineEditorSchema>;
 // ============================================
 export interface PipelineEditorProps {
   pipeline?: PipelineDTO;
-  selectedTemplate?: string; // 🔥 AÑADIDO: Para cargar plantillas
+  selectedTemplate?: string | null; // 🔥 AÑADIDO: Para cargar plantillas
   mode: 'create' | 'edit';
-  onSave?: (pipeline: PipelineDTO) => void;
+  onSave?: () => void;
   onCancel?: () => void;
   loading?: boolean;
   showActions?: boolean;
@@ -422,37 +421,50 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
 
   const handleSubmit = async (data: PipelineEditorForm) => {
     try {
-      // Preparar stages con orders actualizados
-      const stagesWithOrder = data.stages.map((stage, index) => ({
-        ...stage,
-        order: index,
+      // Preparar stages según CreatePipelineRequest.StageRequest (clase interna)
+      const stagesForBackend = data.stages.map((stage, index) => ({
+        name: stage.name,
+        description: stage.description || undefined,
+        position: index + 1, // position (NO orderIndex)
+        color: stage.color,
+        probability: stage.probability || undefined,
+        isWon: stage.isClosedWon || false, // isWon (correcto)
+        isLost: stage.isClosedLost || false, // isLost (correcto) 
+        autoMoveDays: undefined, // campo opcional del DTO
+        active: true,
+        // NO incluir pipelineId (se maneja en el nivel superior)
       }));
-
+  
       if (mode === 'create') {
         const request: CreatePipelineRequest = {
           name: data.name,
-          description: data.description,
-          isDefault: data.isDefault,
-          isActive: data.isActive,
-          stages: stagesWithOrder.map(({ id, ...stage }) => stage as CreatePipelineStageRequest),
+          description: data.description || undefined,
+          category: 'BUSINESS',
+          icon: undefined,
+          color: undefined,
+          active: data.isActive !== false,
+          isDefault: data.isDefault || false,
+          enableAutomations: false,
+          enableNotifications: true,
+          enableReports: true,
+          stages: stagesForBackend, // Ahora debería coincidir con StageRequest[]
         };
-
+  
         await createPipeline(request, (newPipeline) => {
-          onSave?.(newPipeline);
+            onSave?.();
         });
       } else if (pipeline) {
         const request: UpdatePipelineRequest = {
           name: data.name,
-          description: data.description,
+          description: data.description || undefined,
           isDefault: data.isDefault,
-          isActive: data.isActive,
+          active: data.isActive,
           version: pipeline.version,
-          // TODO: Manejar stages existentes vs nuevos
-          stages: stagesWithOrder as any,
+          stages: stagesForBackend as any,
         };
-
+  
         await updatePipeline(pipeline.id, request, () => {
-          onSave?.(pipeline);
+            onSave?.();
         });
       }
     } catch (error) {

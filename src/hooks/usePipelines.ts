@@ -216,9 +216,7 @@ export const usePipelineStore = create<PipelineState>()(
           // Invalidar caché de stages y pipeline padre
           await queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] });
           await queryClient.invalidateQueries({ queryKey: ['pipelines'] });
-          if (request.pipelineId) {
-            await queryClient.invalidateQueries({ queryKey: PIPELINE_DETAIL_QUERY_KEY(request.pipelineId) });
-          }
+          
           toast.success('Etapa creada exitosamente');
           onSuccess?.(newStage);
         } catch (error: unknown) {
@@ -232,14 +230,18 @@ export const usePipelineStore = create<PipelineState>()(
       updateStage: async (id, request, onSuccess) => {
         set(state => ({ updatingStages: new Set(state.updatingStages).add(id) }));
         try {
+          // 1. Llama a la API. La respuesta 'updatedStage' SÍ contiene el pipelineId
           const updatedStage = await pipelineApi.updateStage(id, request);
-          // Invalidar caché relacionado
+          
+          // 2. Invalida las cachés relacionadas con la etapa misma
           await queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] });
           await queryClient.invalidateQueries({ queryKey: PIPELINE_STAGE_DETAIL_QUERY_KEY(id) });
-          // Si la etapa pertenece a un pipeline específico, invalidar el pipeline también
-          if (request.pipelineId) {
-            await queryClient.invalidateQueries({ queryKey: PIPELINE_DETAIL_QUERY_KEY(request.pipelineId) });
+
+          // 3. ✅ LA SOLUCIÓN: Usa el pipelineId de la RESPUESTA para invalidar al padre
+          if (updatedStage.pipelineId) {
+            await queryClient.invalidateQueries({ queryKey: PIPELINE_DETAIL_QUERY_KEY(updatedStage.pipelineId) });
           }
+          
           toast.success('Etapa actualizada exitosamente');
           onSuccess?.();
         } catch (error: unknown) {
