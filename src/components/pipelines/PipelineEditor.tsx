@@ -70,6 +70,8 @@ const PipelineEditorSchema = z.object({
   isActive: z.boolean().optional().default(true),
   type: z.string().min(1, 'El tipo de pipeline es obligatorio'),
   stages: z.array(StageSchema).min(1, 'Debe tener al menos una etapa'),
+  icon: z.string().optional(),
+  color: z.string().optional(),
 });
 
 type PipelineEditorForm = z.infer<typeof PipelineEditorSchema>;
@@ -326,6 +328,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       isDefault: false,
       isActive: true,
       type: 'SALES',
+      icon: 'GitBranch',
+      color: '#3B82F6',
       stages: [
         { name: 'Prospecto', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
         { name: 'Calificado', order: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1] },
@@ -382,6 +386,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         isDefault: false,
         isActive: true,
         type: 'SALES',
+        icon: template.icon || 'GitBranch',
+        color: '#3B82F6',
         stages: template.stages.map((stage, index) => normalizeTemplateStage(stage, index)),
         });
       }
@@ -440,8 +446,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           name: data.name,
           description: data.description || undefined,
           category: 'BUSINESS',
-          icon: undefined,
-          color: undefined,
+          icon: data.icon || undefined,
+          color: data.color || undefined,
           active: data.isActive !== false,
           isDefault: data.isDefault || false,
           enableAutomations: false,
@@ -522,6 +528,59 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
                   <option value="SUPPORT">Soporte</option>
                   <option value="CUSTOM">Personalizado</option>
                 </select>
+              </FormField>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          <Controller
+            name="icon"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <FormField
+                label="Icono del Pipeline"
+                name="icon"
+                error={fieldState.error?.message}
+              >
+                <select
+                  {...field}
+                  className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
+                >
+                  <option value="GitBranch">GitBranch (Ramificación)</option>
+                  <option value="TrendingUp">TrendingUp (Ventas)</option>
+                  <option value="Users">Users (Equipo)</option>
+                  <option value="Target">Target (Objetivos)</option>
+                  <option value="Briefcase">Briefcase (Negocio)</option>
+                  <option value="Heart">Heart (Relaciones)</option>
+                  <option value="Zap">Zap (Rápido)</option>
+                </select>
+              </FormField>
+            )}
+          />
+
+          <Controller
+            name="color"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <FormField
+                label="Color del Pipeline"
+                name="color"
+                error={fieldState.error?.message}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    {...field}
+                    className="w-12 h-10 rounded border border-app-dark-600 bg-app-dark-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    {...field}
+                    placeholder="#3B82F6"
+                    className="flex-1 rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
+                  />
+                </div>
               </FormField>
             )}
           />

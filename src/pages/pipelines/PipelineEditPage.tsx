@@ -62,17 +62,17 @@ const PipelineEditPage: React.FC = () => {
   // HANDLERS
   // ============================================
   const handleBack = useCallback(() => {
-    navigate(`/pipelines/${pipelineId}`);
-  }, [navigate, pipelineId]);
-
+    navigate('/settings/pipelines');
+  }, [navigate]);
+  
   const handleCancel = useCallback(() => {
-    navigate(`/pipelines/${pipelineId}`);
-  }, [navigate, pipelineId]);
-
+    navigate('/settings/pipelines');
+  }, [navigate]);
+  
   const handleSubmit = useCallback(() => {
-    // La lógica ya está manejada dentro del PipelineEditor
-    navigate(`/pipelines/${pipelineId}`);
-  }, [navigate, pipelineId]);
+    // Navegar de vuelta a la configuración de pipelines después del éxito
+    navigate('/settings/pipelines');
+  }, [navigate]);
 
   // ============================================
   // RENDER STATES
@@ -84,7 +84,8 @@ const PipelineEditPage: React.FC = () => {
         title="Error al cargar Pipeline"
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Pipelines', href: '/pipelines' },
+          { label: 'Configuración', href: '/settings' },
+          { label: 'Pipelines', href: '/settings/pipelines' },
           { label: 'Error' }
         ]}
       >
@@ -95,7 +96,7 @@ const PipelineEditPage: React.FC = () => {
             {error.message || 'No se pudo cargar la información del pipeline para editarlo.'}
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" onClick={() => navigate('/pipelines')}>
+            <Button variant="outline" onClick={() => navigate('/settings/pipelines')}>
               Volver a Pipelines
             </Button>
             <Button onClick={() => refetch()}>
@@ -113,7 +114,8 @@ const PipelineEditPage: React.FC = () => {
         title="Cargando Pipeline..."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Pipelines', href: '/pipelines' },
+          { label: 'Configuración', href: '/settings' },
+          { label: 'Pipelines', href: '/settings/pipelines' },
           { label: 'Editando...' }
         ]}
       >
@@ -135,7 +137,8 @@ const PipelineEditPage: React.FC = () => {
       title={`Editar: ${pipeline.name}`}
       breadcrumbs={[
         { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Pipelines', href: '/pipelines' },
+        { label: 'Configuración', href: '/settings' },
+        { label: 'Pipelines', href: '/settings/pipelines' },
         { label: pipeline.name, href: `/pipelines/${pipeline.id}` },
         { label: 'Editar' }
       ]} 
@@ -175,7 +178,7 @@ const PipelineEditPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={() => navigate(`/pipelines/${pipeline.id}`)}
+            onClick={() => navigate(`/settings/pipelines/${pipeline.id}`)}
             disabled={isUpdating(pipeline.id)}
           >
             <Eye className="h-4 w-4" />
