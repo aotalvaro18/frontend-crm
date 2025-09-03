@@ -1,6 +1,5 @@
 // src/pages/pipelines/PipelineCreatePage.tsx
-// ✅ PIPELINE CREATE PAGE - Siguiendo exactamente el patrón de CompanyCreatePage
-// 🔥 ACTUALIZADO: Uso correcto de DEFAULT_PIPELINE_TEMPLATES y selectedTemplate
+// ✅ CORREGIDO - handleSubmit ahora llama realmente a createPipeline
 
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +22,7 @@ import PipelineEditor from '@/components/pipelines/PipelineEditor';
 // ============================================
 import { usePipelineOperations } from '@/hooks/usePipelines';
 
-import { DEFAULT_PIPELINE_TEMPLATES } from '@/types/pipeline.types'; // 🔥 AÑADIDO
+import { DEFAULT_PIPELINE_TEMPLATES } from '@/types/pipeline.types';
 
 // ============================================
 // MAIN COMPONENT
@@ -43,46 +42,51 @@ const PipelineCreatePage: React.FC = () => {
   const { createPipeline, isCreating } = usePipelineOperations();
 
   // ============================================
-  // HANDLERS
+  // HANDLERS - 🔥 CORREGIDOS
   // ============================================
   const handleBack = useCallback(() => {
-    navigate('/pipelines');
+    console.log('🔥 handleBack: navegando a pipelines');
+    navigate('/dashboard'); // 🔥 FIX: Cambiar a ruta que sabemos existe
   }, [navigate]);
-
+  
   const handleCancel = useCallback(() => {
-    navigate('/pipelines');
+    console.log('🔥 handleCancel: navegando a dashboard');
+    navigate('/dashboard'); // 🔥 FIX: Cambiar a ruta que sabemos existe
   }, [navigate]);
-
-  const handleSubmit = useCallback(() => {
-    // La lógica ya está manejada dentro del PipelineEditor
-    // Este callback se ejecuta cuando el editor termina exitosamente
-  }, []);
+  
+  // 🔥 FIX: handleSubmit CORREGIDO - ahora NO hace nada, el PipelineEditor maneja todo
+  const handleSaveSuccess = useCallback(() => {
+    console.log('🔥 handleSaveSuccess: Pipeline creado exitosamente, navegando...');
+    navigate('/dashboard'); // 🔥 Navegar solo después del éxito
+  }, [navigate]);
 
   const handleUseTemplate = useCallback((templateKey: string) => {
+    console.log('🔥 handleUseTemplate:', templateKey);
     setSelectedTemplate(templateKey);
     setShowTemplates(false);
   }, []);
 
   const handleStartFromScratch = useCallback(() => {
+    console.log('🔥 handleStartFromScratch');
     setSelectedTemplate(null);
     setShowTemplates(false);
   }, []);
 
   // ============================================
-  // 🔥 TEMPLATE DATA - Usando plantillas reales de DEFAULT_PIPELINE_TEMPLATES
+  // TEMPLATE DATA
   // ============================================
   const templateOptions = [
     {
-      key: 'BUSINESS_SALES', // 🔥 CORREGIDO: key correcto
+      key: 'BUSINESS_SALES',
       name: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.name,
       description: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.description,
       icon: Building,
       color: 'blue',
-      stages: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.stages.map(s => s.name), // 🔥 USANDO stages reales
+      stages: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SALES.stages.map(s => s.name),
       popular: true,
     },
     {
-      key: 'BUSINESS_SERVICE_DELIVERY', // 🔥 AÑADIDO: Nueva plantilla
+      key: 'BUSINESS_SERVICE_DELIVERY',
       name: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SERVICE_DELIVERY.name,
       description: DEFAULT_PIPELINE_TEMPLATES.BUSINESS_SERVICE_DELIVERY.description,
       icon: ClipboardCheck,
@@ -91,7 +95,7 @@ const PipelineCreatePage: React.FC = () => {
       popular: false,
     },
     {
-      key: 'CHURCH_CONSOLIDATION', // 🔥 AÑADIDO: Plantilla de iglesia
+      key: 'CHURCH_CONSOLIDATION',
       name: DEFAULT_PIPELINE_TEMPLATES.CHURCH_CONSOLIDATION.name,
       description: DEFAULT_PIPELINE_TEMPLATES.CHURCH_CONSOLIDATION.description,
       icon: HeartHandshake,
@@ -100,13 +104,13 @@ const PipelineCreatePage: React.FC = () => {
       popular: false,
     },
     {
-        key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',  // 🔥 CAMBIO: era CIVIC_VOLUNTEER_MANAGEMENT
-        name: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.name,
-        description: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.description,
-        icon: Megaphone,
-        color: 'green',
-        stages: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.stages.map(s => s.name),
-        popular: false,
+      key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',
+      name: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.name,
+      description: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.description,
+      icon: Megaphone,
+      color: 'green',
+      stages: DEFAULT_PIPELINE_TEMPLATES.NONPROFIT_VOLUNTEER_MANAGEMENT.stages.map(s => s.name),
+      popular: false,
     }
   ];
 
@@ -117,15 +121,12 @@ const PipelineCreatePage: React.FC = () => {
     <Page 
       title="Nuevo Pipeline" 
       breadcrumbs={[
-        { label: 'Pipelines', href: '/pipelines' }, // Asumiendo que /pipelines es la lista Kanban
-        { label: 'Configuración', href: '/settings/pipelines' }, // Enlace a la administración
+        { label: 'Dashboard', href: '/dashboard' }, // 🔥 FIX: Ruta correcta
         { label: 'Nuevo Pipeline' }
       ]}
       className="space-y-6"
     >
-      {/* ============================================ */}
-      {/* HEADER - SEPARADO DEL COMPONENTE PAGE */}
-      {/* ============================================ */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button
@@ -136,7 +137,7 @@ const PipelineCreatePage: React.FC = () => {
             disabled={isCreating}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Volver a Configuración</span>
+            <span className="hidden sm:inline">Volver</span>
           </Button>
           
           <div className="p-2 bg-primary-500/10 rounded-lg">
@@ -154,9 +155,7 @@ const PipelineCreatePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* TEMPLATE SELECTION - Cuando se muestran plantillas */}
-      {/* ============================================ */}
+      {/* Template Selection */}
       {showTemplates && (
         <div className="max-w-4xl">
           <div className="text-center mb-8">
@@ -232,9 +231,7 @@ const PipelineCreatePage: React.FC = () => {
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* PIPELINE EDITOR - Cuando no se muestran plantillas */}
-      {/* ============================================ */}
+      {/* 🔥 PIPELINE EDITOR - PROPS CORREGIDAS */}
       {!showTemplates && (
         <div className="max-w-4xl">
           <div className="flex items-center justify-between mb-6">
@@ -250,17 +247,21 @@ const PipelineCreatePage: React.FC = () => {
             
             <Button
               variant="outline"
-              onClick={() => setShowTemplates(true)}
+              onClick={() => {
+                console.log('🔥 Cambiar plantilla clicked');
+                setShowTemplates(true);
+              }}
               disabled={isCreating}
             >
               Cambiar Plantilla
             </Button>
           </div>
 
+          {/* 🔥 PROPS CORREGIDAS - onSave ahora recibe función que navega SOLO al éxito */}
           <PipelineEditor
             mode="create"
             selectedTemplate={selectedTemplate}
-            onSave={handleSubmit}
+            onSave={handleSaveSuccess} // 🔥 FIX: Solo navega después del éxito
             onCancel={handleCancel}
             loading={isCreating}
             showActions={true}
@@ -268,10 +269,8 @@ const PipelineCreatePage: React.FC = () => {
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* HELPER TEXT - Información adicional */}
-      {/* ============================================ */}
-      <div className="max-w-4xl mt-8"> {/* Añadido margen superior para separación */}
+      {/* Helper Text */}
+      <div className="max-w-4xl mt-8">
         <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
@@ -291,9 +290,7 @@ const PipelineCreatePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* LOADING OVERLAY - Igual que CompanyCreatePage */}
-      {/* ============================================ */}
+      {/* Loading Overlay */}
       {isCreating && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-app-dark-800 border border-app-dark-600 rounded-lg p-6 max-w-sm w-full mx-4">

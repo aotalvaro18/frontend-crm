@@ -1,6 +1,6 @@
 // src/components/pipelines/PipelineEditor.tsx
-// ✅ PIPELINE EDITOR - VERSIÓN CORREGIDA - Modal persistente sin re-mounts
-// 🔥 SOLUCIÓN RADICAL: Estado de expansión independiente del formulario
+// ✅ PIPELINE EDITOR - VERSIÓN FINAL CORREGIDA
+// Funciona perfectamente con el store y PipelineCreatePage
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -13,9 +13,8 @@ import {
 } from 'lucide-react';
 
 // ============================================
-// UI COMPONENTS - Reutilizando componentes existentes
+// UI COMPONENTS
 // ============================================
-
 import { Button, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -42,16 +41,26 @@ import type {
 } from '@/types/pipeline.types';
 
 import { 
-    DEFAULT_STAGE_COLORS, // <-- Importa la constante como un VALOR
-    DEFAULT_PIPELINE_TEMPLATES // 🔥 AÑADIDO: Importar plantillas
+    DEFAULT_STAGE_COLORS,
+    DEFAULT_PIPELINE_TEMPLATES 
   } from '@/types/pipeline.types';
 
 import { cn } from '@/utils/cn';
 
 // ============================================
-// ZOD VALIDATION SCHEMAS - TOLERANTES
+// DEBOUNCE UTILITY
 // ============================================
+const debounce = <T extends (...args: any[]) => void>(func: T, wait: number): T => {
+  let timeout: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
+};
 
+// ============================================
+// ZOD VALIDATION SCHEMAS
+// ============================================
 const StageSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
@@ -90,7 +99,7 @@ export interface PipelineEditorProps {
 }
 
 // ============================================
-// 🔥 CONTEXT PARA ESTADO DE EXPANSIÓN GLOBAL
+// CONTEXT PARA ESTADO DE EXPANSIÓN GLOBAL
 // ============================================
 interface StageExpansionContextType {
   expandedStages: Set<number>;
@@ -103,7 +112,7 @@ const StageExpansionContext = React.createContext<StageExpansionContextType>({
 });
 
 // ============================================
-// STAGE ITEM COMPONENT - 🔥 CON ESTADO PERSISTENTE
+// STAGE ITEM COMPONENT
 // ============================================
 interface StageItemProps {
   stage: PipelineEditorForm['stages'][0];
@@ -124,17 +133,31 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
   onDelete,
   isDragging = false 
 }) => {
-  // 🔥 USAR CONTEXTO PARA ESTADO PERSISTENTE
   const { expandedStages, toggleExpanded } = React.useContext(StageExpansionContext);
   const isExpanded = expandedStages.has(index);
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [localValues, setLocalValues] = useState({
+    description: stage.description || '',
+    probability: stage.probability || 0
+  });
 
-  // 🔥 REFS PARA VALORES QUE NO DEBEN CAUSAR RE-RENDERS
-  const descriptionRef = useRef<HTMLInputElement>(null);
-  const probabilityRef = useRef<HTMLInputElement>(null);
+  // Sincronizar estado local con props
+  useEffect(() => {
+    setLocalValues({
+      description: stage.description || '',
+      probability: stage.probability || 0
+    });
+  }, [stage.description, stage.probability]);
 
-  // 🔥 HANDLERS MEMOIZADOS Y OPTIMIZADOS
+  // Debounce las actualizaciones
+  const debouncedUpdate = useCallback(
+    debounce((updates: Partial<PipelineEditorForm['stages'][0]>) => {
+      onUpdate(updates);
+    }, 300),
+    [onUpdate]
+  );
+
   const handleColorChange = useCallback((color: string) => {
     onUpdate({ color });
   }, [onUpdate]);
@@ -162,30 +185,32 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
     onUpdate({ name: value });
   }, [onUpdate]);
 
-  // 🔥 HANDLERS PARA DESCRIPCIÓN CON REFS
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    // Actualizar solo cuando termine de escribir (onBlur)
-  }, []);
+    const value = e.target.value;
+    setLocalValues(prev => ({ ...prev, description: value }));
+    debouncedUpdate({ description: value });
+  }, [debouncedUpdate]);
 
   const handleDescriptionBlur = useCallback(() => {
-    if (descriptionRef.current) {
-      onUpdate({ description: descriptionRef.current.value });
+    if (localValues.description !== stage.description) {
+      onUpdate({ description: localValues.description });
     }
-  }, [onUpdate]);
+  }, [localValues.description, stage.description, onUpdate]);
 
   const handleProbabilityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    // Actualizar solo cuando termine de escribir (onBlur)
-  }, []);
+    const value = parseInt(e.target.value) || 0;
+    const clampedValue = Math.max(0, Math.min(100, value));
+    setLocalValues(prev => ({ ...prev, probability: clampedValue }));
+    debouncedUpdate({ probability: clampedValue });
+  }, [debouncedUpdate]);
 
   const handleProbabilityBlur = useCallback(() => {
-    if (probabilityRef.current) {
-      const value = parseInt(probabilityRef.current.value) || 0;
-      const clampedValue = Math.max(0, Math.min(100, value));
-      onUpdate({ probability: clampedValue });
+    if (localValues.probability !== stage.probability) {
+      onUpdate({ probability: localValues.probability });
     }
-  }, [onUpdate]);
+  }, [localValues.probability, stage.probability, onUpdate]);
 
   const getStageIcon = () => {
     if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -200,7 +225,6 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
         isDragging && "opacity-50 scale-95",
         isExpanded && "ring-2 ring-primary-500/20"
       )}>
-        {/* Header de la etapa */}
         <div className="p-4">
           <div className="flex items-center gap-3">
             {/* Drag handle */}
@@ -270,7 +294,7 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
             </div>
           </div>
 
-          {/* 🔥 EXPANDED SETTINGS - COMPLETAMENTE SEPARADO DEL FORM STATE */}
+          {/* Expanded settings */}
           {isExpanded && (
             <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -279,8 +303,7 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
                     Descripción
                   </label>
                   <Input
-                    ref={descriptionRef}
-                    defaultValue={stage.description || ''}
+                    value={localValues.description}
                     onChange={handleDescriptionChange}
                     onBlur={handleDescriptionBlur}
                     onClick={(e) => e.stopPropagation()}
@@ -295,11 +318,10 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
                     Probabilidad %
                   </label>
                   <Input
-                    ref={probabilityRef}
                     type="number"
                     min="0"
                     max="100"
-                    defaultValue={stage.probability || 0}
+                    value={localValues.probability}
                     onChange={handleProbabilityChange}
                     onBlur={handleProbabilityBlur}
                     onClick={(e) => e.stopPropagation()}
@@ -401,9 +423,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   loading = false,
   showActions = true,
 }) => {
-  // ============================================
-  // 🔥 ESTADO GLOBAL PARA EXPANSIÓN DE ETAPAS
-  // ============================================
+  // Estado global para expansión de etapas
   const [expandedStages, setExpandedStages] = useState<Set<number>>(new Set());
 
   const toggleExpanded = useCallback((index: number) => {
@@ -423,18 +443,14 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
     toggleExpanded
   }), [expandedStages, toggleExpanded]);
 
-  // ============================================
-  // HOOKS
-  // ============================================
+  // Hooks
   const { createPipeline, updatePipeline, isCreating } = usePipelineOperations();
   const { data: pipelineTypes, isLoading: isLoadingTypes } = usePipelineTypes();
 
-  // ============================================
-  // FORM SETUP - OPTIMIZADO PARA MENOS RE-RENDERS
-  // ============================================
+  // Form setup
   const form = useForm<PipelineEditorForm>({
     resolver: zodResolver(PipelineEditorSchema),
-    mode: 'onSubmit', // 🔥 SOLO VALIDAR AL ENVIAR
+    mode: 'onSubmit',
     reValidateMode: 'onSubmit',
     defaultValues: {
       name: '',
@@ -451,14 +467,12 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
     },
   });
 
-  const { fields, append, remove, move, update } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: 'stages',
   });
 
-  // ============================================
-  // EFFECTS
-  // ============================================
+  // Effects
   const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
     name: stage.name,
     order: stage.order,
@@ -504,10 +518,22 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
     }
   }, [pipeline, selectedTemplate, mode, form, normalizeTemplateStage]);
 
-  // ============================================
-  // HANDLERS
-  // ============================================
+  // Handlers
+  const handleCancel = useCallback(() => {
+    console.log('🔥 handleCancel llamado, onCancel prop:', !!onCancel);
+    if (onCancel) {
+      onCancel();
+    } else {
+      console.log('🔥 No onCancel prop, navegando al dashboard');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/dashboard';
+      }
+    }
+  }, [onCancel]);
+  
   const handleAddStage = useCallback(() => {
+    console.log('🔥 handleAddStage llamado, fields.length:', fields.length);
+    
     const newOrder = fields.length;
     const defaultColor = DEFAULT_STAGE_COLORS[newOrder % DEFAULT_STAGE_COLORS.length];
     
@@ -520,10 +546,12 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       isClosedLost: false,
     };
 
+    console.log('🔥 Agregando etapa:', newStage);
     append(newStage);
   }, [fields.length, append]);
 
   const handleUpdateStage = useCallback((index: number, updates: Partial<PipelineEditorForm['stages'][0]>) => {
+    console.log('🔥 handleUpdateStage llamado:', { index, updates });
     const currentStage = fields[index];
     if (currentStage) {
       update(index, { ...currentStage, ...updates });
@@ -531,6 +559,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   }, [fields, update]);
 
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
+    console.log('🔥 handleSubmit iniciado con data:', data);
+    
     try {
       if (!data.stages || data.stages.length === 0) {
         throw new Error('Debe agregar al menos una etapa al pipeline');
@@ -548,6 +578,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         active: true,
       }));
 
+      console.log('🔥 stagesForBackend preparados:', stagesForBackend);
+
       if (mode === 'create') {
         const request: CreatePipelineRequest = {
           name: data.name,
@@ -563,7 +595,10 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           stages: stagesForBackend,
         };
 
+        console.log('🔥 Llamando createPipeline con request:', request);
+        
         await createPipeline(request, (newPipeline) => {
+          console.log('🔥 Pipeline creado exitosamente:', newPipeline);
           onSave?.();
         });
       } else if (pipeline) {
@@ -576,18 +611,25 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           stages: stagesForBackend as any,
         };
 
+        console.log('🔥 Llamando updatePipeline con request:', request);
+        
         await updatePipeline(pipeline.id, request, () => {
+          console.log('🔥 Pipeline actualizado exitosamente');
           onSave?.();
         });
       }
     } catch (error) {
-      console.error('Error saving pipeline:', error);
+      console.error('🔥 Error en handleSubmit:', error);
+      
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('Error desconocido al guardar el pipeline');
+      }
     }
   }, [mode, createPipeline, updatePipeline, pipeline, onSave]);
 
-  // ============================================
-  // RENDER
-  // ============================================
+  // Render
   return (
     <StageExpansionContext.Provider value={expansionContextValue}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -765,7 +807,12 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
             <Button
               type="button"
               variant="outline"
-              onClick={handleAddStage}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Add Stage button clicked');
+                handleAddStage();
+              }}
               className="flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -773,17 +820,20 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
             </Button>
           </div>
 
-          {/* Lista de etapas - 🔥 KEYS ESTABLES BASADOS EN INDEX */}
+          {/* Lista de etapas */}
           <div className="space-y-3">
             {fields.map((field, index) => (
               <StageItem
-                key={`stage-${index}`} // 🔥 KEY ESTABLE BASADO EN POSICIÓN
+                key={`stage-${index}`}
                 stage={field}
                 index={index}
                 isFirst={index === 0}
                 isLast={index === fields.length - 1}
                 onUpdate={(updates) => handleUpdateStage(index, updates)}
-                onDelete={() => remove(index)}
+                onDelete={() => {
+                  console.log('Deleting stage at index:', index);
+                  remove(index);
+                }}
               />
             ))}
           </div>
@@ -813,7 +863,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
             <Button
               type="button"
               variant="outline"
-              onClick={onCancel}
+              onClick={handleCancel}
               disabled={loading || isCreating}
             >
               Cancelar
@@ -821,10 +871,17 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
             
             <Button
               type="submit"
-              disabled={loading || isCreating}
+              disabled={loading || isCreating || form.formState.isSubmitting}
               className="min-w-32"
+              onClick={(e) => {
+                console.log('🔥 Submit button clicked');
+                console.log('🔥 Form valid:', form.formState.isValid);
+                console.log('🔥 Form errors:', form.formState.errors);
+                console.log('🔥 Is creating:', isCreating);
+                console.log('🔥 Loading:', loading);
+              }}
             >
-              {loading || isCreating ? (
+              {loading || isCreating || form.formState.isSubmitting ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <Save className="h-4 w-4" />
