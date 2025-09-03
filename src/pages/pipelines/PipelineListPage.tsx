@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Plus, Settings, Filter, Search, X,
   Target, BarChart3, TrendingUp,
-  RefreshCw, Eye, Edit3, Copy, Trash2, GitBranch
+  RefreshCw, GitBranch
 } from 'lucide-react';
 
 // ============================================
@@ -22,7 +22,6 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import Dropdown from '@/components/ui/Dropdown';
 
 // ============================================
 // SHARED COMPONENTS - Reutilizando exactamente como Companies
@@ -200,27 +199,11 @@ const PipelineListPage: React.FC = () => {
     navigate('/settings/pipelines');
   };
 
-  const handleCreateNew = () => {
-    navigate('/pipelines/new');
-  };
-
   // ✅ NUEVO HANDLER: Para crear nueva oportunidad cuando hay pipelines
   const handleCreateNewDeal = () => {
     // TODO: Implementar cuando tengamos el formulario de deals
     console.log('Crear nueva oportunidad en pipeline:', currentPipeline?.id);
     // navigate('/deals/new?pipeline=' + currentPipeline?.id);
-  };
-
-  const handlePipelineEdit = (pipeline: PipelineDTO) => {
-    navigate(`/pipelines/${pipeline.id}/edit`);
-  };
-
-  const handlePipelineDetail = (pipeline: PipelineDTO) => {
-    navigate(`/pipelines/${pipeline.id}`);
-  };
-
-  const handleDeleteClick = (pipeline: PipelineDTO) => {
-    setPipelineToDelete(pipeline);
   };
 
   const handleConfirmDelete = async () => {
@@ -246,19 +229,6 @@ const PipelineListPage: React.FC = () => {
     refetchPipelines();
     refetchStats();
   };
-
-  // ============================================
-  // DROPDOWN ITEMS CONFIGURATION
-  // ============================================
-  const getPipelineActionItems = (pipeline: PipelineDTO) => [
-    { id: 'view', label: 'Ver Detalles', icon: Eye, onClick: () => handlePipelineDetail(pipeline) },
-    { id: 'edit', label: 'Editar Pipeline', icon: Edit3, onClick: () => handlePipelineEdit(pipeline) },
-    { type: 'separator' as const },
-    { id: 'duplicate', label: 'Duplicar Pipeline', icon: Copy, onClick: () => navigate(`/pipelines/new?template=${pipeline.id}`) },
-    { id: 'manage', label: 'Gestionar todos los Pipelines...', icon: Settings, onClick: () => navigate('/settings/pipelines') },
-    { type: 'separator' as const },
-    { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400 hover:text-red-300' },
-  ];
 
   // ============================================
   // RENDER STATES
@@ -350,20 +320,7 @@ const PipelineListPage: React.FC = () => {
               >
                 <RefreshCw className={cn("h-4 w-4", isFetchingPipelines && "animate-spin")} />
               </Button>
-
-              {/* Pipeline Actions */}
-              {currentPipeline && (
-                <Dropdown
-                  trigger={
-                    <Button variant="outline">
-                      <Settings className="h-4 w-4" />
-                      Pipeline
-                    </Button>
-                  }
-                  items={getPipelineActionItems(currentPipeline)}
-                />
-              )}
-              
+                         
               <Button onClick={handleCreateNewDeal}>
                 <Plus className="h-4 w-4" />
                 Nueva Oportunidad
@@ -519,9 +476,9 @@ const PipelineListPage: React.FC = () => {
                 <Plus className="h-4 w-4" />
                 Crear Nueva Oportunidad
               </Button>
-              <Button onClick={() => handlePipelineDetail(currentPipeline)}>
-                <Eye className="h-4 w-4" />
-                Ver Detalles del Pipeline
+              <Button variant="outline" onClick={() => navigate('/settings/pipelines')}>
+                <Settings className="h-4 w-4" />
+                Configurar Pipelines
               </Button>
             </div>
 
