@@ -298,14 +298,14 @@ const PipelineListPage: React.FC = () => {
                   placeholder="Buscar en deals..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full"
+                  className="pl-10 h-10"
                 />
               </div>
               
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className={cn(showFilters && "bg-primary-500/10 border-primary-500/30")}
+                className={cn("h-10", showFilters && "bg-primary-500/10 border-primary-500/30")}
               >
                 <Filter className="h-4 w-4" />
               </Button>
