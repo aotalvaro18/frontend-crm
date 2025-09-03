@@ -561,22 +561,49 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
     console.log('🔥 handleSubmit iniciado con data:', data);
     
+    // 🔥 DEBUGGING PROFUNDO - Ver qué está fallando en la validación
+    console.log('🔥 Validando data manualmente con Zod...');
+    const validationResult = PipelineEditorSchema.safeParse(data);
+    
+    if (!validationResult.success) {
+      console.error('🔥 VALIDACIÓN FALLÓ:', validationResult.error);
+      console.error('🔥 Errores específicos:', validationResult.error.issues);
+      
+      // Mostrar el error al usuario
+      const firstError = validationResult.error.issues[0];
+      alert(`Error de validación: ${firstError.message} en campo: ${firstError.path.join('.')}`);
+      return;
+    } else {
+      console.log('🔥 VALIDACIÓN EXITOSA:', validationResult.data);
+    }
+    
     try {
       if (!data.stages || data.stages.length === 0) {
         throw new Error('Debe agregar al menos una etapa al pipeline');
       }
 
-      const stagesForBackend = data.stages.map((stage, index) => ({
-        name: stage.name,
-        description: stage.description || undefined,
-        position: index + 1,
-        color: stage.color,
-        probability: stage.probability || undefined,
-        isWon: stage.isClosedWon || false,
-        isLost: stage.isClosedLost || false,
-        autoMoveDays: undefined,
-        active: true,
-      }));
+      // 🔥 DEBUGGING - Ver cada etapa antes de procesar
+      console.log('🔥 Procesando stages:', data.stages);
+
+      const stagesForBackend = data.stages.map((stage, index) => {
+        // 🔥 Asegurar que color existe
+        const finalColor = stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length];
+        
+        const processedStage = {
+          name: stage.name,
+          description: stage.description || undefined,
+          position: index + 1,
+          color: finalColor,
+          probability: stage.probability || undefined,
+          isWon: stage.isClosedWon || false,
+          isLost: stage.isClosedLost || false,
+          autoMoveDays: undefined,
+          active: true,
+        };
+        
+        console.log(`🔥 Stage ${index} procesado:`, processedStage);
+        return processedStage;
+      });
 
       console.log('🔥 stagesForBackend preparados:', stagesForBackend);
 
