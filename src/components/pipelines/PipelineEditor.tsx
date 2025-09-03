@@ -612,7 +612,9 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           name: data.name,
           description: data.description || undefined,
           category: 'BUSINESS',
-          ...(data.icon && /^[a-z0-9\-_]*$/.test(data.icon) && { icon: data.icon }),
+          ...(data.icon && { 
+            icon: data.icon.toLowerCase().replace(/[^a-z0-9\-_]/g, '') 
+          }),
           ...(data.color && /^#[0-9A-Fa-f]{6}$/.test(data.color) && { color: data.color }),
           active: data.isActive !== false,
           isDefault: data.isDefault || false,
