@@ -46,18 +46,18 @@ const PipelineCreatePage: React.FC = () => {
   // ============================================
   const handleBack = useCallback(() => {
     console.log('🔥 handleBack: navegando a pipelines');
-    navigate('/dashboard'); // 🔥 FIX: Cambiar a ruta que sabemos existe
+    navigate('/contacts'); // 🔥 FIX: Cambiar a ruta que sabemos existe
   }, [navigate]);
   
   const handleCancel = useCallback(() => {
     console.log('🔥 handleCancel: navegando a dashboard');
-    navigate('/dashboard'); // 🔥 FIX: Cambiar a ruta que sabemos existe
+    navigate('/contacts'); // 🔥 FIX: Cambiar a ruta que sabemos existe
   }, [navigate]);
   
   // 🔥 FIX: handleSubmit CORREGIDO - ahora NO hace nada, el PipelineEditor maneja todo
   const handleSaveSuccess = useCallback(() => {
     console.log('🔥 handleSaveSuccess: Pipeline creado exitosamente, navegando...');
-    navigate('/dashboard'); // 🔥 Navegar solo después del éxito
+    navigate('/contacts'); // 🔥 Navegar solo después del éxito
   }, [navigate]);
 
   const handleUseTemplate = useCallback((templateKey: string) => {
