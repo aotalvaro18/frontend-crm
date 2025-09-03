@@ -359,10 +359,14 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   const { data: pipelineTypes, isLoading: isLoadingTypes } = usePipelineTypes();
 
   // ============================================
-  // FORM SETUP
+  // FORM SETUP - 🔥 OPTIMIZADO para mejor rendimiento
   // ============================================
   const form = useForm<PipelineEditorForm>({
     resolver: zodResolver(PipelineEditorSchema),
+    mode: 'onBlur', // 🔥 FIX: Cambiar de 'onChange' a 'onBlur' para menos validaciones
+    reValidateMode: 'onBlur', // 🔥 FIX: Solo revalidar al perder el foco
+    criteriaMode: 'firstError', // 🔥 FIX: Solo mostrar el primer error
+    shouldFocusError: false, // 🔥 FIX: No enfocar automáticamente errores
     defaultValues: {
       name: '',
       description: '',
@@ -372,8 +376,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       icon: 'GitBranch',
       color: '#3B82F6',
       stages: [
-        { name: 'Prospecto', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Calificado', order: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1] },
+        { name: 'Prospecto', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0], isClosedWon: false, isClosedLost: false },
+        { name: 'Calificado', order: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1], isClosedWon: false, isClosedLost: false },
       ],
     },
   });
