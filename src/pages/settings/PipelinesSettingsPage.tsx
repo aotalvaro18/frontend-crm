@@ -1,6 +1,6 @@
 // src/pages/settings/PipelinesSettingsPage.tsx
 // ✅ PIPELINES SETTINGS PAGE - Siguiendo exactamente los patrones de CompanyListPage
-// Página de configuración de Pipelines donde los administradores definen sus procesos
+// 🔧 REFACTORED: Aplicando patrón rowActions como Companies
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -54,6 +54,83 @@ import type {
 import { PERFORMANCE_STATUS_LABELS } from '@/types/pipeline.types';
 import { cn } from '@/utils/cn';
 import { formatters } from '@/utils/formatters';
+
+// ============================================
+// PIPELINE ACTIONS DROPDOWN COMPONENT - Siguiendo patrón CompanyActionsDropdown
+// ============================================
+const PipelineActionsDropdown: React.FC<{ 
+  pipeline: PipelineDTO; 
+  onView?: () => void; 
+  onEdit?: () => void; 
+  onDelete?: () => void;
+  onDuplicate?: () => void;
+  isUpdating?: boolean; 
+  isDeleting?: boolean;
+  isDuplicating?: boolean;
+}> = ({ 
+  pipeline, 
+  onView, 
+  onEdit, 
+  onDelete, 
+  onDuplicate,
+  isUpdating = false, 
+  isDeleting = false,
+  isDuplicating = false 
+}) => {
+  const items = [
+    { 
+      id: 'view', 
+      label: 'Ver Detalles', 
+      icon: Eye, 
+      onClick: onView, 
+      disabled: false 
+    },
+    { 
+      id: 'edit', 
+      label: 'Editar Pipeline', 
+      icon: Edit3, 
+      onClick: onEdit, 
+      disabled: isUpdating || isDeleting || isDuplicating 
+    },
+    { 
+      id: 'duplicate', 
+      label: 'Duplicar Pipeline', 
+      icon: Copy, 
+      onClick: onDuplicate, 
+      disabled: isUpdating || isDeleting || isDuplicating 
+    },
+    { type: 'separator' as const },
+    { 
+      id: 'delete', 
+      label: 'Eliminar Pipeline', 
+      icon: Trash2, 
+      onClick: onDelete, 
+      disabled: isUpdating || isDeleting || isDuplicating, 
+      destructive: true 
+    },
+  ];
+
+  return (
+    <Dropdown 
+      trigger={
+        <IconButton 
+          variant="ghost" 
+          size="sm" 
+          disabled={isUpdating || isDeleting || isDuplicating} 
+          aria-label={`Acciones para ${pipeline.name}`}
+        >
+          {(isUpdating || isDeleting || isDuplicating) ? (
+            <LoadingSpinner size="xs" />
+          ) : (
+            <MoreHorizontal className="h-4 w-4" />
+          )}
+        </IconButton>
+      } 
+      items={items} 
+      align="end" 
+    />
+  );
+};
 
 // ============================================
 // MAIN COMPONENT
@@ -121,7 +198,13 @@ const PipelinesSettingsPage: React.FC = () => {
   // ============================================
   // HOOKS DE ZUSTAND - Para acciones y estado de UI
   // ============================================
-  const { deletePipeline, duplicatePipeline } = usePipelineOperations();
+  const { 
+    deletePipeline, 
+    duplicatePipeline,
+    updating,
+    deleting,
+    duplicating
+  } = usePipelineOperations();
   const {
     selectedPipelineIds,
     bulkOperationLoading,
@@ -225,18 +308,7 @@ const PipelinesSettingsPage: React.FC = () => {
   };
 
   // ============================================
-  // DROPDOWN ITEMS CONFIGURATION
-  // ============================================
-  const getActionItems = (pipeline: PipelineDTO) => [
-    { id: 'view', label: 'Ver Detalles', icon: Eye, onClick: () => handlePipelineClick(pipeline) },
-    { id: 'edit', label: 'Editar Pipeline', icon: Edit3, onClick: () => handlePipelineEdit(pipeline) },
-    { id: 'duplicate', label: 'Duplicar Pipeline', icon: Copy, onClick: () => handleDuplicateClick(pipeline) },
-    { type: 'separator' as const },
-    { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400 hover:text-red-300' },
-  ];
-
-  // ============================================
-  // TABLE COLUMNS CONFIGURATION - Adaptado para Pipelines
+  // TABLE COLUMNS CONFIGURATION - 🔧 SIN COLUMNA ACTIONS (siguiendo patrón Companies)
   // ============================================
   const columns: Column<PipelineDTO>[] = [
     {
@@ -333,20 +405,7 @@ const PipelinesSettingsPage: React.FC = () => {
         </div>
       ),
     },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <Dropdown
-          trigger={
-            <IconButton variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </IconButton>
-          }
-          items={getActionItems(row)}
-        />
-      ),
-    },
+    // 🔧 REMOVIDA: columna 'actions' - ahora se maneja con rowActions
   ];
 
   // ============================================
@@ -435,7 +494,6 @@ const PipelinesSettingsPage: React.FC = () => {
 
       {/* ============================================ */}
       {/* FILTERS PANEL (Condicional) */}
-      {/* 🔧 CAMBIO QUIRÚRGICO: Corregido onClick del botón X */}
       {/* ============================================ */}
       {showFilters && (
         <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-4 mb-6">
@@ -444,7 +502,7 @@ const PipelinesSettingsPage: React.FC = () => {
             <IconButton
               variant="ghost"
               size="sm"
-              onClick={() => setShowFilters(false)} // 🔧 CORREGIDO: Removido el console.log y restaurado la funcionalidad original
+              onClick={() => setShowFilters(false)}
             >
               <X className="h-4 w-4" />
             </IconButton>
@@ -490,7 +548,7 @@ const PipelinesSettingsPage: React.FC = () => {
       )}
 
       {/* ============================================ */}
-      {/* PIPELINES TABLE */}
+      {/* PIPELINES TABLE - 🔧 USANDO rowActions COMO COMPANIES */}
       {/* ============================================ */}
       <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg">
         {isLoadingPipelines && pipelines.length === 0 ? (
@@ -522,6 +580,18 @@ const PipelinesSettingsPage: React.FC = () => {
               }}
               onSelectAll={() => selectAllPipelines(pipelines.map((p, index) => p.id || index))}
               getRowId={(row: PipelineDTO, index: number) => row.id || index}
+              rowActions={(row) => (
+                <PipelineActionsDropdown
+                  pipeline={row}
+                  onView={() => handlePipelineClick(row)}
+                  onEdit={() => handlePipelineEdit(row)}
+                  onDelete={() => handleDeleteClick(row)}
+                  onDuplicate={() => handleDuplicateClick(row)}
+                  isUpdating={updating.has(row.id)}
+                  isDeleting={deleting.has(row.id)}
+                  isDuplicating={duplicating.has(row.id)}
+                />
+              )}
             />
             
             {/* Paginación */}
