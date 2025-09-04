@@ -1,7 +1,7 @@
 // src/pages/pipelines/PipelineListPage.tsx
 // ✅ PIPELINE LIST PAGE - Replicando exactamente CompanyListPage.tsx
 // EL KANBAN PRINCIPAL - Donde se muestran los deals fluyendo por las etapas
-// ✅ ACTUALIZADO: Con barra de acciones inteligente según análisis UX
+// 🔧 ACTUALIZADO: Con dropdown de acciones estilo Salesforce
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -9,7 +9,9 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Plus, Settings, Filter, Search, X,
   Target, BarChart3, TrendingUp,
-  RefreshCw, GitBranch
+  RefreshCw, GitBranch,
+  // 🔧 NUEVOS IMPORTS: Para dropdown de acciones
+  MoreHorizontal, Eye, Edit3
 } from 'lucide-react';
 
 // ============================================
@@ -18,10 +20,11 @@ import {
 import { Page } from '@/components/layout/Page';
 import { Input } from '@/components/ui/Input';
 import { Button, IconButton } from '@/components/ui/Button';
-
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+// 🔧 NUEVO IMPORT: Dropdown component
+import Dropdown from '@/components/ui/Dropdown';
 
 // ============================================
 // SHARED COMPONENTS - Reutilizando exactamente como Companies
@@ -75,6 +78,7 @@ const PipelineListPage: React.FC = () => {
   const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(
     searchParams.get('pipeline') ? Number(searchParams.get('pipeline')) : null
   );
+  // 🔧 NUEVO STATE: Para modal de confirmación de eliminación
   const [pipelineToDelete, setPipelineToDelete] = useState<PipelineDTO | null>(null);
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
@@ -192,7 +196,7 @@ const PipelineListPage: React.FC = () => {
   };
 
   const handleCreateNewPipeline = () => {
-    navigate('/pipelines/new');
+    navigate('/settings/pipelines/new');
   };
 
   const handleManagePipelines = () => {
@@ -204,6 +208,26 @@ const PipelineListPage: React.FC = () => {
     // TODO: Implementar cuando tengamos el formulario de deals
     console.log('Crear nueva oportunidad en pipeline:', currentPipeline?.id);
     // navigate('/deals/new?pipeline=' + currentPipeline?.id);
+  };
+
+  // 🔧 NUEVOS HANDLERS: Para acciones del dropdown estilo Salesforce
+  const handleViewPipelineDeals = (pipeline: PipelineDTO) => {
+    // Mantener el pipeline seleccionado y enfocarse en el Kanban
+    setSelectedPipelineId(pipeline.id);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('pipeline', pipeline.id.toString());
+    setSearchParams(newSearchParams);
+    
+    // Scroll al kanban si está fuera de vista
+    document.getElementById('kanban-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleConfigurePipeline = (pipeline: PipelineDTO) => {
+    navigate(`/settings/pipelines/${pipeline.id}/edit`);
+  };
+
+  const handleDeletePipeline = (pipeline: PipelineDTO) => {
+    setPipelineToDelete(pipeline);
   };
 
   const handleConfirmDelete = async () => {
@@ -229,6 +253,37 @@ const PipelineListPage: React.FC = () => {
     refetchPipelines();
     refetchStats();
   };
+
+  // 🔧 NUEVA FUNCIÓN: Configurar items del dropdown estilo Salesforce
+  const getPipelineActionItems = (pipeline: PipelineDTO) => [
+    { 
+      id: 'view-deals', 
+      label: 'Ver Oportunidades', 
+      icon: Eye,
+      onClick: () => handleViewPipelineDeals(pipeline)
+    },
+    { 
+      id: 'configure', 
+      label: 'Configurar Pipeline', 
+      icon: Edit3,
+      onClick: () => handleConfigurePipeline(pipeline)
+    },
+    { type: 'separator' as const },
+    { 
+      id: 'manage-all', 
+      label: 'Ir a Administración', 
+      icon: Settings,
+      onClick: () => handleManagePipelines()
+    },
+    { type: 'separator' as const },
+    { 
+      id: 'delete', 
+      label: 'Eliminar Pipeline', 
+      icon: X,
+      onClick: () => handleDeletePipeline(pipeline),
+      className: 'text-red-400 hover:text-red-300'
+    }
+  ];
 
   // ============================================
   // RENDER STATES
@@ -405,6 +460,7 @@ const PipelineListPage: React.FC = () => {
 
       {/* ============================================ */}
       {/* KANBAN VIEW - EL CORAZÓN DE LA PÁGINA */}
+      {/* 🔧 ACTUALIZADO: Con dropdown de acciones estilo Salesforce */}
       {/* ============================================ */}
       {isLoadingPipelines && !currentPipeline ? (
         <div className="flex items-center justify-center py-12">
@@ -424,8 +480,8 @@ const PipelineListPage: React.FC = () => {
           }
         />
       ) : (
-        <div className="border-app-dark-600 bg-app-dark-800/50 p-6">
-          {/* Pipeline Header */}
+        <div id="kanban-section" className="border-app-dark-600 bg-app-dark-800/50 p-6">
+          {/* 🔧 PIPELINE HEADER - ACTUALIZADO CON DROPDOWN ESTILO SALESFORCE */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary-500/10 rounded-lg">
@@ -446,19 +502,39 @@ const PipelineListPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-app-gray-400">
-              <Target className="h-4 w-4" />
-              <span>{currentPipeline.stages?.length || 0} etapas</span>
-              <span>•</span>
-              <BarChart3 className="h-4 w-4" />
-              <span>{currentPipeline.totalDeals || 0} oportunidades</span>
-              {currentPipeline.totalValue && (
-                <>
-                  <span>•</span>
-                  <TrendingUp className="h-4 w-4" />
-                  <span>{formatters.currency(currentPipeline.totalValue)}</span>
-                </>
-              )}
+            {/* 🔧 NUEVA SECCIÓN: Stats + Dropdown de acciones */}
+            <div className="flex items-center gap-4">
+              {/* Pipeline stats */}
+              <div className="flex items-center gap-4 text-sm text-app-gray-400">
+                <div className="flex items-center gap-1">
+                  <Target className="h-4 w-4" />
+                  <span>{currentPipeline.stages?.length || 0} etapas</span>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>{currentPipeline.totalDeals || 0} oportunidades</span>
+                </div>
+                {currentPipeline.totalValue && (
+                  <>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="h-4 w-4" />
+                      <span>{formatters.currency(currentPipeline.totalValue)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 🔧 DROPDOWN DE ACCIONES ESTILO SALESFORCE */}
+              <Dropdown
+                trigger={
+                  <IconButton variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </IconButton>
+                }
+                items={getPipelineActionItems(currentPipeline)}
+              />
             </div>
           </div>
 
@@ -510,15 +586,15 @@ const PipelineListPage: React.FC = () => {
 
       {/* ============================================ */}
       {/* MODALES DE CONFIRMACIÓN - Usando componente shared */}
+      {/* 🔧 ACTUALIZADO: Modal para eliminar desde el dropdown */}
       {/* ============================================ */}
       
-      {/* ✅ CORRECCIÓN QUIRÚRGICA - ConfirmDialog props corregidas */}
       <ConfirmDialog
         isOpen={!!pipelineToDelete}
         onClose={() => setPipelineToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Eliminar Pipeline"
-        description={`¿Estás seguro de que quieres eliminar el pipeline "${pipelineToDelete?.name}"? Esta acción también eliminará todas las oportunidades asociadas.`}
+        description={`¿Estás seguro de que quieres eliminar el pipeline "${pipelineToDelete?.name}"? Esta acción también eliminará todas las oportunidades asociadas y no se puede deshacer.`}
       />
     </Page>
   );
