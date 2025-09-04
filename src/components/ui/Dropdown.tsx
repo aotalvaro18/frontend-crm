@@ -352,114 +352,110 @@ const Dropdown: React.FC<DropdownProps> = ({
   menuClassName,
   triggerClassName,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
+  // ✅ ELIMINAMOS useState - Headless UI maneja su propio estado
   const variantStyles = dropdownVariants.variants.variant[variant];
   const sizeStyles = dropdownVariants.variants.size[size];
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    onOpenChange?.(open);
-  };
-
-  const closeMenu = () => {
-    setIsOpen(false);
-    onOpenChange?.(false);
-  };
-
   return (
     <Menu as="div" className={cn('relative inline-block text-left', className)}>
-      {/* Trigger */}
-      <Menu.Button 
-        as="div"
-        className={cn(
-          'cursor-pointer',
-          disabled && 'cursor-not-allowed opacity-50 pointer-events-none',
-          triggerClassName
-        )}
-        disabled={disabled}
-      >
-        {trigger}
-      </Menu.Button>
+      {({ open }) => ( // ✅ USAR EL ESTADO DE HEADLESS UI
+        <>
+          {/* Trigger */}
+          <Menu.Button 
+            className={cn(
+              'cursor-pointer focus:outline-none', // ✅ AGREGAMOS focus:outline-none
+              disabled && 'cursor-not-allowed opacity-50 pointer-events-none',
+              triggerClassName
+            )}
+            disabled={disabled}
+            onClick={() => { // ✅ AGREGAMOS onClick handler
+              console.log('🔍 Dropdown trigger clicked, open:', open);
+              onOpenChange?.(!open);
+            }}
+          >
+            {trigger}
+          </Menu.Button>
 
-      {/* Menu */}
-      <Transition
-        as={Fragment}
-        show={isOpen}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-        beforeEnter={() => handleOpenChange(true)}
-        afterLeave={() => handleOpenChange(false)}
-      >
-        <Menu.Items
-          className={cn(
-            // Base styles
-            'absolute z-50 mt-1 rounded-lg focus:outline-none',
-            
-            // Size
-            sizeStyles.menu,
-            fullWidth && 'w-full',
-            
-            // Variant
-            variantStyles.menu,
-            
-            // Positioning
-            align === 'end' ? 'right-0' : 'left-0',
-            side === 'top' && 'bottom-full mb-1 mt-0',
-            
-            // Custom classes
-            menuClassName
-          )}
-          style={{
-            marginTop: side === 'bottom' ? offset : undefined,
-            marginBottom: side === 'top' ? offset : undefined,
-          }}
-        >
-          <div className="py-1">
-            {items.map((item, index) => {
-              const key = 'id' in item && item.id ? item.id : `item-${index}`;
-              
-              // Separator
-              if ('type' in item && item.type === 'separator') {
-                return <DropdownSeparator key={key} variant={variant} />;
-              }
-              
-              // Group
-              if ('type' in item && item.type === 'group') {
-                return (
-                  <DropdownGroup
-                    key={key}
-                    group={item as DropdownItemGroup}
-                    variant={variant}
-                    size={size}
-                    closeMenu={closeMenu}
-                    closeOnClick={closeOnItemClick}
-                  />
-                );
-              }
-              
-              // Regular item
-              return (
-                <Menu.Item key={key}>
-                  {() => (
-                    <DropdownMenuItem
-                      item={item as DropdownItem}
-                      variant={variant}
-                      size={size}
-                      closeMenu={closeMenu}
-                      closeOnClick={closeOnItemClick}
-                    />
-                  )}
-                </Menu.Item>
-              );
-            })}
-          </div>
-        </Menu.Items>
-      </Transition>
+          {/* Menu */}
+          <Transition
+            as={Fragment}
+            show={open} // ✅ USAR EL ESTADO DE HEADLESS UI
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+            afterEnter={() => onOpenChange?.(true)} // ✅ CAMBIAR beforeEnter por afterEnter
+            afterLeave={() => onOpenChange?.(false)}
+          >
+            <Menu.Items
+              className={cn(
+                // Base styles
+                'absolute z-50 mt-1 rounded-lg focus:outline-none',
+                
+                // Size
+                sizeStyles.menu,
+                fullWidth && 'w-full',
+                
+                // Variant
+                variantStyles.menu,
+                
+                // Positioning
+                align === 'end' ? 'right-0' : 'left-0',
+                side === 'top' && 'bottom-full mb-1 mt-0',
+                
+                // Custom classes
+                menuClassName
+              )}
+              style={{
+                marginTop: side === 'bottom' ? offset : undefined,
+                marginBottom: side === 'top' ? offset : undefined,
+              }}
+            >
+              <div className="py-1">
+                {items.map((item, index) => {
+                  const key = 'id' in item && item.id ? item.id : `item-${index}`;
+                  
+                  // Separator
+                  if ('type' in item && item.type === 'separator') {
+                    return <DropdownSeparator key={key} variant={variant} />;
+                  }
+                  
+                  // Group
+                  if ('type' in item && item.type === 'group') {
+                    return (
+                      <DropdownGroup
+                        key={key}
+                        group={item as DropdownItemGroup}
+                        variant={variant}
+                        size={size}
+                        closeMenu={() => {}} // ✅ NO NECESARIO CON HEADLESS UI
+                        closeOnClick={closeOnItemClick}
+                      />
+                    );
+                  }
+                  
+                  // Regular item
+                  return (
+                    <Menu.Item key={key}>
+                      {({ close }) => ( // ✅ USAR close DE HEADLESS UI
+                        <DropdownMenuItem
+                          item={item as DropdownItem}
+                          variant={variant}
+                          size={size}
+                          closeMenu={closeOnItemClick ? close : undefined} // ✅ PASAR close
+                          closeOnClick={closeOnItemClick}
+                        />
+                      )}
+                    </Menu.Item>
+                  );
+                })}
+              </div>
+            </Menu.Items>
+          </Transition>
+        </>
+      )}
     </Menu>
   );
 };
