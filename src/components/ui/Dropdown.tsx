@@ -398,10 +398,10 @@ const Dropdown: React.FC<DropdownProps> = ({
                 variantStyles.menu,
                 
                 // Positioning
-                // Prioridad para mobile: centrado horizontalmente
-                // En pantallas más grandes, usar 'align'
-                'left-1/2 -translate-x-1/2', // Centra el dropdown horizontalmente
-                'md:left-auto md:transform-none', // Deshace el centrado en md+
+                // 🔧 MEJORADO: En mobile, para actions (align="end") mover hacia la izquierda
+                // En pantallas más grandes, usar 'align' normal
+                align === 'end' ? 'right-4' : 'left-1/2 -translate-x-1/2', // Actions hacia la izquierda en mobile
+                'md:left-auto md:right-auto md:transform-none', // Reset en md+
                 align === 'start' && 'md:left-0 md:right-auto', // Alineación a la izquierda en md+
                 align === 'end' && 'md:right-0 md:left-auto', // Alineación a la derecha en md+
                 align === 'center' && 'md:left-1/2 md:-translate-x-1/2', // Centrado explícito en md+
