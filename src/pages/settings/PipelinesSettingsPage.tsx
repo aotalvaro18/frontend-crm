@@ -224,16 +224,18 @@ const PipelinesSettingsPage: React.FC = () => {
     navigate('/settings/pipelines/new');
   };
 
-  // ============================================
-  // DROPDOWN ITEMS CONFIGURATION
-  // ============================================
   const getActionItems = (pipeline: PipelineDTO) => [
     { id: 'view', label: 'Ver Detalles', icon: Eye, onClick: () => handlePipelineClick(pipeline) },
     { id: 'edit', label: 'Editar Pipeline', icon: Edit3, onClick: () => handlePipelineEdit(pipeline) },
-    { id: 'duplicate', label: 'Duplicar Pipeline', icon: Copy, onClick: () => handleDuplicateClick(pipeline) },
+    { id: 'duplicate', label: 'Duplicar', icon: Copy, onClick: () => handleDuplicateClick(pipeline) },
     { type: 'separator' as const },
-    { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400 hover:text-red-300' },
+    { id: 'delete', label: 'Eliminar', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400' },
   ];
+
+  // ============================================
+  // DROPDOWN ITEMS CONFIGURATION
+  // ============================================
+  
 
   // ============================================
   // TABLE COLUMNS CONFIGURATION - Adaptado para Pipelines
@@ -324,30 +326,33 @@ const PipelinesSettingsPage: React.FC = () => {
       },
     },
     {
-      id: 'updatedAt',
-      header: 'Última Actualización',
-      accessorKey: 'updatedAt',
-      cell: ({ row }) => (
-        <div className="text-sm text-app-gray-400">
-          {formatters.relativeDate(row.updatedAt)}
-        </div>
-      ),
-    },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <Dropdown
-          trigger={
-            <IconButton variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </IconButton>
-          }
-          items={getActionItems(row)}
-        />
-      ),
-    },
-  ];
+        id: 'updatedAt',
+        header: 'Última Actualización',
+        accessorKey: 'updatedAt',
+        cell: ({ row }) => (
+          <div className="text-sm text-app-gray-400">
+            {formatters.relativeDate(row.updatedAt)}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '', // Sin título para que sea solo el ícono
+        cell: ({ row }) => (
+          <div className="flex justify-end"> {/* Para alinear el botón a la derecha */}
+            <Dropdown
+              trigger={
+                <IconButton variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </IconButton>
+              }
+              // ✅ CORRECCIÓN: Pasa el objeto de datos completo desde row
+              items={getActionItems(row)}
+            />
+          </div>
+        ),
+      },
+    ];
 
   // ============================================
   // RENDER COMPONENT - Siguiendo estructura de CompanyListPage
