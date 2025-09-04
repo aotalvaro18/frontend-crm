@@ -1,6 +1,6 @@
 // src/components/ui/Dropdown.tsx
 // Dropdown enterprise component siguiendo tu guía arquitectónica
-// Mobile-first + TypeScript strict + Headless UI integration
+// Mobile-first + TypeScript strict + Headless UI integration + UX de Talla Mundial
 
 import React, { Fragment, useState } from 'react';
 import { Menu, Transition } from '@headlessui/react';
@@ -75,32 +75,32 @@ export interface DropdownProps {
 }
 
 // ============================================
-// DROPDOWN VARIANTS
+// DROPDOWN VARIANTS - UX MEJORADA MOBILE-FIRST
 // ============================================
 
 const dropdownVariants = {
   variants: {
     variant: {
       default: {
-        menu: 'bg-app-dark-800 border border-app-dark-600 shadow-lg',
-        item: 'text-app-gray-200 hover:bg-app-dark-700 hover:text-white',
-        itemDestructive: 'text-red-400 hover:bg-red-500/10 hover:text-red-300',
+        menu: 'bg-app-dark-800 border border-app-dark-600 shadow-xl ring-1 ring-black/5 backdrop-blur-sm',
+        item: 'text-app-gray-200 hover:bg-app-dark-700 hover:text-white focus:bg-app-dark-700 focus:text-white',
+        itemDestructive: 'text-red-400 hover:bg-red-500/15 hover:text-red-300 focus:bg-red-500/15 focus:text-red-300',
         itemDisabled: 'text-app-gray-500 cursor-not-allowed opacity-50',
         separator: 'bg-app-dark-600',
         groupLabel: 'text-app-gray-400 bg-app-dark-750',
       },
       bordered: {
-        menu: 'bg-app-dark-800 border-2 border-app-dark-500 shadow-xl',
-        item: 'text-app-gray-200 hover:bg-app-dark-700 hover:text-white',
-        itemDestructive: 'text-red-400 hover:bg-red-500/10 hover:text-red-300',
+        menu: 'bg-app-dark-800 border-2 border-app-dark-500 shadow-2xl ring-1 ring-black/10 backdrop-blur-sm',
+        item: 'text-app-gray-200 hover:bg-app-dark-700 hover:text-white focus:bg-app-dark-700 focus:text-white',
+        itemDestructive: 'text-red-400 hover:bg-red-500/15 hover:text-red-300 focus:bg-red-500/15 focus:text-red-300',
         itemDisabled: 'text-app-gray-500 cursor-not-allowed opacity-50',
         separator: 'bg-app-dark-500',
         groupLabel: 'text-app-gray-400 bg-app-dark-750',
       },
       minimal: {
-        menu: 'bg-app-dark-900 border border-app-dark-700 shadow-sm',
-        item: 'text-app-gray-300 hover:bg-app-dark-800 hover:text-white',
-        itemDestructive: 'text-red-400 hover:bg-red-500/10 hover:text-red-300',
+        menu: 'bg-app-dark-900 border border-app-dark-700 shadow-lg backdrop-blur-sm',
+        item: 'text-app-gray-300 hover:bg-app-dark-800 hover:text-white focus:bg-app-dark-800 focus:text-white',
+        itemDestructive: 'text-red-400 hover:bg-red-500/15 hover:text-red-300 focus:bg-red-500/15 focus:text-red-300',
         itemDisabled: 'text-app-gray-600 cursor-not-allowed opacity-50',
         separator: 'bg-app-dark-700',
         groupLabel: 'text-app-gray-500 bg-app-dark-850',
@@ -108,21 +108,21 @@ const dropdownVariants = {
     },
     size: {
       sm: {
-        menu: 'min-w-32 text-xs',
-        item: 'px-2 py-1.5',
-        groupLabel: 'px-2 py-1 text-xs',
-        icon: 'h-3 w-3',
+        menu: 'min-w-40 text-sm', // Aumentado para mejor mobile touch
+        item: 'px-3 py-2.5', // Padding generoso para touch targets
+        groupLabel: 'px-3 py-2 text-xs',
+        icon: 'h-4 w-4',
       },
       md: {
-        menu: 'min-w-40 text-sm',
-        item: 'px-3 py-2',
-        groupLabel: 'px-3 py-1.5 text-xs',
+        menu: 'min-w-48 text-sm', // Ancho generoso
+        item: 'px-4 py-3', // Touch targets optimizados
+        groupLabel: 'px-4 py-2.5 text-xs',
         icon: 'h-4 w-4',
       },
       lg: {
-        menu: 'min-w-48 text-base',
-        item: 'px-4 py-3',
-        groupLabel: 'px-4 py-2 text-sm',
+        menu: 'min-w-56 text-base', // Muy generoso para tablets
+        item: 'px-5 py-4', // Touch targets premium
+        groupLabel: 'px-5 py-3 text-sm',
         icon: 'h-5 w-5',
       },
     },
@@ -130,7 +130,7 @@ const dropdownVariants = {
 };
 
 // ============================================
-// MENU ITEM COMPONENT
+// MENU ITEM COMPONENT - UX TALLA MUNDIAL
 // ============================================
 
 const DropdownMenuItem: React.FC<{
@@ -150,14 +150,19 @@ const DropdownMenuItem: React.FC<{
   const sizeStyles = dropdownVariants.variants.size[size];
 
   const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (item.disabled) {
-      e.preventDefault();
       return;
     }
 
     if (item.onClick) {
-      e.preventDefault();
-      item.onClick();
+      try {
+        item.onClick();
+      } catch (error) {
+        console.error('Error executing dropdown onClick:', error);
+      }
     }
 
     if (closeOnClick && closeMenu) {
@@ -167,19 +172,29 @@ const DropdownMenuItem: React.FC<{
 
   const ItemContent = () => (
     <div className={cn(
-      'flex items-center justify-between w-full',
+      'flex items-center justify-between w-full group transition-all duration-200 ease-out',
       sizeStyles.item,
-      'rounded-md transition-colors duration-150',
+      'rounded-lg', // Bordes más redondeados para mejor aspecto móvil
+      // Estados mejorados con focus rings
       item.disabled 
         ? variantStyles.itemDisabled
         : item.destructive 
-          ? variantStyles.itemDestructive 
-          : variantStyles.item
+          ? cn(variantStyles.itemDestructive, 'focus:ring-2 focus:ring-red-500/30 focus:ring-offset-2 focus:ring-offset-app-dark-800')
+          : cn(variantStyles.item, 'focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-2 focus:ring-offset-app-dark-800'),
+      // Mejor feedback táctil
+      !item.disabled && 'active:scale-[0.98] active:transition-transform active:duration-75',
+      // Mejor estado de hover
+      !item.disabled && 'hover:scale-[1.01] hover:transition-transform hover:duration-150'
     )}>
-      <div className="flex items-center space-x-2 min-w-0 flex-1">
-        {/* Icon */}
+      <div className="flex items-center space-x-3 min-w-0 flex-1">
+        {/* Icon con mejor contraste y animaciones */}
         {item.icon && (
-          <div className="flex-shrink-0">
+          <div className={cn(
+            "flex-shrink-0 transition-all duration-200",
+            item.destructive 
+              ? "text-red-400 group-hover:text-red-300 group-hover:scale-110" 
+              : "text-app-gray-400 group-hover:text-white group-hover:scale-110"
+          )}>
             {React.isValidElement(item.icon) ? (
               React.cloneElement(item.icon as React.ReactElement, {
                 className: cn(sizeStyles.icon, (item.icon as any)?.props?.className)
@@ -192,37 +207,45 @@ const DropdownMenuItem: React.FC<{
           </div>
         )}
         
-        {/* Label and description */}
+        {/* Label y description con tipografía mejorada */}
         <div className="min-w-0 flex-1">
-          <div className="font-medium truncate">
+          <div className={cn(
+            "font-medium truncate leading-tight transition-colors duration-200",
+            size === 'sm' ? 'text-sm' : size === 'md' ? 'text-sm' : 'text-base'
+          )}>
             {item.label}
           </div>
           {item.description && (
-            <div className="text-xs opacity-75 truncate mt-0.5">
+            <div className={cn(
+              "opacity-75 truncate mt-1 leading-tight transition-opacity duration-200 group-hover:opacity-90",
+              size === 'sm' ? 'text-xs' : 'text-xs'
+            )}>
               {item.description}
             </div>
           )}
         </div>
       </div>
 
-      {/* Right side elements */}
-      <div className="flex items-center space-x-2 flex-shrink-0 ml-3">
+      {/* Right side elements mejorados */}
+      <div className="flex items-center space-x-2.5 flex-shrink-0 ml-4">
         {/* Selected indicator */}
         {item.selected && (
-          <Check className={cn(sizeStyles.icon, 'text-app-accent-500')} />
+          <Check className={cn(
+            sizeStyles.icon, 
+            'text-primary-500 flex-shrink-0 animate-in fade-in-50 duration-200'
+          )} />
         )}
         
-        {/* Keyboard shortcut */}
+        {/* Keyboard shortcut con mejor styling */}
         {item.shortcut && (
-          <span className="text-xs opacity-60 font-mono">
+          <span className={cn(
+            "opacity-60 font-mono flex-shrink-0 px-2 py-1 rounded-md text-xs",
+            "bg-app-dark-600 group-hover:bg-app-dark-500 transition-colors duration-200",
+            size === 'sm' ? 'text-xs' : 'text-xs'
+          )}>
             {item.shortcut}
           </span>
         )}
-        
-        {/* Submenu indicator (for future use) */}
-        {/* {item.submenu && (
-          <ChevronRight className={cn(sizeStyles.icon, 'opacity-60')} />
-        )} */}
       </div>
     </div>
   );
@@ -234,7 +257,7 @@ const DropdownMenuItem: React.FC<{
         href={item.href}
         target={item.target}
         className={cn(
-          'block no-underline',
+          'block no-underline focus:outline-none',
           item.disabled && 'pointer-events-none'
         )}
         onClick={handleClick}
@@ -244,12 +267,12 @@ const DropdownMenuItem: React.FC<{
     );
   }
 
-  // Button
+  // Button con mejor touch target
   return (
     <button
       type="button"
       className={cn(
-        'w-full text-left',
+        'w-full text-left focus:outline-none',
         item.disabled && 'cursor-not-allowed'
       )}
       disabled={item.disabled}
@@ -270,7 +293,7 @@ const DropdownSeparator: React.FC<{
   const variantStyles = dropdownVariants.variants.variant[variant];
   
   return (
-    <div className={cn('my-1 h-px', variantStyles.separator)} />
+    <div className={cn('my-2 h-px', variantStyles.separator)} />
   );
 };
 
@@ -308,7 +331,7 @@ const DropdownGroup: React.FC<{
       )}
       
       {/* Group items */}
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {group.items.map((item, index) => {
           const key = 'id' in item && item.id ? item.id : `${group.id}-item-${index}`;
           
@@ -333,7 +356,7 @@ const DropdownGroup: React.FC<{
 };
 
 // ============================================
-// MAIN DROPDOWN COMPONENT
+// MAIN DROPDOWN COMPONENT - CORREGIDO Y MEJORADO
 // ============================================
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -341,7 +364,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   items,
   align = 'start',
   side = 'bottom',
-  offset = 4,
+  offset = 8, // Aumentado para mejor separación móvil
   variant = 'default',
   size = 'md',
   fullWidth = false,
@@ -352,47 +375,47 @@ const Dropdown: React.FC<DropdownProps> = ({
   menuClassName,
   triggerClassName,
 }) => {
-  // ✅ ELIMINAMOS useState - Headless UI maneja su propio estado
   const variantStyles = dropdownVariants.variants.variant[variant];
   const sizeStyles = dropdownVariants.variants.size[size];
 
   return (
     <Menu as="div" className={cn('relative inline-block text-left', className)}>
-      {({ open }) => ( // ✅ USAR EL ESTADO DE HEADLESS UI
+      {({ open }) => (
         <>
-          {/* Trigger */}
+          {/* Trigger - Mejorado para mobile */}
           <Menu.Button 
             className={cn(
-              'cursor-pointer focus:outline-none', // ✅ AGREGAMOS focus:outline-none
+              'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 focus:ring-offset-transparent rounded-lg transition-all duration-150',
               disabled && 'cursor-not-allowed opacity-50 pointer-events-none',
+              'active:scale-95 hover:scale-105', // Mejor feedback táctil
               triggerClassName
             )}
             disabled={disabled}
-            onClick={() => { // ✅ AGREGAMOS onClick handler
-              console.log('🔍 Dropdown trigger clicked, open:', open);
+            onClick={() => {
               onOpenChange?.(!open);
             }}
           >
             {trigger}
           </Menu.Button>
 
-          {/* Menu */}
+          {/* Menu - Mejorado con animaciones y posicionamiento */}
           <Transition
             as={Fragment}
-            show={open} // ✅ USAR EL ESTADO DE HEADLESS UI
-            enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
-            afterEnter={() => onOpenChange?.(true)} // ✅ CAMBIAR beforeEnter por afterEnter
+            show={open}
+            enter="transition ease-out duration-200"
+            enterFrom="transform opacity-0 scale-95 translate-y-1"
+            enterTo="transform opacity-100 scale-100 translate-y-0"
+            leave="transition ease-in duration-150"
+            leaveFrom="transform opacity-100 scale-100 translate-y-0"
+            leaveTo="transform opacity-0 scale-95 translate-y-1"
+            afterEnter={() => onOpenChange?.(true)}
             afterLeave={() => onOpenChange?.(false)}
           >
             <Menu.Items
               className={cn(
-                // Base styles
-                'absolute z-50 mt-1 rounded-lg focus:outline-none',
+                // Base styles mejorados
+                'absolute z-50 rounded-xl focus:outline-none',
+                'animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200',
                 
                 // Size
                 sizeStyles.menu,
@@ -401,9 +424,14 @@ const Dropdown: React.FC<DropdownProps> = ({
                 // Variant
                 variantStyles.menu,
                 
-                // Positioning
+                // Positioning mejorado para mobile
                 align === 'end' ? 'right-0' : 'left-0',
-                side === 'top' && 'bottom-full mb-1 mt-0',
+                side === 'top' 
+                  ? `bottom-full mb-${offset / 4}` 
+                  : `mt-${offset / 4}`,
+                
+                // Responsive adjustments
+                'max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl',
                 
                 // Custom classes
                 menuClassName
@@ -413,7 +441,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                 marginBottom: side === 'top' ? offset : undefined,
               }}
             >
-              <div className="py-1">
+              <div className="py-2"> {/* Padding aumentado para mejor spacing */}
                 {items.map((item, index) => {
                   const key = 'id' in item && item.id ? item.id : `item-${index}`;
                   
@@ -430,7 +458,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                         group={item as DropdownItemGroup}
                         variant={variant}
                         size={size}
-                        closeMenu={() => {}} // ✅ NO NECESARIO CON HEADLESS UI
+                        closeMenu={() => {}} // Headless UI maneja esto automáticamente
                         closeOnClick={closeOnItemClick}
                       />
                     );
@@ -439,12 +467,12 @@ const Dropdown: React.FC<DropdownProps> = ({
                   // Regular item
                   return (
                     <Menu.Item key={key}>
-                      {({ close }) => ( // ✅ USAR close DE HEADLESS UI
+                      {({ close }) => (
                         <DropdownMenuItem
                           item={item as DropdownItem}
                           variant={variant}
                           size={size}
-                          closeMenu={closeOnItemClick ? close : undefined} // ✅ PASAR close
+                          closeMenu={closeOnItemClick ? close : undefined}
                           closeOnClick={closeOnItemClick}
                         />
                       )}
@@ -465,7 +493,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 // ============================================
 
 /**
- * Action Dropdown - Para actions buttons
+ * Action Dropdown - Para actions buttons con UX mejorada
  */
 export const ActionDropdown: React.FC<{
   trigger?: React.ReactNode;
@@ -483,11 +511,12 @@ export const ActionDropdown: React.FC<{
       <button
         type="button"
         className={cn(
-          'inline-flex items-center justify-center w-8 h-8',
+          'inline-flex items-center justify-center w-9 h-9', // Aumentado para mejor touch
           'text-app-gray-400 hover:text-white',
-          'hover:bg-app-dark-700 rounded-md',
-          'transition-colors duration-150',
-          'focus:outline-none focus:ring-2 focus:ring-app-accent-500',
+          'hover:bg-app-dark-700 rounded-lg', // rounded-md -> rounded-lg
+          'transition-all duration-150',
+          'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
+          'active:scale-95', // Feedback táctil
           disabled && 'opacity-50 cursor-not-allowed'
         )}
         disabled={disabled}
@@ -500,14 +529,14 @@ export const ActionDropdown: React.FC<{
     )}
     items={items}
     align="end"
-    size="sm"
+    size="md" // Cambiado de sm a md para mejor UX móvil
     disabled={disabled}
     className={className}
   />
 );
 
 /**
- * Select Dropdown - Para selección de opciones
+ * Select Dropdown - Para selección de opciones con UX mejorada
  */
 export const SelectDropdown: React.FC<{
   value?: string;
@@ -547,21 +576,26 @@ export const SelectDropdown: React.FC<{
       trigger={
         <div className={cn(
           'flex items-center justify-between',
-          'px-3 py-2 text-sm',
+          'px-4 py-3', // Padding aumentado para mobile
           'bg-app-dark-700 border border-app-dark-600',
-          'rounded-lg transition-colors',
+          'rounded-lg transition-all duration-150',
           'hover:border-app-dark-500',
-          'focus-within:ring-2 focus-within:ring-app-accent-500',
+          'focus-within:ring-2 focus-within:ring-primary-500/50',
+          'focus-within:border-primary-500/50',
           disabled && 'opacity-50 cursor-not-allowed',
           fullWidth && 'w-full',
           className
         )}>
           <span className={cn(
+            'transition-colors duration-150',
             selectedOption ? 'text-app-gray-200' : 'text-app-gray-400'
           )}>
             {selectedOption?.label || placeholder}
           </span>
-          <ChevronDown className="h-4 w-4 text-app-gray-400" />
+          <ChevronDown className={cn(
+            'h-4 w-4 text-app-gray-400 transition-transform duration-150',
+            'group-data-[state=open]:rotate-180'
+          )} />
         </div>
       }
       items={items}
@@ -574,7 +608,7 @@ export const SelectDropdown: React.FC<{
 };
 
 /**
- * Context Menu - Para click derecho
+ * Context Menu - Para click derecho con UX mejorada
  */
 export const ContextMenu: React.FC<{
   children: React.ReactNode;
@@ -609,9 +643,9 @@ export const ContextMenu: React.FC<{
         >
           <div
             className={cn(
-              'fixed z-50 min-w-40 text-sm',
+              'fixed z-50 min-w-48 text-sm', // Ancho aumentado
               'bg-app-dark-800 border border-app-dark-600',
-              'rounded-lg shadow-lg py-1'
+              'rounded-xl shadow-xl backdrop-blur-sm py-2' // Mejor styling
             )}
             style={{
               left: position.x,
@@ -623,7 +657,7 @@ export const ContextMenu: React.FC<{
                 return (
                   <div 
                     key={index} 
-                    className="my-1 h-px bg-app-dark-600" 
+                    className="my-2 h-px bg-app-dark-600" 
                   />
                 );
               }
@@ -634,10 +668,11 @@ export const ContextMenu: React.FC<{
                   key={index}
                   type="button"
                   className={cn(
-                    'w-full text-left px-3 py-2',
-                    'text-app-gray-200 hover:bg-app-dark-700',
-                    'transition-colors duration-150',
-                    menuItem.destructive && 'text-red-400 hover:bg-red-500/10',
+                    'w-full text-left px-4 py-3', // Padding aumentado
+                    'text-app-gray-200 hover:bg-app-dark-700 rounded-lg mx-1',
+                    'transition-all duration-150',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
+                    menuItem.destructive && 'text-red-400 hover:bg-red-500/15',
                     menuItem.disabled && 'opacity-50 cursor-not-allowed'
                   )}
                   disabled={menuItem.disabled}
@@ -648,7 +683,7 @@ export const ContextMenu: React.FC<{
                     }
                   }}
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     {menuItem.icon && React.createElement(menuItem.icon as LucideIcon, {
                       className: 'h-4 w-4'
                     })}

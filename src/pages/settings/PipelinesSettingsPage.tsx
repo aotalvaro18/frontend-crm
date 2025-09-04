@@ -234,8 +234,7 @@ const PipelinesSettingsPage: React.FC = () => {
     { type: 'separator' as const },
     { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: () => handleDeleteClick(pipeline), className: 'text-red-400 hover:text-red-300' },
   ];
-// TEST: Verificar que los items se están generando
-console.log('🔍 Pipeline items for dropdown:', getActionItems(pipelines[0]));
+
   // ============================================
   // TABLE COLUMNS CONFIGURATION - Adaptado para Pipelines
   // ============================================
@@ -435,7 +434,8 @@ console.log('🔍 Pipeline items for dropdown:', getActionItems(pipelines[0]));
       </div>
 
       {/* ============================================ */}
-      {/* FILTERS PANEL (Condicional) - REEMPLAZADO Card con div */}
+      {/* FILTERS PANEL (Condicional) */}
+      {/* 🔧 CAMBIO QUIRÚRGICO: Corregido onClick del botón X */}
       {/* ============================================ */}
       {showFilters && (
         <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-4 mb-6">
@@ -444,8 +444,7 @@ console.log('🔍 Pipeline items for dropdown:', getActionItems(pipelines[0]));
             <IconButton
               variant="ghost"
               size="sm"
-              onClick={() => console.log('🔍 Dropdown trigger clicked')} // ← AGREGAR ESTA LÍNEA
-              //onClick={() => setShowFilters(false)}
+              onClick={() => setShowFilters(false)} // 🔧 CORREGIDO: Removido el console.log y restaurado la funcionalidad original
             >
               <X className="h-4 w-4" />
             </IconButton>
@@ -491,7 +490,7 @@ console.log('🔍 Pipeline items for dropdown:', getActionItems(pipelines[0]));
       )}
 
       {/* ============================================ */}
-      {/* PIPELINES TABLE - REEMPLAZADO Card con div */}
+      {/* PIPELINES TABLE */}
       {/* ============================================ */}
       <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg">
         {isLoadingPipelines && pipelines.length === 0 ? (
