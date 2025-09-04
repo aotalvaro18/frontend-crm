@@ -211,11 +211,11 @@ const PipelineDetailPage: React.FC = () => {
   // HANDLERS
   // ============================================
   const handleBack = useCallback(() => {
-    navigate('/pipelines');
+    navigate('/settings/pipelines');
   }, [navigate]);
 
   const handleEdit = useCallback(() => {
-    navigate(`/pipelines/${pipelineId}/edit`);
+    navigate(`/settings/pipelines/${pipelineId}/edit`);
   }, [navigate, pipelineId]);
 
   const handleDeleteClick = useCallback(() => {
@@ -274,7 +274,7 @@ const PipelineDetailPage: React.FC = () => {
   // ============================================
   const mainActionItems = [
     { id: 'duplicate', label: 'Duplicar Pipeline', icon: Copy, onClick: handleDuplicateClick },
-    { id: 'kanban', label: 'Ver en Kanban', icon: Eye, onClick: () => navigate(`/pipelines?pipeline=${pipeline?.id}`) },
+    { id: 'kanban', label: 'Ver en Kanban', icon: Eye, onClick: () => navigate(`/deals?pipeline=${pipeline?.id}`) },
     { type: 'separator' as const },
     { id: 'delete', label: 'Eliminar Pipeline', icon: Trash2, onClick: handleDeleteClick, className: 'text-red-400 hover:text-red-300' },
   ];
