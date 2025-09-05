@@ -422,7 +422,7 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
 StageItem.displayName = 'StageItem';
 
 // ============================================
-// MAIN PIPELINE EDITOR COMPONENT AAA
+// MAIN PIPELINE EDITOR COMPONENT
 // ============================================
 const PipelineEditor: React.FC<PipelineEditorProps> = ({
   pipeline,
@@ -491,19 +491,14 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
   });
 
   // Effects
-    const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
+  const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
     name: stage.name,
     orderIndex: stage.orderIndex || stage.order || index,
     probability: stage.probability ?? 0,
-
-    // CORRECCIÓN: Si la plantilla no especifica un color, asigna uno por defecto.
-    // Esto garantiza que el campo 'color' nunca sea undefined y siempre pase la validación de Zod.
-    color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
-
+    color: stage.color,
     isClosedWon: stage.isClosedWon ?? false,
     isClosedLost: stage.isClosedLost ?? false,
-    description: stage.description || '', // Es buena práctica inicializarlo también.
-    }), []);
+  }), []);
 
   useEffect(() => {
 
@@ -529,7 +524,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           probability: stage.probability,
           isClosedWon: stage.isClosedWon,
           isClosedLost: stage.isClosedLost,
-          orderIndex: stage.orderIndex ?? index,
+         orderIndex: stage.orderIndex ?? index,
         })) || [],
       });
     } else if (selectedTemplate && mode === 'create') {
