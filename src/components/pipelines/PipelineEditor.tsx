@@ -568,9 +568,21 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
 
   const handleUpdateStage = useCallback((index: number, updates: Partial<PipelineEditorForm['stages'][0]>) => {
     console.log('🔥 handleUpdateStage llamado:', { index, updates });
+    console.log('🔥 Current stage antes:', fields[index]);
+    
     const currentStage = fields[index];
     if (currentStage) {
-      update(index, { ...currentStage, ...updates });
+      const newStage = { ...currentStage, ...updates };
+      console.log('🔥 New stage después:', newStage);
+      update(index, newStage);
+      
+      // Verificar que se aplicó correctamente
+      setTimeout(() => {
+        console.log('🔥 Stage después del update:', fields[index]);
+        console.log('🔥 Todos los fields después del update:', fields);
+      }, 10);
+    } else {
+      console.log('🔥 ERROR: currentStage es undefined para index:', index);
     }
   }, [fields, update]);
 
