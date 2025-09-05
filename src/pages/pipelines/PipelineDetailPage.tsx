@@ -35,8 +35,7 @@ import type { StatCardConfig } from '@/components/shared/StatsCards';
 // ============================================
 import { 
   usePipelineOperations,
-  PIPELINE_DETAIL_QUERY_KEY,
-  usePipelineMetrics
+  PIPELINE_DETAIL_QUERY_KEY
 } from '@/hooks/usePipelines';
 import { pipelineApi } from '@/services/api/pipelineApi';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
@@ -197,10 +196,7 @@ const PipelineDetailPage: React.FC = () => {
     enabled: !!pipelineId && pipelineId > 0,
   });
 
-  const { 
-    //data: metrics,
-    isLoading: isLoadingMetrics 
-  } = usePipelineMetrics();
+  
 
   // ============================================
   // HOOKS DE ZUSTAND (Para acciones)
@@ -455,7 +451,7 @@ const PipelineDetailPage: React.FC = () => {
           totalValue: pipeline.totalValue || 0,
           averageCloseTime: pipeline.averageCloseTime || 0,
         }}
-        isLoading={isLoadingMetrics}
+        
       />
 
       {/* ============================================ */}
