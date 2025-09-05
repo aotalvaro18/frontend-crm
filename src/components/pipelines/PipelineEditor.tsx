@@ -483,7 +483,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
   // Effects
   const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
     name: stage.name,
-    order: stage.order,
+    orderIndex: stage.orderIndex || stage.order || index,
     probability: stage.probability ?? 0,
     color: stage.color,
     isClosedWon: stage.isClosedWon ?? false,
