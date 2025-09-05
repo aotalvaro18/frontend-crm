@@ -1,14 +1,13 @@
 // src/pages/settings/PipelinesSettingsPage.tsx
 // ✅ PIPELINES SETTINGS PAGE - Siguiendo exactamente los patrones de CompanyListPage
-// 🔧 REFACTORED: Aplicando patrón rowActions como Companies
+// 🔧 REFACTORED: Usando PipelinesTable como Companies
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
-  Plus, MoreHorizontal, Edit3, Trash2, Eye, Copy, 
-  GitBranch, Target, TrendingUp, BarChart3,
-  Search, Filter, X
+  Plus, GitBranch, Target, TrendingUp, BarChart3,
+  Search, Filter, X, Trash2
 } from 'lucide-react';
 
 // ============================================
@@ -17,11 +16,7 @@ import {
 import { Page } from '@/components/layout/Page';
 import { Input } from '@/components/ui/Input';
 import { Button, IconButton } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { DataTable, type Column } from '@/components/ui/Table';
-import Dropdown from '@/components/ui/Dropdown';
 
 // ============================================
 // SHARED COMPONENTS - Reutilizando exactamente como Companies
@@ -29,6 +24,11 @@ import Dropdown from '@/components/ui/Dropdown';
 import { StatsCards } from '@/components/shared/StatsCards';
 import type { StatCardConfig } from '@/components/shared/StatsCards';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+
+// ============================================
+// PIPELINE COMPONENTS - Siguiendo patrón de Companies
+// ============================================
+import PipelinesTable from '@/components/pipelines/PipelinesTable';
 
 // ============================================
 // HOOKS & SERVICES - Siguiendo patrón Slice Vertical
@@ -51,86 +51,7 @@ import type {
   PipelineDTO, 
   PipelineSearchCriteria
 } from '@/types/pipeline.types';
-import { PERFORMANCE_STATUS_LABELS } from '@/types/pipeline.types';
 import { cn } from '@/utils/cn';
-import { formatters } from '@/utils/formatters';
-
-// ============================================
-// PIPELINE ACTIONS DROPDOWN COMPONENT - Siguiendo patrón CompanyActionsDropdown
-// ============================================
-const PipelineActionsDropdown: React.FC<{ 
-  pipeline: PipelineDTO; 
-  onView?: () => void; 
-  onEdit?: () => void; 
-  onDelete?: () => void;
-  onDuplicate?: () => void;
-  isUpdating?: boolean; 
-  isDeleting?: boolean;
-  isDuplicating?: boolean;
-}> = ({ 
-  pipeline, 
-  onView, 
-  onEdit, 
-  onDelete, 
-  onDuplicate,
-  isUpdating = false, 
-  isDeleting = false,
-  isDuplicating = false 
-}) => {
-  const items = [
-    { 
-      id: 'view', 
-      label: 'Ver Detalles', 
-      icon: Eye, 
-      onClick: onView, 
-      disabled: false 
-    },
-    { 
-      id: 'edit', 
-      label: 'Editar Pipeline', 
-      icon: Edit3, 
-      onClick: onEdit, 
-      disabled: isUpdating || isDeleting || isDuplicating 
-    },
-    { 
-      id: 'duplicate', 
-      label: 'Duplicar Pipeline', 
-      icon: Copy, 
-      onClick: onDuplicate, 
-      disabled: isUpdating || isDeleting || isDuplicating 
-    },
-    { type: 'separator' as const },
-    { 
-      id: 'delete', 
-      label: 'Eliminar Pipeline', 
-      icon: Trash2, 
-      onClick: onDelete, 
-      disabled: isUpdating || isDeleting || isDuplicating, 
-      destructive: true 
-    },
-  ];
-
-  return (
-    <Dropdown 
-      trigger={
-        <IconButton 
-          variant="ghost" 
-          size="sm" 
-          disabled={isUpdating || isDeleting || isDuplicating} 
-          aria-label={`Acciones para ${pipeline.name}`}
-        >
-          {(isUpdating || isDeleting || isDuplicating) ? (
-            <LoadingSpinner size="xs" />
-          ) : (
-            <MoreHorizontal className="h-4 w-4" />
-          )}
-        </IconButton>
-      } 
-      items={items} 
-      align="end" 
-    />
-  );
-};
 
 // ============================================
 // MAIN COMPONENT
@@ -200,10 +121,7 @@ const PipelinesSettingsPage: React.FC = () => {
   // ============================================
   const { 
     deletePipeline, 
-    duplicatePipeline,
-    updating,
-    deleting,
-    duplicating
+    duplicatePipeline
   } = usePipelineOperations();
   const {
     selectedPipelineIds,
@@ -259,10 +177,6 @@ const PipelinesSettingsPage: React.FC = () => {
     navigate(`/settings/pipelines/${pipeline.id}`);
   };
 
-  const handlePipelineEdit = (pipeline: PipelineDTO) => {
-    navigate(`/settings/pipelines/${pipeline.id}/edit`);
-  };
-
   const handleDeleteClick = (pipeline: PipelineDTO) => {
     setPipelineToDelete(pipeline);
   };
@@ -306,107 +220,6 @@ const PipelinesSettingsPage: React.FC = () => {
   const handleCreateNew = () => {
     navigate('/settings/pipelines/new');
   };
-
-  // ============================================
-  // TABLE COLUMNS CONFIGURATION - 🔧 SIN COLUMNA ACTIONS (siguiendo patrón Companies)
-  // ============================================
-  const columns: Column<PipelineDTO>[] = [
-    {
-      id: 'name',
-      header: 'Pipeline',
-      accessorKey: 'name',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-500/10 rounded-lg">
-            <GitBranch className="h-4 w-4 text-primary-500" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-app-gray-100">{row.name}</span>
-              {row.isDefault && (
-                <Badge variant="success" size="sm">Por Defecto</Badge>
-              )}
-              {!row.isActive && (
-                <Badge variant="secondary" size="sm">Inactivo</Badge>
-              )}
-            </div>
-            {row.description && (
-              <p className="text-sm text-app-gray-400 mt-1">{row.description}</p>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'stageCount',
-      header: 'Etapas',
-      accessorKey: 'stageCount',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-app-gray-400" />
-          <span className="text-app-gray-200">
-            {row.stageCount || row.stages?.length || 0} etapas
-          </span>
-        </div>
-      ),
-    },
-    {
-      id: 'totalDeals',
-      header: 'Deals',
-      accessorKey: 'totalDeals',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-app-gray-400" />
-          <span className="text-app-gray-200">
-            {row.totalDeals || 0}
-          </span>
-        </div>
-      ),
-    },
-    {
-      id: 'totalValue',
-      header: 'Valor Total',
-      accessorKey: 'totalValue',
-      cell: ({ row }) => (
-        <span className="font-mono text-app-gray-200">
-          {row.totalValue ? formatters.currency(row.totalValue) : '-'}
-        </span>
-      ),
-    },
-    {
-      id: 'performanceStatus',
-      header: 'Rendimiento',
-      accessorKey: 'performanceStatus',
-      cell: ({ row }) => {
-        const status = row.performanceStatus;
-        if (!status) return <span className="text-app-gray-400">-</span>;
-        
-        const variants = {
-            excellent: 'success',
-            good: 'info',
-            warning: 'warning',
-            critical: 'destructive',
-          } as const;
-
-        return (
-          <Badge variant={variants[status] || 'secondary'} size="sm">
-            {PERFORMANCE_STATUS_LABELS[status as keyof typeof PERFORMANCE_STATUS_LABELS]}
-          </Badge>
-        );
-      },
-    },
-    {
-      id: 'updatedAt',
-      header: 'Última Actualización',
-      accessorKey: 'updatedAt',
-      cell: ({ row }) => (
-        <div className="text-sm text-app-gray-400">
-          {formatters.relativeDate(row.updatedAt)}
-        </div>
-      ),
-    },
-    // 🔧 REMOVIDA: columna 'actions' - ahora se maneja con rowActions
-  ];
 
   // ============================================
   // RENDER COMPONENT - Siguiendo estructura de CompanyListPage
@@ -548,84 +361,49 @@ const PipelinesSettingsPage: React.FC = () => {
       )}
 
       {/* ============================================ */}
-      {/* PIPELINES TABLE - 🔧 USANDO rowActions COMO COMPANIES */}
+      {/* PIPELINES TABLE - 🔧 USANDO PipelinesTable COMO COMPANIES */}
       {/* ============================================ */}
-      <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg">
-        {isLoadingPipelines && pipelines.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="lg" />
+      <PipelinesTable
+        pipelines={pipelines}
+        isLoading={isLoadingPipelines}
+        totalPipelines={totalPipelines}
+        onPipelineClick={handlePipelineClick}
+        onPipelineDelete={handleDeleteClick}
+        onPipelineDuplicate={handleDuplicateClick}
+        selectedPipelineIds={selectedPipelineIds}
+        onSelectAll={() => selectAllPipelines(pipelines.map((p, index) => p.id || index))}
+        onDeselectAll={() => {}}
+      />
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-6 py-4 border border-app-dark-600 bg-app-dark-800/50 rounded-lg mt-4">
+          <div className="text-sm text-app-gray-400">
+            Mostrando {pipelines.length} de {totalPipelines} pipelines
           </div>
-        ) : pipelines.length === 0 ? (
-          <EmptyState
-            icon={GitBranch}
-            title="No hay pipelines configurados"
-            description="Crea tu primer pipeline para empezar a gestionar procesos de negocio."
-            action={
-              <Button onClick={handleCreateNew}>
-                <Plus className="h-4 w-4" />
-                Crear Primer Pipeline
-              </Button>
-            }
-          />
-        ) : (
-          <>
-            <DataTable
-              columns={columns}
-              data={pipelines}
-              loading={isFetchingPipelines}
-              enableSelection={true}
-              selectedRows={selectedPipelineIds}
-              onRowSelect={(id: number | string) => {
-                // Implementar selección individual si es necesario
-              }}
-              onSelectAll={() => selectAllPipelines(pipelines.map((p, index) => p.id || index))}
-              getRowId={(row: PipelineDTO, index: number) => row.id || index}
-              rowActions={(row) => (
-                <PipelineActionsDropdown
-                  pipeline={row}
-                  onView={() => handlePipelineClick(row)}
-                  onEdit={() => handlePipelineEdit(row)}
-                  onDelete={() => handleDeleteClick(row)}
-                  onDuplicate={() => handleDuplicateClick(row)}
-                  isUpdating={updating.has(row.id)}
-                  isDeleting={deleting.has(row.id)}
-                  isDuplicating={duplicating.has(row.id)}
-                />
-              )}
-            />
-            
-            {/* Paginación */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-app-dark-600">
-                <div className="text-sm text-app-gray-400">
-                  Mostrando {pipelines.length} de {totalPipelines} pipelines
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                  >
-                    Anterior
-                  </Button>
-                  <span className="text-sm text-app-gray-300 px-3">
-                    {currentPage + 1} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                    disabled={currentPage >= totalPages - 1}
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0}
+            >
+              Anterior
+            </Button>
+            <span className="text-sm text-app-gray-300 px-3">
+              {currentPage + 1} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+              disabled={currentPage >= totalPages - 1}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ============================================ */}
       {/* MODALES DE CONFIRMACIÓN - Usando componente shared */}
