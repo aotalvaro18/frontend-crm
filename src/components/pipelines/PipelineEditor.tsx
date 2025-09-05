@@ -424,6 +424,14 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   showActions = true,
 }) => {
   // Estado global para expansión de etapas
+
+// 🔥 AGREGAR ESTE LOG JUSTO DESPUÉS:
+console.log('🔥 PipelineEditor - Props recibidas:');
+console.log('🔥 PipelineEditor - pipeline:', pipeline);
+console.log('🔥 PipelineEditor - pipeline.stages:', pipeline?.stages);
+console.log('🔥 PipelineEditor - mode:', mode);
+console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
+
   const [expandedStages, setExpandedStages] = useState<Set<number>>(new Set());
 
   const toggleExpanded = useCallback((index: number) => {
@@ -483,7 +491,15 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   }), []);
 
   useEffect(() => {
+
+    console.log('🔥 PipelineEditor useEffect triggered:');
+  console.log('🔥 pipeline:', pipeline);
+  console.log('🔥 mode:', mode);
+  console.log('🔥 pipeline?.stages:', pipeline?.stages);
+
     if (pipeline && mode === 'edit') {
+        console.log('🔥 Entrando a modo EDIT');
+    console.log('🔥 pipeline.stages antes del map:', pipeline.stages);
       form.reset({
         name: pipeline.name,
         description: pipeline.description || '',
