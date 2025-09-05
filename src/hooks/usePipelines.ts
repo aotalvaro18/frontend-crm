@@ -476,16 +476,6 @@ export const usePipelineStats = () => {
 };
 
 /**
- * Hook para obtener métricas detalladas de pipelines
- */
-export const usePipelineMetrics = (startDate?: string, endDate?: string) => {
-  return useQuery({
-    queryKey: PIPELINE_METRICS_QUERY_KEY(startDate, endDate),
-    queryFn: () => pipelineApi.getPipelineMetrics(startDate, endDate),
-  });
-};
-
-/**
  * Hook para obtener tipos de pipeline
  */
 export const usePipelineTypes = () => {

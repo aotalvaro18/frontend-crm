@@ -15,7 +15,6 @@ import type {
   PipelineSearchCriteria,
   PipelineStageSearchCriteria,
   PipelineStats,
-  PipelineMetricsResponse,
 } from '@/types/pipeline.types';
 
 import type { 
@@ -400,27 +399,7 @@ export class PipelineApiService {
     }
   }
 
-  /**
-   * Obtener métricas detalladas de pipelines
-   */
-  async getPipelineMetrics(
-    startDate?: string, 
-    endDate?: string
-  ): Promise<PipelineMetricsResponse> {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-
-    const url = `${API_ENDPOINTS.PIPELINES}/metrics?${params.toString()}`;
-    
-    try {
-      return await apiClient.get<PipelineMetricsResponse>(url);
-    } catch (error: unknown) {
-      this.handleMetricsError(error);
-      throw error;
-    }
-  }
-
+  
   // ============================================
   // VALIDATION METHODS (PRIVADAS)
   // ============================================
