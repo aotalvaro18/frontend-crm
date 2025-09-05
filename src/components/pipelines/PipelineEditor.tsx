@@ -62,7 +62,7 @@ const debounce = <T extends (...args: any[]) => void>(func: T, wait: number): T 
 // ZOD VALIDATION SCHEMAS AAA
 // ============================================
 const StageSchema = z.object({
-    id: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
+    stageId: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
     name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
     description: z.string().optional(),
     color: z.string().min(1, 'El color es obligatorio'),
@@ -517,7 +517,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
         isActive: pipeline.isActive !== false,
         type: pipeline.type || 'SALES',
         stages: pipeline.stages?.map((stage, index) => ({
-          id: stage.id,
+          stageId: stage.id,
           name: stage.name,
           description: stage.description || '',
           color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
@@ -624,24 +624,25 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
       console.log('🔥 Procesando stages:', data.stages);
 
       const stagesForBackend = data.stages.map((stage, index) => {
-        // 🔥 Asegurar que color existe
         const finalColor = stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length];
         
         const processedStage = {
+          // TRADUCCIÓN FINAL: Si existe stageId, lo enviamos como 'id'.
+          ...(stage.stageId && { id: stage.stageId }), 
+      
           name: stage.name,
           description: stage.description || undefined,
-          position: index + 1,
+          position: stage.orderIndex ?? index, 
           color: finalColor,
-          probability: stage.probability || undefined,
-          isWon: stage.isClosedWon || false,
-          isLost: stage.isClosedLost || false,
-          autoMoveDays: undefined,
+          probability: stage.probability ?? 0,
+          isClosedWon: stage.isClosedWon || false,
+          isClosedLost: stage.isClosedLost || false,
           active: true,
         };
         
-        console.log(`🔥 Stage ${index} procesado:`, processedStage);
+        console.log(`✅ Stage ${index} procesado para backend:`, processedStage);
         return processedStage;
-      });
+    });
 
       console.log('🔥 stagesForBackend preparados:', stagesForBackend);
 
