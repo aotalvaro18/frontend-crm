@@ -49,7 +49,7 @@ export const PIPELINE_CATEGORY_LABELS: Record<PipelineCategory, string> = {
   export interface PipelineStage extends BaseEntity {
     // Información básica obligatoria
     name: string;
-    order: number;              // Para la secuencia en el Kanban (0, 1, 2...)
+    orderIndex:number  // Para la secuencia en el Kanban (0, 1, 2...)
     pipelineId: number;         // FK al pipeline padre
     
     // Configuración opcional

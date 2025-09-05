@@ -101,7 +101,7 @@ const PipelineStageItem: React.FC<PipelineStageItemProps> = ({
           {/* Order indicator */}
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-app-dark-600 flex items-center justify-center text-xs font-medium text-app-gray-300">
-              {(stage.order || index) + 1}
+            {(stage.orderIndex || index) + 1}
             </div>
             <div 
               className="w-4 h-4 rounded border-2 border-app-dark-400"
@@ -481,7 +481,7 @@ const PipelineDetailPage: React.FC = () => {
         {pipeline.stages && pipeline.stages.length > 0 ? (
           <div className="space-y-4">
             {pipeline.stages
-              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
               .map((stage, index) => (
                 <PipelineStageItem
                   key={stage.id}

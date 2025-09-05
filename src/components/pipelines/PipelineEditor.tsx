@@ -69,7 +69,7 @@ const StageSchema = z.object({
   probability: z.number().min(0).max(100).optional(),
   isClosedWon: z.boolean().optional().default(false),
   isClosedLost: z.boolean().optional().default(false),
-  order: z.number().min(0).optional().default(0),
+  orderIndex: z.number().min(0).optional().default(0),
 });
 
 const PipelineEditorSchema = z.object({
@@ -469,8 +469,8 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
       icon: 'GitBranch',
       color: '#3B82F6',
       stages: [
-        { name: 'Prospecto', order: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0], isClosedWon: false, isClosedLost: false },
-        { name: 'Calificado', order: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1], isClosedWon: false, isClosedLost: false },
+        { name: 'Prospecto', orderIndex: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0], isClosedWon: false, isClosedLost: false },
+        { name: 'Calificado', orderIndex: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1], isClosedWon: false, isClosedLost: false },
       ],
     },
   });
@@ -509,12 +509,12 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
         stages: pipeline.stages?.map((stage, index) => ({
           id: stage.id,
           name: stage.name,
-          description: stage.description,
+          description: stage.description || '',
           color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
           probability: stage.probability,
           isClosedWon: stage.isClosedWon,
           isClosedLost: stage.isClosedLost,
-          order: stage.order || index,
+          order: stage.orderIndex || index,
         })) || [],
       });
     } else if (selectedTemplate && mode === 'create') {
@@ -555,7 +555,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
     
     const newStage = {
       name: `Nueva Etapa ${newOrder + 1}`,
-      order: newOrder,
+      orderIndex: newOrder,
       probability: Math.min(10 + (newOrder * 20), 90),
       color: defaultColor,
       isClosedWon: false,

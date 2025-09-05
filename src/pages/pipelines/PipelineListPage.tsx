@@ -566,7 +566,7 @@ const PipelineListPage: React.FC = () => {
                 </p>
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   {currentPipeline.stages
-                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
                     .map((stage, index) => (
                       <Badge 
                         key={stage.id}
