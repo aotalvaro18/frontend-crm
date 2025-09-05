@@ -524,7 +524,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           probability: stage.probability,
           isClosedWon: stage.isClosedWon,
           isClosedLost: stage.isClosedLost,
-         orderIndex: stage.orderIndex ?? index,
+          orderIndex: stage.orderIndex ?? index,
         })) || [],
       });
     } else if (selectedTemplate && mode === 'create') {
@@ -624,28 +624,22 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
       console.log('🔥 Procesando stages:', data.stages);
 
       const stagesForBackend = data.stages.map((stage, index) => {
-        // Asegura que siempre haya un color válido.
+        // 🔥 Asegurar que color existe
         const finalColor = stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length];
         
         const processedStage = {
-          // LÓGICA CLAVE: Si la etapa tiene un ID (modo edición), lo incluimos.
-          // Si no tiene ID (modo creación o nueva etapa en modo edición), no se incluye.
-          ...(stage.id && { id: stage.id }), 
-      
           name: stage.name,
           description: stage.description || undefined,
-          
-          // Usa el 'orderIndex' del formulario. Crucial para reordenar y persistir el orden.
-          position: stage.orderIndex ?? index,
-          
+          position: index + 1,
           color: finalColor,
-          probability: stage.probability ?? 0,
-          isClosedWon: stage.isClosedWon || false,
-          isClosedLost: stage.isClosedLost || false,
-          active: true, // Asumimos que todas las etapas que se envían están activas
+          probability: stage.probability || undefined,
+          isWon: stage.isClosedWon || false,
+          isLost: stage.isClosedLost || false,
+          autoMoveDays: undefined,
+          active: true,
         };
         
-        console.log(`✅ Stage ${index} procesado para enviar al backend:`, processedStage);
+        console.log(`🔥 Stage ${index} procesado:`, processedStage);
         return processedStage;
       });
 
@@ -681,7 +675,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           isDefault: data.isDefault,
           active: data.isActive,
           version: pipeline.version,
-          stages: stagesForBackend,
+          stages: stagesForBackend as any,
         };
 
         console.log('🔥 Llamando updatePipeline con request:', request);
