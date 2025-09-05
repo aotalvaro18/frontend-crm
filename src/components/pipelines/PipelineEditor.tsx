@@ -59,25 +59,17 @@ const debounce = <T extends (...args: any[]) => void>(func: T, wait: number): T 
 };
 
 // ============================================
-// ZOD VALIDATION SCHEMAS
+// ZOD VALIDATION SCHEMAS AAA
 // ============================================
 const StageSchema = z.object({
-    id: z.number().optional(), // Volver a lo simple
+    id: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
     name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
     description: z.string().optional(),
     color: z.string().min(1, 'El color es obligatorio'),
-    probability: z.union([z.number(), z.string()]).optional().transform(val => {
-      if (val === undefined || val === null || val === '') return undefined;
-      const num = Number(val);
-      return isNaN(num) ? undefined : num;
-    }),
+    probability: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
     isClosedWon: z.boolean().optional().default(false),
     isClosedLost: z.boolean().optional().default(false),
-    orderIndex: z.union([z.number(), z.string()]).optional().transform(val => {
-      if (val === undefined || val === null || val === '') return 0;
-      const num = Number(val);
-      return isNaN(num) ? 0 : num;
-    }),
+    orderIndex: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : 0),
   });
 
 const PipelineEditorSchema = z.object({
