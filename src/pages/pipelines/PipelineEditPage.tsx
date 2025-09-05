@@ -1,9 +1,9 @@
 // src/pages/pipelines/PipelineEditPage.tsx
-// ✅ PIPELINE EDIT PAGE - Página dedicada para editar pipelines
-// Siguiendo patrones de layout de CompanyCreatePage pero para edición
+// ✅ VERSIÓN FINAL DE TALLA MUNDIAL
+// Orquestador robusto que gestiona la carga, los estados de error y delega la edición.
 
 import React, { useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, GitBranch, AlertCircle, Edit3, Eye } from 'lucide-react';
 
@@ -13,21 +13,13 @@ import { ArrowLeft, GitBranch, AlertCircle, Edit3, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Page } from '@/components/layout/Page';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-
-// ============================================
-// PIPELINE COMPONENTS
-// ============================================
 import PipelineEditor from '@/components/pipelines/PipelineEditor';
 
 // ============================================
-// HOOKS & SERVICES - Siguiendo patrón Slice Vertical
+// HOOKS & SERVICES
 // ============================================
-import { 
-  usePipelineOperations,
-  PIPELINE_DETAIL_QUERY_KEY 
-} from '@/hooks/usePipelines';
+import { usePipelineOperations, PIPELINE_DETAIL_QUERY_KEY } from '@/hooks/usePipelines';
 import { pipelineApi } from '@/services/api/pipelineApi';
-//import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
 // MAIN COMPONENT
@@ -35,28 +27,23 @@ import { pipelineApi } from '@/services/api/pipelineApi';
 const PipelineEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  //const { handleError } = useErrorHandler();
-  
-  // ============================================
-  // DATA FETCHING
-  // ============================================
   const pipelineId = parseInt(id || '0', 10);
-  
-  const { 
-    data: pipeline, 
-    isLoading, 
-    error,
-    refetch 
-  } = useQuery({
-    queryKey: PIPELINE_DETAIL_QUERY_KEY(pipelineId),
-    queryFn: () => pipelineApi.getPipelineById(pipelineId),
-    enabled: !!pipelineId && pipelineId > 0,
-  });
 
   // ============================================
-  // HOOKS DE ZUSTAND (Para acciones)
+  // DATA FETCHING with React Query
   // ============================================
-  const { updatePipeline, isUpdating } = usePipelineOperations();
+  const { data: pipeline, isLoading, error, refetch } = useQuery({
+    queryKey: PIPELINE_DETAIL_QUERY_KEY(pipelineId),
+    queryFn: () => {
+      console.log(`🔥 Fetching pipeline with ID: ${pipelineId}`);
+      return pipelineApi.getPipelineById(pipelineId);
+    },
+    enabled: !!pipelineId && pipelineId > 0, // Solo ejecutar si el ID es válido
+    retry: 1, // Reintentar una vez en caso de fallo
+    refetchOnWindowFocus: false, // Evitar refetch innecesario al cambiar de pestaña
+  });
+
+  const { isUpdating } = usePipelineOperations();
 
   // ============================================
   // HANDLERS
@@ -64,70 +51,54 @@ const PipelineEditPage: React.FC = () => {
   const handleBack = useCallback(() => {
     navigate('/settings/pipelines');
   }, [navigate]);
-  
-  const handleCancel = useCallback(() => {
-    navigate('/settings/pipelines');
-  }, [navigate]);
-  
-  const handleSubmit = useCallback(() => {
-    // Navegar de vuelta a la configuración de pipelines después del éxito
+
+  const handleSaveSuccess = useCallback(() => {
+    // Al guardar con éxito, volver a la lista de pipelines
     navigate('/settings/pipelines');
   }, [navigate]);
 
   // ============================================
-  // RENDER STATES
+  // RENDER STATES - Gestion de Carga y Errores
   // ============================================
-  
-  if (error) {
-    return (
-      <Page 
-        title="Error al cargar Pipeline"
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Configuración', href: '/settings' },
-          { label: 'Pipelines', href: '/settings/pipelines' },
-          { label: 'Error' }
-        ]}
-      >
-        <div className="text-center py-12">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-app-gray-100 mb-2">Error al cargar pipeline</h2>
-          <p className="text-app-gray-400 mb-4">
-            {error.message || 'No se pudo cargar la información del pipeline para editarlo.'}
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" onClick={() => navigate('/settings/pipelines')}>
-              Volver a Pipelines
-            </Button>
-            <Button onClick={() => refetch()}>
-              Reintentar
-            </Button>
-          </div>
-        </div>
-      </Page>
-    );
-  }
 
-  if (isLoading || !pipeline) {
+  if (isLoading) {
     return (
-      <Page 
-        title="Cargando Pipeline..."
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Configuración', href: '/settings' },
-          { label: 'Pipelines', href: '/settings/pipelines' },
-          { label: 'Editando...' }
-        ]}
-      >
-        <div className="flex items-center justify-center py-12">
+      <Page title="Cargando Pipeline...">
+        <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <LoadingSpinner size="lg" />
-            <p className="text-app-gray-400 mt-4">Cargando información del pipeline...</p>
+            <p className="text-app-gray-400 mt-4">Cargando datos del pipeline...</p>
           </div>
         </div>
       </Page>
     );
   }
+
+  if (error || !pipeline) {
+    return (
+      <Page title="Error al Cargar Pipeline">
+        <div className="text-center py-20 max-w-lg mx-auto">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-app-gray-100 mb-2">
+            No se pudo cargar el pipeline
+          </h2>
+          <p className="text-app-gray-400 mb-6">
+            {error?.message || 'El pipeline que intentas editar no existe o ocurrió un error al cargarlo.'}
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="outline" onClick={handleBack}>
+              Volver a la lista
+            </Button>
+            <Button onClick={() => refetch()}>
+              Reintentar Carga
+            </Button>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  const isCurrentlyUpdating = isUpdating(pipeline.id);
 
   // ============================================
   // MAIN RENDER
@@ -136,168 +107,76 @@ const PipelineEditPage: React.FC = () => {
     <Page 
       title={`Editar: ${pipeline.name}`}
       breadcrumbs={[
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Configuración', href: '/settings' },
         { label: 'Pipelines', href: '/settings/pipelines' },
-        { label: pipeline.name, href: `/pipelines/${pipeline.id}` },
+        { label: pipeline.name },
         { label: 'Editar' }
       ]} 
       className="space-y-6"
     >
-      {/* ============================================ */}
       {/* HEADER */}
-      {/* ============================================ */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="p-2"
-            disabled={isUpdating(pipeline.id)}
-          >
+          <Button variant="ghost" size="sm" onClick={handleBack} className="p-2" disabled={isCurrentlyUpdating}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Volver</span>
           </Button>
-          
           <div className="p-2 bg-primary-500/10 rounded-lg">
-            <GitBranch className="h-5 w-5 sm:h-6 sm:w-6 text-primary-500" />
+            <Edit3 className="h-6 w-6 text-primary-500" />
           </div>
-          
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-app-gray-100">
-              Editar Pipeline
-            </h1>
-            <p className="text-sm text-app-gray-400">
-              Modifica la configuración y etapas del pipeline "{pipeline.name}"
-            </p>
+            <h1 className="text-2xl font-bold text-app-gray-100">Editar Pipeline</h1>
+            <p className="text-sm text-app-gray-400">Modifica la configuración de "{pipeline.name}"</p>
           </div>
         </div>
-
-        {/* Quick Actions */}
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/settings/pipelines/${pipeline.id}`)}
-            disabled={isUpdating(pipeline.id)}
-          >
-            <Eye className="h-4 w-4" />
-            Ver Detalles
+          <Button as={Link} to={`/pipelines/${pipeline.id}`} variant="outline" disabled={isCurrentlyUpdating}>
+            <Eye className="h-4 w-4 mr-2" />
+            Vista Previa
           </Button>
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* PIPELINE INFO SUMMARY */}
-      {/* ============================================ */}
-      <div className="border-app-dark-600 bg-app-dark-800/50 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Edit3 className="h-4 w-4 text-app-gray-400" />
-              <span className="text-sm font-medium text-app-gray-300">Editando Pipeline</span>
-            </div>
-            <div className="h-4 w-px bg-app-dark-600"></div>
-            <div className="flex items-center gap-4 text-sm text-app-gray-400">
-              <span>ID: {pipeline.id}</span>
-              <span>Versión: {pipeline.version}</span>
-              <span>Etapas: {pipeline.stages?.length || 0}</span>
-              {pipeline.totalDeals !== undefined && (
-                <span>Oportunidades: {pipeline.totalDeals}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {pipeline.isDefault && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                Pipeline por Defecto
-              </span>
-            )}
-            {!pipeline.isActive && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
-                Inactivo
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================ */}
-      {/* WARNING CARD - Información importante */}
-      {/* ============================================ */}
+      {/* WARNING CARD - Pipeline con Oportunidades Activas */}
       {pipeline.totalDeals && pipeline.totalDeals > 0 && (
-        <div className="border-yellow-500/30 bg-yellow-900/20 p-4">
-          <div className="flex items-start gap-3">
+        <div className="border-yellow-500/30 bg-yellow-900/20 p-4 rounded-lg">
+          <div className="flex items-start gap-4">
             <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-medium text-yellow-200 mb-1">
                 Pipeline con Oportunidades Activas
               </h3>
               <p className="text-sm text-yellow-300/80 mb-2">
-                Este pipeline tiene <strong>{pipeline.totalDeals} oportunidades activas</strong>. 
-                Los cambios en las etapas pueden afectar el flujo de deals existentes.
+                Este pipeline tiene <strong>{pipeline.totalDeals} oportunidades</strong>. 
+                Los cambios en las etapas podrían afectar su flujo.
               </p>
               <div className="text-xs text-yellow-400">
-                <strong>Recomendaciones:</strong>
-                <ul className="list-disc list-inside mt-1 space-y-0.5">
-                  <li>Evita eliminar etapas que contengan oportunidades</li>
-                  <li>Si cambias el orden, verifica que el flujo siga siendo lógico</li>
-                  <li>Considera comunicar los cambios a tu equipo</li>
-                </ul>
+                <strong>Recomendación:</strong> Evita eliminar etapas que contengan oportunidades activas.
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* PIPELINE EDITOR - EL COMPONENTE PRINCIPAL */}
-      {/* ============================================ */}
-      <div className="max-w-4xl">
+      {/* PIPELINE EDITOR COMPONENT */}
+      <div className="max-w-5xl">
         <PipelineEditor
           pipeline={pipeline}
-          mode="edit"
-          onSave={handleSubmit}
-          onCancel={handleCancel}
-          loading={isUpdating(pipeline.id)}
+          onSave={handleSaveSuccess}
+          onCancel={handleBack}
+          loading={isCurrentlyUpdating}
           showActions={true}
         />
       </div>
 
-      {/* ============================================ */}
-      {/* HELP INFO - Información adicional */}
-      {/* ============================================ */}
-      <div className="max-w-4xl">
-        <div className="border-blue-500/30 bg-blue-900/20 p-4">
-          <div className="flex items-start gap-3">
-            <GitBranch className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-medium text-blue-200 mb-1">
-                Consejos para Editar Pipelines
-              </h3>
-              <div className="text-sm text-blue-300 space-y-1">
-                <p><strong>Etapas:</strong> Arrastra las etapas para reordenarlas. Asegúrate de que el flujo sea lógico.</p>
-                <p><strong>Probabilidades:</strong> Asigna probabilidades realistas que reflejen las posibilidades de cierre.</p>
-                <p><strong>Colores:</strong> Usa colores consistentes para facilitar la identificación en el Kanban.</p>
-                <p><strong>Cierre:</strong> Marca claramente las etapas de "Ganado" y "Perdido" para el seguimiento correcto.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================ */}
-      {/* LOADING OVERLAY - Igual que otros páginas de creación */}
-      {/* ============================================ */}
-      {isUpdating(pipeline.id) && (
+      {/* LOADING OVERLAY */}
+      {isCurrentlyUpdating && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-app-dark-800 border border-app-dark-600 rounded-lg p-6 max-w-sm w-full mx-4">
             <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+              <LoadingSpinner size="md" />
               <div>
                 <p className="text-app-gray-100 font-medium">Actualizando pipeline...</p>
-                <p className="text-app-gray-400 text-sm">Por favor espera un momento</p>
+                <p className="text-app-gray-400 text-sm">Guardando tus cambios...</p>
               </div>
             </div>
           </div>

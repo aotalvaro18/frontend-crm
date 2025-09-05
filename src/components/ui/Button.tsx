@@ -7,6 +7,8 @@ import { LoadingSpinner } from './LoadingSpinner';
 
 import { cva, type VariantProps } from 'class-variance-authority';
 
+import { type ElementType } from 'react';
+
 // ============================================
 // BUTTON VARIANTS (Con tus colores exactos)
 // ============================================
@@ -62,38 +64,50 @@ const buttonVariants = cva(
 // TYPES
 // ============================================
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+
+
+type ButtonOwnProps<E extends ElementType = ElementType> = {
+  as?: E;
   loading?: boolean;
   loadingText?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  asChild?: boolean; // Mantener por si se usa en el futuro con Radix Slot
-}
+  asChild?: boolean;
+} & VariantProps<typeof buttonVariants>;
+
+export type ButtonProps<E extends ElementType> = ButtonOwnProps<E> &
+  Omit<React.ComponentProps<E>, keyof ButtonOwnProps>;
 
 // ============================================
 // BUTTON COMPONENT
 // ============================================
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    fullWidth,
-    rounded,
-    loading = false,
-    loadingText,
-    leftIcon,
-    rightIcon,
-    children,
-    disabled,
-    ...props 
-  }, ref) => {
+const defaultElement = 'button';
+
+const Button = React.forwardRef(
+  <E extends ElementType = typeof defaultElement>(
+    {
+      className,
+      variant,
+      size,
+      fullWidth,
+      rounded,
+      loading = false,
+      loadingText,
+      leftIcon,
+      rightIcon,
+      children,
+      disabled,
+      as,
+      ...props
+    }: ButtonProps<E>,
+    ref: React.Ref<HTMLButtonElement | HTMLAnchorElement> // Ahora puede ser un botón o un ancla
+  ) => {
+    const Component = as || defaultElement;
     const isDisabled = disabled || loading;
 
     const getSpinnerSize = (): 'xs' | 'sm' | 'md' | 'lg' => {
+      // ... tu lógica de getSpinnerSize se queda igual
       switch (size) {
         case 'sm': case 'icon-sm': return 'xs';
         case 'lg': case 'icon-lg': return 'sm';
@@ -103,9 +117,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     return (
-      <button
+      <Component
         className={cn(buttonVariants({ variant, size, fullWidth, rounded, className }))}
-        ref={ref}
+        ref={ref as any}
         disabled={isDisabled}
         aria-busy={loading}
         {...props}
@@ -121,9 +135,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         
         {!loading && leftIcon && (
-          <span className="mr-2 flex-shrink-0 flex items-center">
-            {leftIcon}
-          </span>
+          <span className="mr-2 flex-shrink-0 flex items-center">{leftIcon}</span>
         )}
         
         <span className={cn(loading && 'opacity-70')}>
@@ -131,11 +143,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         </span>
         
         {!loading && rightIcon && (
-          <span className="ml-2 flex-shrink-0 flex items-center">
-            {rightIcon}
-          </span>
+          <span className="ml-2 flex-shrink-0 flex items-center">{rightIcon}</span>
         )}
-      </button>
+      </Component>
     );
   }
 );
@@ -148,26 +158,30 @@ export { Button };
 // SPECIALIZED BUTTON COMPONENTS
 // ============================================
 
-export const IconButton = React.forwardRef<HTMLButtonElement, ButtonProps & { 
+type IconButtonProps = ButtonProps<'button'> & {
   tooltip?: string;
   'aria-label'?: string;
-}>(({ tooltip, children, className, ...props }, ref) => (
-  <Button
-    ref={ref}
-    variant="ghost"
-    size="icon"
-    className={cn('relative group', className)}
-    aria-label={props['aria-label'] || tooltip}
-    {...props}
-  >
-    {children}
-    {tooltip && (
-      <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-app-dark-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-        {tooltip}
-      </span>
-    )}
-  </Button>
-));
+};
+
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ tooltip, children, className, ...props }, ref) => (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      className={cn('relative group', className)}
+      aria-label={props['aria-label'] || tooltip}
+      {...props}
+    >
+      {children}
+      {tooltip && (
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-app-dark-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+          {tooltip}
+        </span>
+      )}
+    </Button>
+  )
+);
 
 IconButton.displayName = 'IconButton';
 
@@ -191,30 +205,34 @@ export const BackButton: React.FC<{
   </Button>
 );
 
-export const FloatingActionButton = React.forwardRef<HTMLButtonElement, ButtonProps & {
+type FloatingActionButtonProps = ButtonProps<'button'> & {
   position?: 'bottom-right' | 'bottom-left' | 'bottom-center';
-}>(({ position = 'bottom-right', className, children, ...props }, ref) => {
-  const positionClasses = {
-    'bottom-right': 'fixed bottom-6 right-6',
-    'bottom-left': 'fixed bottom-6 left-6',
-    'bottom-center': 'fixed bottom-6 left-1/2 transform -translate-x-1/2',
-  };
+};
 
-  return (
-    <Button
-      ref={ref}
-      className={cn(
-        positionClasses[position],
-        'rounded-full shadow-floating z-50 h-14 w-14',
-        className
-      )}
-      variant="default"
-      {...props}
-    >
-      {children}
-    </Button>
-  );
-});
+export const FloatingActionButton = React.forwardRef<HTMLButtonElement, FloatingActionButtonProps>(
+  ({ position = 'bottom-right', className, children, ...props }, ref) => {
+    const positionClasses = {
+      'bottom-right': 'fixed bottom-6 right-6',
+      'bottom-left': 'fixed bottom-6 left-6',
+      'bottom-center': 'fixed bottom-6 left-1/2 transform -translate-x-1/2',
+    };
+
+    return (
+      <Button
+        ref={ref}
+        className={cn(
+          positionClasses[position],
+          'rounded-full shadow-floating z-50 h-14 w-14',
+          className
+        )}
+        variant="default"
+        {...props}
+      >
+        {children}
+      </Button>
+    );
+  }
+);
 
 FloatingActionButton.displayName = 'FloatingActionButton';
 

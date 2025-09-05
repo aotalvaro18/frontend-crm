@@ -1,15 +1,14 @@
 // src/components/pipelines/PipelineEditor.tsx
-// ✅ PIPELINE EDITOR - VERSIÓN FINAL CORREGIDA
-// Funciona perfectamente con el store y PipelineCreatePage
+// ✅ VERSIÓN FINAL DE TALLA MUNDIAL - SOLO MODO EDICIÓN
+// Flujo profesional: Pipeline siempre existe, lógica DRY, feedback consistente
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   Plus, Trash2, GripVertical, Settings, Target, 
-  Save,
-  X, CheckCircle
+  Save, X, CheckCircle
 } from 'lucide-react';
 
 // ============================================
@@ -24,27 +23,22 @@ import { FormField } from '@/components/forms/FormField';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ============================================
-// HOOKS - Siguiendo patrón Slice Vertical
+// HOOKS & SERVICES
 // ============================================
 import { 
   usePipelineOperations,
   usePipelineTypes 
 } from '@/hooks/usePipelines';
+import toast from 'react-hot-toast';
 
 // ============================================
 // TYPES
 // ============================================
 import type {
   PipelineDTO,
-  CreatePipelineRequest,
   UpdatePipelineRequest
 } from '@/types/pipeline.types';
-
-import { 
-    DEFAULT_STAGE_COLORS,
-    DEFAULT_PIPELINE_TEMPLATES 
-  } from '@/types/pipeline.types';
-
+import { DEFAULT_STAGE_COLORS } from '@/types/pipeline.types';
 import { cn } from '@/utils/cn';
 
 // ============================================
@@ -59,39 +53,34 @@ const debounce = <T extends (...args: any[]) => void>(func: T, wait: number): T 
 };
 
 // ============================================
-// ZOD VALIDATION SCHEMAS AAA
+// ZOD VALIDATION SCHEMAS - SIMPLIFICADO PARA SOLO EDICIÓN
 // ============================================
 const StageSchema = z.object({
-    id: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
-    name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
-    description: z.string().optional(),
-    color: z.string().min(1, 'El color es obligatorio'),
-    probability: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : undefined),
-    isClosedWon: z.boolean().optional().default(false),
-    isClosedLost: z.boolean().optional().default(false),
-    orderIndex: z.union([z.number(), z.string()]).optional().transform(val => val ? Number(val) : 0),
-  });
+  id: z.number().optional(), // ID real del backend
+  name: z.string().min(1, 'El nombre de la etapa es obligatorio').max(100),
+  description: z.string().optional(),
+  color: z.string().min(1, 'El color es obligatorio'),
+  probability: z.number().min(0).max(100).optional(),
+  isClosedWon: z.boolean().optional().default(false),
+  isClosedLost: z.boolean().optional().default(false),
+  orderIndex: z.number().min(0).optional().default(0),
+});
 
 const PipelineEditorSchema = z.object({
   name: z.string().min(1, 'El nombre del pipeline es obligatorio').max(255),
   description: z.string().max(1000).optional(),
   isDefault: z.boolean().optional().default(false),
   isActive: z.boolean().optional().default(true),
-  type: z.string().min(1, 'El tipo de pipeline es obligatorio'),
   stages: z.array(StageSchema).min(1, 'Debe tener al menos una etapa'),
-  icon: z.string().optional(),
-  color: z.string().optional(),
 });
 
 type PipelineEditorForm = z.infer<typeof PipelineEditorSchema>;
 
 // ============================================
-// COMPONENT PROPS
+// COMPONENT PROPS - SIMPLIFICADAS PARA SOLO EDICIÓN
 // ============================================
 export interface PipelineEditorProps {
-  pipeline?: PipelineDTO;
-  selectedTemplate?: string | null;
-  mode: 'create' | 'edit';
+  pipeline: PipelineDTO; // ✅ OBLIGATORIO - Pipeline siempre existe
   onSave?: () => void;
   onCancel?: () => void;
   loading?: boolean;
@@ -112,7 +101,7 @@ const StageExpansionContext = React.createContext<StageExpansionContextType>({
 });
 
 // ============================================
-// STAGE ITEM COMPONENT
+// STAGE ITEM COMPONENT - MOBILE FIRST & RESPONSIVE
 // ============================================
 interface StageItemProps {
   stage: PipelineEditorForm['stages'][0];
@@ -121,327 +110,314 @@ interface StageItemProps {
   isLast: boolean;
   onUpdate: (updates: Partial<PipelineEditorForm['stages'][0]>) => void;
   onDelete: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
   isDragging?: boolean;
 }
 
 const StageItem: React.FC<StageItemProps> = React.memo(({ 
-    stage, 
-    index, 
-    onUpdate, 
-    onDelete,
-    isDragging = false 
-  }) => {
-    const { expandedStages, toggleExpanded } = React.useContext(StageExpansionContext);
-    const isExpanded = expandedStages.has(index);
-    
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [localValues, setLocalValues] = useState({
+  stage, 
+  index, 
+  onUpdate, 
+  onDelete,
+  isDragging = false 
+}) => {
+  const { expandedStages, toggleExpanded } = React.useContext(StageExpansionContext);
+  const isExpanded = expandedStages.has(index);
+  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [localValues, setLocalValues] = useState({
+    description: stage.description || '',
+    probability: stage.probability || 0,
+    name: stage.name || ''
+  });
+
+  // Sincronizar estado local con props
+  useEffect(() => {
+    setLocalValues({
       description: stage.description || '',
       probability: stage.probability || 0,
-      name: stage.name || '' // ✅ AGREGADO
+      name: stage.name || ''
     });
-  
-    // Sincronizar estado local con props
-    useEffect(() => {
-      setLocalValues({
-        description: stage.description || '',
-        probability: stage.probability || 0,
-        name: stage.name || '' // ✅ AGREGADO
-      });
-    }, [stage.description, stage.probability, stage.name]); // ✅ AGREGADO stage.name
-  
-    // Debounce las actualizaciones
-    const debouncedUpdate = useCallback(
-      debounce((updates: Partial<PipelineEditorForm['stages'][0]>) => {
-        onUpdate(updates);
-      }, 300),
-      [onUpdate]
-    );
-  
-    const handleColorChange = useCallback((color: string) => {
-      onUpdate({ color });
-    }, [onUpdate]);
-  
-    const handleToggleExpanded = useCallback((e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleExpanded(index);
-    }, [toggleExpanded, index]);
-  
-    const handleDeleteClick = useCallback((e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setShowDeleteConfirm(true);
-    }, []);
-  
-    const handleConfirmDelete = useCallback(() => {
-      onDelete();
-      setShowDeleteConfirm(false);
-    }, [onDelete]);
-  
-    const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const value = e.target.value;
-      setLocalValues(prev => ({ ...prev, name: value })); // ✅ CAMBIADO: Solo estado local
-    }, []);
-  
-    // ✅ AGREGADO: Nuevo handler para blur
-    const handleNameBlur = useCallback(() => {
-      if (localValues.name !== stage.name) {
-        onUpdate({ name: localValues.name });
-      }
-    }, [localValues.name, stage.name, onUpdate]);
-  
-    const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const value = e.target.value;
-      setLocalValues(prev => ({ ...prev, description: value }));
-      debouncedUpdate({ description: value });
-    }, [debouncedUpdate]);
-  
-    const handleDescriptionBlur = useCallback(() => {
-      if (localValues.description !== stage.description) {
-        onUpdate({ description: localValues.description });
-      }
-    }, [localValues.description, stage.description, onUpdate]);
-  
-    const handleProbabilityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const value = parseInt(e.target.value) || 0;
-      const clampedValue = Math.max(0, Math.min(100, value));
-      setLocalValues(prev => ({ ...prev, probability: clampedValue }));
-      debouncedUpdate({ probability: clampedValue });
-    }, [debouncedUpdate]);
-  
-    const handleProbabilityBlur = useCallback(() => {
-      if (localValues.probability !== stage.probability) {
-        onUpdate({ probability: localValues.probability });
-      }
-    }, [localValues.probability, stage.probability, onUpdate]);
-  
-    const getStageIcon = () => {
-      if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-500" />;
-      if (stage.isClosedLost) return <X className="h-4 w-4 text-red-500" />;
-      return <Target className="h-4 w-4 text-blue-500" />;
-    };
-  
-    return (
-      <>
-        <div className={cn(
-          "border border-app-dark-600 bg-app-dark-700/50 rounded-lg transition-all duration-200",
-          isDragging && "opacity-50 scale-95",
-          isExpanded && "ring-2 ring-primary-500/20"
-        )}>
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              {/* Drag handle */}
-              <div className="flex items-center gap-2">
-                <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-app-dark-600 rounded">
-                  <GripVertical className="h-4 w-4 text-app-gray-400" />
-                </div>
-                <div 
-                  className="w-4 h-4 rounded border-2 border-app-dark-400"
-                  style={{ backgroundColor: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length] }}
-                />
+  }, [stage.description, stage.probability, stage.name]);
+
+  // Debounce las actualizaciones
+  const debouncedUpdate = useCallback(
+    debounce((updates: Partial<PipelineEditorForm['stages'][0]>) => {
+      onUpdate(updates);
+    }, 300),
+    [onUpdate]
+  );
+
+  const handleColorChange = useCallback((color: string) => {
+    onUpdate({ color });
+  }, [onUpdate]);
+
+  const handleToggleExpanded = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleExpanded(index);
+  }, [toggleExpanded, index]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    onDelete();
+    setShowDeleteConfirm(false);
+  }, [onDelete]);
+
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const value = e.target.value;
+    setLocalValues(prev => ({ ...prev, name: value }));
+  }, []);
+
+  const handleNameBlur = useCallback(() => {
+    if (localValues.name !== stage.name) {
+      onUpdate({ name: localValues.name });
+    }
+  }, [localValues.name, stage.name, onUpdate]);
+
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const value = e.target.value;
+    setLocalValues(prev => ({ ...prev, description: value }));
+    debouncedUpdate({ description: value });
+  }, [debouncedUpdate]);
+
+  const handleDescriptionBlur = useCallback(() => {
+    if (localValues.description !== stage.description) {
+      onUpdate({ description: localValues.description });
+    }
+  }, [localValues.description, stage.description, onUpdate]);
+
+  const handleProbabilityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const value = parseInt(e.target.value) || 0;
+    const clampedValue = Math.max(0, Math.min(100, value));
+    setLocalValues(prev => ({ ...prev, probability: clampedValue }));
+    debouncedUpdate({ probability: clampedValue });
+  }, [debouncedUpdate]);
+
+  const handleProbabilityBlur = useCallback(() => {
+    if (localValues.probability !== stage.probability) {
+      onUpdate({ probability: localValues.probability });
+    }
+  }, [localValues.probability, stage.probability, onUpdate]);
+
+  const getStageIcon = () => {
+    if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-500" />;
+    if (stage.isClosedLost) return <X className="h-4 w-4 text-red-500" />;
+    return <Target className="h-4 w-4 text-blue-500" />;
+  };
+
+  return (
+    <>
+      <div className={cn(
+        "border border-app-dark-600 bg-app-dark-700/50 rounded-lg transition-all duration-200",
+        isDragging && "opacity-50 scale-95",
+        isExpanded && "ring-2 ring-primary-500/20"
+      )}>
+        <div className="p-4">
+          <div className="flex items-center gap-3">
+            {/* Drag handle - Mobile optimized */}
+            <div className="flex items-center gap-2">
+              <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-app-dark-600 rounded">
+                <GripVertical className="h-4 w-4 text-app-gray-400" />
               </div>
-  
-              {/* Stage info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  {getStageIcon()}
-                  <Input
-                    value={localValues.name} // ✅ CAMBIADO: de stage.name a localValues.name
-                    onChange={handleNameChange}
-                    onBlur={handleNameBlur} // ✅ AGREGADO
-                    onFocus={(e) => e.target.select()}
-                    className="font-medium bg-transparent border-none p-0 focus:bg-app-dark-600 focus:px-2 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                    placeholder="Nombre de la etapa"
-                  />
-                  {stage.probability !== undefined && (
-                    <Badge variant="outline" size="sm">
-                      {stage.probability}%
-                    </Badge>
-                  )}
-                </div>
-                
-                {stage.description && (
-                  <p className="text-sm text-app-gray-400 mt-1">
-                    {stage.description}
-                  </p>
+              <div 
+                className="w-4 h-4 rounded border-2 border-app-dark-400"
+                style={{ backgroundColor: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length] }}
+              />
+            </div>
+
+            {/* Stage info - Responsive */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {getStageIcon()}
+                <Input
+                  value={localValues.name}
+                  onChange={handleNameChange}
+                  onBlur={handleNameBlur}
+                  onFocus={(e) => e.target.select()}
+                  className="font-medium bg-transparent border-none p-0 focus:bg-app-dark-600 focus:px-2 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                  placeholder="Nombre de la etapa"
+                />
+                {stage.probability !== undefined && (
+                  <Badge variant="outline" size="sm">
+                    {stage.probability}%
+                  </Badge>
                 )}
               </div>
-  
-              {/* Actions */}
-              <div className="flex items-center gap-1">
-                <Tooltip content="Configurar etapa">
-                  <IconButton 
-                    type="button"
-                    variant="ghost" 
-                    size="sm"
-                    onClick={handleToggleExpanded}
-                    className={cn(
-                      "transition-colors",
-                      isExpanded && "bg-app-dark-600 text-primary-400"
-                    )}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </IconButton>
-                </Tooltip>
+              
+              {stage.description && (
+                <p className="text-sm text-app-gray-400 mt-1 truncate">
+                  {stage.description}
+                </p>
+              )}
+            </div>
+
+            {/* Actions - Mobile optimized */}
+            <div className="flex items-center gap-1">
+              <Tooltip content="Configurar etapa">
+                <IconButton 
+                  type="button"
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleToggleExpanded}
+                  className={cn(
+                    "transition-colors",
+                    isExpanded && "bg-app-dark-600 text-primary-400"
+                  )}
+                >
+                  <Settings className="h-4 w-4" />
+                </IconButton>
+              </Tooltip>
+              
+              <Tooltip content="Eliminar etapa">
+                <IconButton 
+                  type="button"
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleDeleteClick}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* Expanded settings - Mobile responsive */}
+          {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                    Descripción
+                  </label>
+                  <Input
+                    value={localValues.description}
+                    onChange={handleDescriptionChange}
+                    onBlur={handleDescriptionBlur}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
+                    placeholder="Describe esta etapa..."
+                    className="text-sm"
+                  />
+                </div>
                 
-                <Tooltip content="Eliminar etapa">
-                  <IconButton 
-                    type="button"
-                    variant="ghost" 
-                    size="sm"
-                    onClick={handleDeleteClick}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </IconButton>
-                </Tooltip>
+                <div>
+                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                    Probabilidad %
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={localValues.probability}
+                    onChange={handleProbabilityChange}
+                    onBlur={handleProbabilityBlur}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Color picker - Mobile optimized */}
+              <div>
+                <label className="block text-sm font-medium text-app-gray-300 mb-2">
+                  Color de la etapa
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {DEFAULT_STAGE_COLORS.map((color, colorIndex) => (
+                    <button
+                      key={`color-${colorIndex}`}
+                      type="button"
+                      onClick={() => handleColorChange(color)}
+                      className={cn(
+                        "w-8 h-8 rounded border-2 transition-all",
+                        stage.color === color 
+                          ? "border-white scale-110" 
+                          : "border-app-dark-400 hover:scale-105"
+                      )}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Stage type flags - Mobile stack */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={stage.isClosedWon || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onUpdate({ 
+                        isClosedWon: e.target.checked,
+                        isClosedLost: e.target.checked ? false : stage.isClosedLost
+                      });
+                    }}
+                    className="rounded border-app-dark-600 text-green-600 focus:ring-green-500"
+                  />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-app-gray-300">Etapa de cierre ganado</span>
+                </label>
+                
+                <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={stage.isClosedLost || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onUpdate({ 
+                        isClosedLost: e.target.checked,
+                        isClosedWon: e.target.checked ? false : stage.isClosedWon
+                      });
+                    }}
+                    className="rounded border-app-dark-600 text-red-600 focus:ring-red-500"
+                  />
+                  <X className="h-4 w-4 text-red-500" />
+                  <span className="text-sm text-app-gray-300">Etapa de cierre perdido</span>
+                </label>
               </div>
             </div>
-  
-            {/* Expanded settings */}
-            {isExpanded && (
-              <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-app-gray-300 mb-1">
-                      Descripción
-                    </label>
-                    <Input
-                      value={localValues.description}
-                      onChange={handleDescriptionChange}
-                      onBlur={handleDescriptionBlur}
-                      onClick={(e) => e.stopPropagation()}
-                      onFocus={(e) => e.stopPropagation()}
-                      placeholder="Describe esta etapa..."
-                      className="text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-app-gray-300 mb-1">
-                      Probabilidad %
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={localValues.probability}
-                      onChange={handleProbabilityChange}
-                      onBlur={handleProbabilityBlur}
-                      onClick={(e) => e.stopPropagation()}
-                      onFocus={(e) => e.stopPropagation()}
-                      className="text-sm"
-                    />
-                  </div>
-                </div>
-  
-                {/* Color picker */}
-                <div>
-                  <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                    Color de la etapa
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {DEFAULT_STAGE_COLORS.map((color, colorIndex) => (
-                      <button
-                        key={`color-${colorIndex}`}
-                        type="button"
-                        onClick={() => handleColorChange(color)}
-                        className={cn(
-                          "w-8 h-8 rounded border-2 transition-all",
-                          stage.color === color 
-                            ? "border-white scale-110" 
-                            : "border-app-dark-400 hover:scale-105"
-                        )}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-  
-                {/* Stage type flags */}
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={stage.isClosedWon || false}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        onUpdate({ 
-                          isClosedWon: e.target.checked,
-                          isClosedLost: e.target.checked ? false : stage.isClosedLost
-                        });
-                      }}
-                      className="rounded border-app-dark-600 text-green-600 focus:ring-green-500"
-                    />
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-app-gray-300">Etapa de cierre ganado</span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={stage.isClosedLost || false}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        onUpdate({ 
-                          isClosedLost: e.target.checked,
-                          isClosedWon: e.target.checked ? false : stage.isClosedWon
-                        });
-                      }}
-                      className="rounded border-app-dark-600 text-red-600 focus:ring-red-500"
-                    />
-                    <X className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-app-gray-300">Etapa de cierre perdido</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-  
-        {/* Confirm Delete Dialog */}
-        <ConfirmDialog
-          isOpen={showDeleteConfirm}
-          onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={handleConfirmDelete}
-          title="Eliminar Etapa"
-          description={`¿Estás seguro de que quieres eliminar la etapa "${stage.name}"?`}
-          confirmLabel="Eliminar Etapa"
-          cancelLabel="Cancelar"
-        />
-      </>
-    );
-  });
+      </div>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar Etapa"
+        description={`¿Estás seguro de que quieres eliminar la etapa "${stage.name}"?`}
+        confirmLabel="Eliminar Etapa"
+        cancelLabel="Cancelar"
+      />
+    </>
+  );
+});
 
 StageItem.displayName = 'StageItem';
 
 // ============================================
-// MAIN PIPELINE EDITOR COMPONENT
+// MAIN PIPELINE EDITOR COMPONENT - SOLO EDICIÓN
 // ============================================
 const PipelineEditor: React.FC<PipelineEditorProps> = ({
-  pipeline,
-  selectedTemplate,
-  mode,
+  pipeline, // ✅ OBLIGATORIO - Pipeline siempre existe
   onSave,
   onCancel,
   loading = false,
   showActions = true,
 }) => {
   // Estado global para expansión de etapas
-
-// 🔥 AGREGAR ESTE LOG JUSTO DESPUÉS:
-console.log('🔥 PipelineEditor - Props recibidas:');
-console.log('🔥 PipelineEditor - pipeline:', pipeline);
-console.log('🔥 PipelineEditor - pipeline.stages:', pipeline?.stages);
-console.log('🔥 PipelineEditor - mode:', mode);
-console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
-
   const [expandedStages, setExpandedStages] = useState<Set<number>>(new Set());
 
   const toggleExpanded = useCallback((index: number) => {
@@ -462,7 +438,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
   }), [expandedStages, toggleExpanded]);
 
   // Hooks
-  const { createPipeline, updatePipeline, isCreating } = usePipelineOperations();
+  const { updatePipeline, isUpdating } = usePipelineOperations();
   const { data: pipelineTypes, isLoading: isLoadingTypes } = usePipelineTypes();
 
   // Form setup
@@ -475,13 +451,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
       description: '',
       isDefault: false,
       isActive: true,
-      type: 'SALES',
-      icon: 'GitBranch',
-      color: '#3B82F6',
-      stages: [
-        { name: 'Prospecto', orderIndex: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0], isClosedWon: false, isClosedLost: false },
-        { name: 'Calificado', orderIndex: 1, probability: 25, color: DEFAULT_STAGE_COLORS[1], isClosedWon: false, isClosedLost: false },
-      ],
+      stages: [],
     },
   });
 
@@ -490,34 +460,18 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
     name: 'stages',
   });
 
-  // Effects
-  const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
-    name: stage.name,
-    orderIndex: stage.orderIndex || stage.order || index,
-    probability: stage.probability ?? 0,
-    color: stage.color,
-    isClosedWon: stage.isClosedWon ?? false,
-    isClosedLost: stage.isClosedLost ?? false,
-  }), []);
-
+  // ✅ EFFECT SIMPLIFICADO - Solo cargar datos del pipeline existente
   useEffect(() => {
-
-    console.log('🔥 PipelineEditor useEffect triggered:');
-  console.log('🔥 pipeline:', pipeline);
-  console.log('🔥 mode:', mode);
-  console.log('🔥 pipeline?.stages:', pipeline?.stages);
-
-    if (pipeline && mode === 'edit') {
-        console.log('🔥 Entrando a modo EDIT');
-    console.log('🔥 pipeline.stages antes del map:', pipeline.stages);
+    if (pipeline) {
+      console.log('🔥 Cargando pipeline en editor:', pipeline);
+      
       form.reset({
         name: pipeline.name,
         description: pipeline.description || '',
         isDefault: pipeline.isDefault || false,
         isActive: pipeline.isActive !== false,
-        type: pipeline.type || 'SALES',
         stages: pipeline.stages?.map((stage, index) => ({
-          id: stage.id,
+          id: stage.id, // ✅ ID real del backend
           name: stage.name,
           description: stage.description || '',
           color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
@@ -527,39 +481,22 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           orderIndex: stage.orderIndex ?? index,
         })) || [],
       });
-    } else if (selectedTemplate && mode === 'create') {
-      const template = DEFAULT_PIPELINE_TEMPLATES[selectedTemplate as keyof typeof DEFAULT_PIPELINE_TEMPLATES];
-      if (template) {
-        form.reset({
-          name: template.name,
-          description: template.description,
-          isDefault: false,
-          isActive: true,
-          type: 'SALES',
-          icon: template.icon || 'GitBranch',
-          color: '#3B82F6',
-          stages: template.stages.map((stage, index) => normalizeTemplateStage(stage, index)),
-        });
-      }
     }
-  }, [pipeline, selectedTemplate, mode, form, normalizeTemplateStage]);
+  }, [pipeline, form]);
 
-  // Handlers
+  // ✅ HANDLERS SIMPLIFICADOS
   const handleCancel = useCallback(() => {
-    console.log('🔥 handleCancel llamado, onCancel prop:', !!onCancel);
     if (onCancel) {
       onCancel();
     } else {
-      console.log('🔥 No onCancel prop, navegando al dashboard');
+      // Fallback navigation
       if (typeof window !== 'undefined') {
-        window.location.href = '/dashboard';
+        window.history.back();
       }
     }
   }, [onCancel]);
   
   const handleAddStage = useCallback(() => {
-    console.log('🔥 handleAddStage llamado, fields.length:', fields.length);
-    
     const newOrder = fields.length;
     const defaultColor = DEFAULT_STAGE_COLORS[newOrder % DEFAULT_STAGE_COLORS.length];
     
@@ -572,141 +509,75 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
       isClosedLost: false,
     };
 
-    console.log('🔥 Agregando etapa:', newStage);
     append(newStage);
   }, [fields.length, append]);
 
   const handleUpdateStage = useCallback((index: number, updates: Partial<PipelineEditorForm['stages'][0]>) => {
-    console.log('🔥 handleUpdateStage llamado:', { index, updates });
-    console.log('🔥 Current stage antes:', fields[index]);
-    
     const currentStage = fields[index];
     if (currentStage) {
       const newStage = { ...currentStage, ...updates };
-      console.log('🔥 New stage después:', newStage);
       update(index, newStage);
-      
-      // Verificar que se aplicó correctamente
-      setTimeout(() => {
-        console.log('🔥 Stage después del update:', fields[index]);
-        console.log('🔥 Todos los fields después del update:', fields);
-      }, 10);
-    } else {
-      console.log('🔥 ERROR: currentStage es undefined para index:', index);
     }
   }, [fields, update]);
 
+  // ✅ SUBMIT SIMPLIFICADO - Solo updatePipeline
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
-    console.log('🔥 handleSubmit iniciado con data:', data);
-    
-    // 🔥 DEBUGGING PROFUNDO - Ver qué está fallando en la validación
-    console.log('🔥 Validando data manualmente con Zod...');
-    const validationResult = PipelineEditorSchema.safeParse(data);
-    
-    if (!validationResult.success) {
-      console.error('🔥 VALIDACIÓN FALLÓ:', validationResult.error);
-      console.error('🔥 Errores específicos:', validationResult.error.issues);
-      
-      // Mostrar el error al usuario
-      const firstError = validationResult.error.issues[0];
-      alert(`Error de validación: ${firstError.message} en campo: ${firstError.path.join('.')}`);
-      return;
-    } else {
-      console.log('🔥 VALIDACIÓN EXITOSA:', validationResult.data);
-    }
+    console.log('🔥 Actualizando pipeline:', data);
     
     try {
       if (!data.stages || data.stages.length === 0) {
-        throw new Error('Debe agregar al menos una etapa al pipeline');
+        toast.error('Debe agregar al menos una etapa al pipeline');
+        return;
       }
 
-      // 🔥 DEBUGGING - Ver cada etapa antes de procesar
-      console.log('🔥 Procesando stages:', data.stages);
+      // ✅ Mapear etapas para el backend con nombres exactos
+      const stagesForBackend = data.stages.map((stage, index) => ({
+        ...(stage.id && { id: stage.id }), // ✅ ID real si existe
+        name: stage.name,
+        description: stage.description || undefined,
+        position: index + 1, // ✅ Backend espera position 1-based
+        color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
+        probability: stage.probability || undefined,
+        isWon: stage.isClosedWon || false, // ✅ Backend usa isWon
+        isLost: stage.isClosedLost || false, // ✅ Backend usa isLost
+        active: true,
+      }));
 
-      const stagesForBackend = data.stages.map((stage, index) => {
-        // 🔥 Asegurar que color existe
-        const finalColor = stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length];
-        
-        const processedStage = {
-          name: stage.name,
-          description: stage.description || undefined,
-          position: index + 1,
-          color: finalColor,
-          probability: stage.probability || undefined,
-          isWon: stage.isClosedWon || false,
-          isLost: stage.isClosedLost || false,
-          autoMoveDays: undefined,
-          active: true,
-        };
-        
-        console.log(`🔥 Stage ${index} procesado:`, processedStage);
-        return processedStage;
+      // ✅ Request con nombres exactos del backend
+      const request: UpdatePipelineRequest = {
+        name: data.name,
+        description: data.description || undefined,
+        isDefault: data.isDefault,
+        active: data.isActive, // ✅ Backend usa active
+        version: pipeline.version, // ✅ Importante para optimistic locking
+        stages: stagesForBackend,
+      };
+
+      await updatePipeline(pipeline.id, request, () => {
+        toast.success(`Pipeline "${data.name}" actualizado exitosamente`);
+        onSave?.();
       });
 
-      console.log('🔥 stagesForBackend preparados:', stagesForBackend);
-
-      if (mode === 'create') {
-        const request: CreatePipelineRequest = {
-          name: data.name,
-          description: data.description || undefined,
-          category: 'BUSINESS',
-          ...(data.icon && { 
-            icon: data.icon.toLowerCase().replace(/[^a-z0-9\-_]/g, '') 
-          }),
-          ...(data.color && /^#[0-9A-Fa-f]{6}$/.test(data.color) && { color: data.color }),
-          active: data.isActive !== false,
-          isDefault: data.isDefault || false,
-          enableAutomations: false,
-          enableNotifications: true,
-          enableReports: true,
-          stages: stagesForBackend,
-        };
-
-        console.log('🔥 Llamando createPipeline con request:', request);
-        
-        await createPipeline(request, (newPipeline) => {
-          console.log('🔥 Pipeline creado exitosamente:', newPipeline);
-          onSave?.();
-        });
-      } else if (pipeline) {
-        const request: UpdatePipelineRequest = {
-          name: data.name,
-          description: data.description || undefined,
-          isDefault: data.isDefault,
-          active: data.isActive,
-          version: pipeline.version,
-          stages: stagesForBackend as any,
-        };
-
-        console.log('🔥 Llamando updatePipeline con request:', request);
-        
-        await updatePipeline(pipeline.id, request, () => {
-          console.log('🔥 Pipeline actualizado exitosamente');
-          onSave?.();
-        });
-      }
     } catch (error) {
+      // Error ya manejado por el hook, pero agregamos fallback
       console.error('🔥 Error en handleSubmit:', error);
-      
-      if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
-      } else {
-        alert('Error desconocido al guardar el pipeline');
-      }
+      toast.error("Error actualizando pipeline. Verifica los datos e inténtalo de nuevo.");
     }
-  }, [mode, createPipeline, updatePipeline, pipeline, onSave]);
+  }, [pipeline.id, pipeline.version, updatePipeline, onSave]);
 
   // Render
   return (
     <StageExpansionContext.Provider value={expansionContextValue}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Información básica del pipeline */}
-        <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-6">
+        {/* ============================================ */}
+        {/* INFORMACIÓN BÁSICA DEL PIPELINE - Mobile First */}
+        {/* ============================================ */}
+        <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-4 sm:p-6">
           <h3 className="text-lg font-medium text-app-gray-100 mb-4">
             Información Básica del Pipeline
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Controller
               name="name"
               control={form.control}
@@ -726,81 +597,20 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
               )}
             />
 
-            <Controller
-              name="type"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <FormField
-                  label="Tipo de Pipeline"
-                  name="type"
-                  error={fieldState.error?.message}
-                >
-                  <select
-                    {...field}
-                    className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
-                    disabled={isLoadingTypes}
-                  >
-                    <option value="SALES">Ventas</option>
-                    <option value="LEAD_NURTURING">Cultivo de Leads</option>
-                    <option value="SUPPORT">Soporte</option>
-                    <option value="CUSTOM">Personalizado</option>
-                  </select>
-                </FormField>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            <Controller
-              name="icon"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <FormField
-                  label="Icono del Pipeline"
-                  name="icon"
-                  error={fieldState.error?.message}
-                >
-                  <select
-                    {...field}
-                    className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
-                  >
-                    <option value="GitBranch">GitBranch (Ramificación)</option>
-                    <option value="TrendingUp">TrendingUp (Ventas)</option>
-                    <option value="Users">Users (Equipo)</option>
-                    <option value="Target">Target (Objetivos)</option>
-                    <option value="Briefcase">Briefcase (Negocio)</option>
-                    <option value="Heart">Heart (Relaciones)</option>
-                    <option value="Zap">Zap (Rápido)</option>
-                  </select>
-                </FormField>
-              )}
-            />
-
-            <Controller
-              name="color"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <FormField
-                  label="Color del Pipeline"
-                  name="color"
-                  error={fieldState.error?.message}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      {...field}
-                      className="w-12 h-10 rounded border border-app-dark-600 bg-app-dark-700 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      {...field}
-                      placeholder="#3B82F6"
-                      className="flex-1 rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
-                    />
-                  </div>
-                </FormField>
-              )}
-            />
+            <div>
+              <label className="block text-sm font-medium text-app-gray-300 mb-2">
+                Tipo de Pipeline
+              </label>
+              <select
+                disabled={isLoadingTypes}
+                className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
+              >
+                <option value="SALES">Ventas</option>
+                <option value="LEAD_NURTURING">Cultivo de Leads</option>
+                <option value="SUPPORT">Soporte</option>
+                <option value="CUSTOM">Personalizado</option>
+              </select>
+            </div>
           </div>
 
           <div className="mt-4">
@@ -824,11 +634,11 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
             />
           </div>
 
-          {/* Configuración adicional */}
-          <div className="flex items-center gap-6 mt-6">
+          {/* Configuración adicional - Mobile responsive */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 mt-6">
             <h4 className="font-medium text-app-gray-200">Configuración</h4>
             
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Controller
                 name="isDefault"
                 control={form.control}
@@ -864,30 +674,32 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           </div>
         </div>
 
-        {/* Etapas del Pipeline */}
-        <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-app-gray-100">
-              Etapas del Pipeline ({fields.length})
-            </h3>
+        {/* ============================================ */}
+        {/* ETAPAS DEL PIPELINE - Mobile First */}
+        {/* ============================================ */}
+        <div className="border border-app-dark-600 bg-app-dark-800/50 rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-lg font-medium text-app-gray-100">
+                Etapas del Pipeline ({fields.length})
+              </h3>
+              <p className="text-sm text-app-gray-400 mt-1">
+                Configura las etapas por las que fluirán las oportunidades
+              </p>
+            </div>
             
             <Button
               type="button"
               variant="outline"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Add Stage button clicked');
-                handleAddStage();
-              }}
-              className="flex items-center gap-2"
+              onClick={handleAddStage}
+              className="flex items-center gap-2 w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               Añadir Etapa
             </Button>
           </div>
 
-          {/* Lista de etapas */}
+          {/* Lista de etapas - Mobile optimized */}
           <div className="space-y-3">
             {fields.map((field, index) => (
               <StageItem
@@ -897,10 +709,7 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
                 isFirst={index === 0}
                 isLast={index === fields.length - 1}
                 onUpdate={(updates) => handleUpdateStage(index, updates)}
-                onDelete={() => {
-                  console.log('Deleting stage at index:', index);
-                  remove(index);
-                }}
+                onDelete={() => remove(index)}
               />
             ))}
           </div>
@@ -924,36 +733,32 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
           )}
         </div>
 
-        {/* Actions */}
+        {/* ============================================ */}
+        {/* ACTIONS - Mobile responsive */}
+        {/* ============================================ */}
         {showActions && (
-          <div className="flex items-center justify-end gap-3 pt-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
-              disabled={loading || isCreating}
+              disabled={loading || isUpdating(pipeline.id)}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
             
             <Button
               type="submit"
-              disabled={loading || isCreating || form.formState.isSubmitting}
-              className="min-w-32"
-              onClick={(e) => {
-                console.log('🔥 Submit button clicked');
-                console.log('🔥 Form valid:', form.formState.isValid);
-                console.log('🔥 Form errors:', form.formState.errors);
-                console.log('🔥 Is creating:', isCreating);
-                console.log('🔥 Loading:', loading);
-              }}
+              disabled={loading || isUpdating(pipeline.id) || form.formState.isSubmitting}
+              className="min-w-32 w-full sm:w-auto"
             >
-              {loading || isCreating || form.formState.isSubmitting ? (
+              {loading || isUpdating(pipeline.id) || form.formState.isSubmitting ? (
                 <LoadingSpinner size="sm" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {mode === 'create' ? 'Crear Pipeline' : 'Guardar Cambios'}
+              Guardar Cambios
             </Button>
           </div>
         )}

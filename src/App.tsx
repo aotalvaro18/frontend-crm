@@ -7,7 +7,8 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ui/ErrorMessage';
-import { Toaster } from 'react-hot-toast';
+//import { Toaster } from 'react-hot-toast';
+import { Toaster } from '@/components/ui/Toaster';
 import { authLogger } from '@/types/auth.types';
 
 // ============================================
@@ -228,29 +229,7 @@ const App: React.FC = () => {
           <Outlet />
 
           {/* Toaster */}
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#1a1a1a',
-                color: '#e5e5e5',
-                border: '1px solid #2a2a2a',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10B981',
-                  secondary: '#1a1a1a',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#EF4444',
-                  secondary: '#1a1a1a',
-                },
-              },
-            }}
-          />
+          <Toaster />
 
           {/* Development Info */}
           {import.meta.env.DEV && (
