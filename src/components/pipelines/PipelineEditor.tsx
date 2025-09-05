@@ -422,7 +422,7 @@ const StageItem: React.FC<StageItemProps> = React.memo(({
 StageItem.displayName = 'StageItem';
 
 // ============================================
-// MAIN PIPELINE EDITOR COMPONENT
+// MAIN PIPELINE EDITOR COMPONENT AAA
 // ============================================
 const PipelineEditor: React.FC<PipelineEditorProps> = ({
   pipeline,
@@ -491,14 +491,19 @@ console.log('🔥 PipelineEditor - selectedTemplate:', selectedTemplate);
   });
 
   // Effects
-  const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
+    const normalizeTemplateStage = useCallback((stage: any, index: number) => ({
     name: stage.name,
     orderIndex: stage.orderIndex || stage.order || index,
     probability: stage.probability ?? 0,
-    color: stage.color,
+
+    // CORRECCIÓN: Si la plantilla no especifica un color, asigna uno por defecto.
+    // Esto garantiza que el campo 'color' nunca sea undefined y siempre pase la validación de Zod.
+    color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
+
     isClosedWon: stage.isClosedWon ?? false,
     isClosedLost: stage.isClosedLost ?? false,
-  }), []);
+    description: stage.description || '', // Es buena práctica inicializarlo también.
+    }), []);
 
   useEffect(() => {
 
