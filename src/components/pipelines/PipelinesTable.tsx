@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { 
-  MoreHorizontal, Edit3, Trash2, Eye, Copy, 
+  MoreHorizontal, Trash2, Copy, 
   GitBranch, Target, BarChart3, TrendingUp
 } from 'lucide-react';
 
@@ -75,8 +75,6 @@ const PipelineActionsDropdown: React.FC<{
   isDuplicating?: boolean;
 }> = ({ 
   pipeline, 
-  onView, 
-  onEdit, 
   onDelete, 
   onDuplicate,
   isUpdating = false, 
@@ -84,20 +82,6 @@ const PipelineActionsDropdown: React.FC<{
   isDuplicating = false 
 }) => {
   const items = [
-    { 
-      id: 'view', 
-      label: 'Ver Detalles', 
-      icon: Eye, 
-      onClick: onView, 
-      disabled: false 
-    },
-    { 
-      id: 'edit', 
-      label: 'Editar Pipeline', 
-      icon: Edit3, 
-      onClick: onEdit, 
-      disabled: isUpdating || isDeleting || isDuplicating 
-    },
     { 
       id: 'duplicate', 
       label: 'Duplicar Pipeline', 
@@ -168,34 +152,50 @@ const PipelinesTable: React.FC<PipelinesTableProps> = ({
 
   const columns: Column<PipelineDTO>[] = useMemo(() => [
     {
-      id: 'name',
-      header: 'Pipeline',
-      accessorKey: 'name',
-      sortable: true,
-      width: '300px',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-500/10 rounded-lg">
-            <GitBranch className="h-4 w-4 text-primary-500" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-app-gray-100">{row.name}</span>
-              {row.isDefault && (
-                <Badge variant="success" size="sm">Por Defecto</Badge>
-              )}
-              {!row.isActive && (
-                <Badge variant="secondary" size="sm">Inactivo</Badge>
+        id: 'name',
+        header: 'Pipeline',
+        accessorKey: 'name',
+        sortable: true,
+        width: '300px',
+        cell: ({ row }) => (
+          <div 
+            className="flex items-center gap-3 cursor-pointer group hover:bg-app-dark-700/50 -mx-2 px-2 py-1 rounded-md transition-colors duration-150"
+            onClick={() => onPipelineClick(row)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onPipelineClick(row);
+              }
+            }}
+            aria-label={`Configurar pipeline ${row.name}`}
+          >
+            <div className="p-2 bg-primary-500/10 rounded-lg group-hover:bg-primary-500/20 transition-colors duration-150">
+              <GitBranch className="h-4 w-4 text-primary-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-app-gray-100 group-hover:text-primary-300 transition-colors duration-150 truncate">
+                  {row.name}
+                </span>
+                {row.isDefault && (
+                  <Badge variant="success" size="sm">Por Defecto</Badge>
+                )}
+                {!row.isActive && (
+                  <Badge variant="secondary" size="sm">Inactivo</Badge>
+                )}
+              </div>
+              {row.description && (
+                <p className="text-sm text-app-gray-400 group-hover:text-app-gray-300 mt-1 transition-colors duration-150 truncate">
+                  {row.description}
+                </p>
               )}
             </div>
-            {row.description && (
-              <p className="text-sm text-app-gray-400 mt-1">{row.description}</p>
-            )}
           </div>
-        </div>
-      ),
-      mobileLabel: 'Pipeline',
-    },
+        ),
+        mobileLabel: 'Pipeline',
+      },
     {
       id: 'stageCount',
       header: 'Etapas',
