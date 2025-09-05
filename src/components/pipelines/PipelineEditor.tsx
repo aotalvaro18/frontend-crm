@@ -127,287 +127,297 @@ interface StageItemProps {
 }
 
 const StageItem: React.FC<StageItemProps> = React.memo(({ 
-  stage, 
-  index, 
-  onUpdate, 
-  onDelete,
-  isDragging = false 
-}) => {
-  const { expandedStages, toggleExpanded } = React.useContext(StageExpansionContext);
-  const isExpanded = expandedStages.has(index);
-  
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [localValues, setLocalValues] = useState({
-    description: stage.description || '',
-    probability: stage.probability || 0
-  });
-
-  // Sincronizar estado local con props
-  useEffect(() => {
-    setLocalValues({
+    stage, 
+    index, 
+    onUpdate, 
+    onDelete,
+    isDragging = false 
+  }) => {
+    const { expandedStages, toggleExpanded } = React.useContext(StageExpansionContext);
+    const isExpanded = expandedStages.has(index);
+    
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [localValues, setLocalValues] = useState({
       description: stage.description || '',
-      probability: stage.probability || 0
+      probability: stage.probability || 0,
+      name: stage.name || '' // ✅ AGREGADO
     });
-  }, [stage.description, stage.probability]);
-
-  // Debounce las actualizaciones
-  const debouncedUpdate = useCallback(
-    debounce((updates: Partial<PipelineEditorForm['stages'][0]>) => {
-      onUpdate(updates);
-    }, 300),
-    [onUpdate]
-  );
-
-  const handleColorChange = useCallback((color: string) => {
-    onUpdate({ color });
-  }, [onUpdate]);
-
-  const handleToggleExpanded = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleExpanded(index);
-  }, [toggleExpanded, index]);
-
-  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowDeleteConfirm(true);
-  }, []);
-
-  const handleConfirmDelete = useCallback(() => {
-    onDelete();
-    setShowDeleteConfirm(false);
-  }, [onDelete]);
-
-  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    onUpdate({ name: value });
-  }, [onUpdate]);
-
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    setLocalValues(prev => ({ ...prev, description: value }));
-    debouncedUpdate({ description: value });
-  }, [debouncedUpdate]);
-
-  const handleDescriptionBlur = useCallback(() => {
-    if (localValues.description !== stage.description) {
-      onUpdate({ description: localValues.description });
-    }
-  }, [localValues.description, stage.description, onUpdate]);
-
-  const handleProbabilityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = parseInt(e.target.value) || 0;
-    const clampedValue = Math.max(0, Math.min(100, value));
-    setLocalValues(prev => ({ ...prev, probability: clampedValue }));
-    debouncedUpdate({ probability: clampedValue });
-  }, [debouncedUpdate]);
-
-  const handleProbabilityBlur = useCallback(() => {
-    if (localValues.probability !== stage.probability) {
-      onUpdate({ probability: localValues.probability });
-    }
-  }, [localValues.probability, stage.probability, onUpdate]);
-
-  const getStageIcon = () => {
-    if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-500" />;
-    if (stage.isClosedLost) return <X className="h-4 w-4 text-red-500" />;
-    return <Target className="h-4 w-4 text-blue-500" />;
-  };
-
-  return (
-    <>
-      <div className={cn(
-        "border border-app-dark-600 bg-app-dark-700/50 rounded-lg transition-all duration-200",
-        isDragging && "opacity-50 scale-95",
-        isExpanded && "ring-2 ring-primary-500/20"
-      )}>
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            {/* Drag handle */}
-            <div className="flex items-center gap-2">
-              <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-app-dark-600 rounded">
-                <GripVertical className="h-4 w-4 text-app-gray-400" />
-              </div>
-              <div 
-                className="w-4 h-4 rounded border-2 border-app-dark-400"
-                style={{ backgroundColor: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length] }}
-              />
-            </div>
-
-            {/* Stage info */}
-            <div className="flex-1">
+  
+    // Sincronizar estado local con props
+    useEffect(() => {
+      setLocalValues({
+        description: stage.description || '',
+        probability: stage.probability || 0,
+        name: stage.name || '' // ✅ AGREGADO
+      });
+    }, [stage.description, stage.probability, stage.name]); // ✅ AGREGADO stage.name
+  
+    // Debounce las actualizaciones
+    const debouncedUpdate = useCallback(
+      debounce((updates: Partial<PipelineEditorForm['stages'][0]>) => {
+        onUpdate(updates);
+      }, 300),
+      [onUpdate]
+    );
+  
+    const handleColorChange = useCallback((color: string) => {
+      onUpdate({ color });
+    }, [onUpdate]);
+  
+    const handleToggleExpanded = useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleExpanded(index);
+    }, [toggleExpanded, index]);
+  
+    const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDeleteConfirm(true);
+    }, []);
+  
+    const handleConfirmDelete = useCallback(() => {
+      onDelete();
+      setShowDeleteConfirm(false);
+    }, [onDelete]);
+  
+    const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const value = e.target.value;
+      setLocalValues(prev => ({ ...prev, name: value })); // ✅ CAMBIADO: Solo estado local
+    }, []);
+  
+    // ✅ AGREGADO: Nuevo handler para blur
+    const handleNameBlur = useCallback(() => {
+      if (localValues.name !== stage.name) {
+        onUpdate({ name: localValues.name });
+      }
+    }, [localValues.name, stage.name, onUpdate]);
+  
+    const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const value = e.target.value;
+      setLocalValues(prev => ({ ...prev, description: value }));
+      debouncedUpdate({ description: value });
+    }, [debouncedUpdate]);
+  
+    const handleDescriptionBlur = useCallback(() => {
+      if (localValues.description !== stage.description) {
+        onUpdate({ description: localValues.description });
+      }
+    }, [localValues.description, stage.description, onUpdate]);
+  
+    const handleProbabilityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const value = parseInt(e.target.value) || 0;
+      const clampedValue = Math.max(0, Math.min(100, value));
+      setLocalValues(prev => ({ ...prev, probability: clampedValue }));
+      debouncedUpdate({ probability: clampedValue });
+    }, [debouncedUpdate]);
+  
+    const handleProbabilityBlur = useCallback(() => {
+      if (localValues.probability !== stage.probability) {
+        onUpdate({ probability: localValues.probability });
+      }
+    }, [localValues.probability, stage.probability, onUpdate]);
+  
+    const getStageIcon = () => {
+      if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-500" />;
+      if (stage.isClosedLost) return <X className="h-4 w-4 text-red-500" />;
+      return <Target className="h-4 w-4 text-blue-500" />;
+    };
+  
+    return (
+      <>
+        <div className={cn(
+          "border border-app-dark-600 bg-app-dark-700/50 rounded-lg transition-all duration-200",
+          isDragging && "opacity-50 scale-95",
+          isExpanded && "ring-2 ring-primary-500/20"
+        )}>
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              {/* Drag handle */}
               <div className="flex items-center gap-2">
-                {getStageIcon()}
-                <Input
-                  value={stage.name || ''}
-                  onChange={handleNameChange}
-                  onFocus={(e) => e.target.select()}
-                  className="font-medium bg-transparent border-none p-0 focus:bg-app-dark-600 focus:px-2 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                  placeholder="Nombre de la etapa"
+                <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-app-dark-600 rounded">
+                  <GripVertical className="h-4 w-4 text-app-gray-400" />
+                </div>
+                <div 
+                  className="w-4 h-4 rounded border-2 border-app-dark-400"
+                  style={{ backgroundColor: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length] }}
                 />
-                {stage.probability !== undefined && (
-                  <Badge variant="outline" size="sm">
-                    {stage.probability}%
-                  </Badge>
+              </div>
+  
+              {/* Stage info */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  {getStageIcon()}
+                  <Input
+                    value={localValues.name} // ✅ CAMBIADO: de stage.name a localValues.name
+                    onChange={handleNameChange}
+                    onBlur={handleNameBlur} // ✅ AGREGADO
+                    onFocus={(e) => e.target.select()}
+                    className="font-medium bg-transparent border-none p-0 focus:bg-app-dark-600 focus:px-2 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                    placeholder="Nombre de la etapa"
+                  />
+                  {stage.probability !== undefined && (
+                    <Badge variant="outline" size="sm">
+                      {stage.probability}%
+                    </Badge>
+                  )}
+                </div>
+                
+                {stage.description && (
+                  <p className="text-sm text-app-gray-400 mt-1">
+                    {stage.description}
+                  </p>
                 )}
               </div>
-              
-              {stage.description && (
-                <p className="text-sm text-app-gray-400 mt-1">
-                  {stage.description}
-                </p>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1">
-              <Tooltip content="Configurar etapa">
-                <IconButton 
-                  type="button"
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleToggleExpanded}
-                  className={cn(
-                    "transition-colors",
-                    isExpanded && "bg-app-dark-600 text-primary-400"
-                  )}
-                >
-                  <Settings className="h-4 w-4" />
-                </IconButton>
-              </Tooltip>
-              
-              <Tooltip content="Eliminar etapa">
-                <IconButton 
-                  type="button"
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleDeleteClick}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </div>
-
-          {/* Expanded settings */}
-          {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
-                    Descripción
-                  </label>
-                  <Input
-                    value={localValues.description}
-                    onChange={handleDescriptionChange}
-                    onBlur={handleDescriptionBlur}
-                    onClick={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                    placeholder="Describe esta etapa..."
-                    className="text-sm"
-                  />
-                </div>
+  
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                <Tooltip content="Configurar etapa">
+                  <IconButton 
+                    type="button"
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleToggleExpanded}
+                    className={cn(
+                      "transition-colors",
+                      isExpanded && "bg-app-dark-600 text-primary-400"
+                    )}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </IconButton>
+                </Tooltip>
                 
-                <div>
-                  <label className="block text-sm font-medium text-app-gray-300 mb-1">
-                    Probabilidad %
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={localValues.probability}
-                    onChange={handleProbabilityChange}
-                    onBlur={handleProbabilityBlur}
-                    onClick={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                    className="text-sm"
-                  />
-                </div>
+                <Tooltip content="Eliminar etapa">
+                  <IconButton 
+                    type="button"
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleDeleteClick}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </IconButton>
+                </Tooltip>
               </div>
-
-              {/* Color picker */}
-              <div>
-                <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                  Color de la etapa
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {DEFAULT_STAGE_COLORS.map((color, colorIndex) => (
-                    <button
-                      key={`color-${colorIndex}`}
-                      type="button"
-                      onClick={() => handleColorChange(color)}
-                      className={cn(
-                        "w-8 h-8 rounded border-2 transition-all",
-                        stage.color === color 
-                          ? "border-white scale-110" 
-                          : "border-app-dark-400 hover:scale-105"
-                      )}
-                      style={{ backgroundColor: color }}
+            </div>
+  
+            {/* Expanded settings */}
+            {isExpanded && (
+              <div className="mt-4 pt-4 border-t border-app-dark-600 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                      Descripción
+                    </label>
+                    <Input
+                      value={localValues.description}
+                      onChange={handleDescriptionChange}
+                      onBlur={handleDescriptionBlur}
+                      onClick={(e) => e.stopPropagation()}
+                      onFocus={(e) => e.stopPropagation()}
+                      placeholder="Describe esta etapa..."
+                      className="text-sm"
                     />
-                  ))}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-app-gray-300 mb-1">
+                      Probabilidad %
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={localValues.probability}
+                      onChange={handleProbabilityChange}
+                      onBlur={handleProbabilityBlur}
+                      onClick={(e) => e.stopPropagation()}
+                      onFocus={(e) => e.stopPropagation()}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+  
+                {/* Color picker */}
+                <div>
+                  <label className="block text-sm font-medium text-app-gray-300 mb-2">
+                    Color de la etapa
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {DEFAULT_STAGE_COLORS.map((color, colorIndex) => (
+                      <button
+                        key={`color-${colorIndex}`}
+                        type="button"
+                        onClick={() => handleColorChange(color)}
+                        className={cn(
+                          "w-8 h-8 rounded border-2 transition-all",
+                          stage.color === color 
+                            ? "border-white scale-110" 
+                            : "border-app-dark-400 hover:scale-105"
+                        )}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+  
+                {/* Stage type flags */}
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={stage.isClosedWon || false}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onUpdate({ 
+                          isClosedWon: e.target.checked,
+                          isClosedLost: e.target.checked ? false : stage.isClosedLost
+                        });
+                      }}
+                      className="rounded border-app-dark-600 text-green-600 focus:ring-green-500"
+                    />
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-sm text-app-gray-300">Etapa de cierre ganado</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={stage.isClosedLost || false}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onUpdate({ 
+                          isClosedLost: e.target.checked,
+                          isClosedWon: e.target.checked ? false : stage.isClosedWon
+                        });
+                      }}
+                      className="rounded border-app-dark-600 text-red-600 focus:ring-red-500"
+                    />
+                    <X className="h-4 w-4 text-red-500" />
+                    <span className="text-sm text-app-gray-300">Etapa de cierre perdido</span>
+                  </label>
                 </div>
               </div>
-
-              {/* Stage type flags */}
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={stage.isClosedWon || false}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onUpdate({ 
-                        isClosedWon: e.target.checked,
-                        isClosedLost: e.target.checked ? false : stage.isClosedLost
-                      });
-                    }}
-                    className="rounded border-app-dark-600 text-green-600 focus:ring-green-500"
-                  />
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-app-gray-300">Etapa de cierre ganado</span>
-                </label>
-                
-                <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={stage.isClosedLost || false}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onUpdate({ 
-                        isClosedLost: e.target.checked,
-                        isClosedWon: e.target.checked ? false : stage.isClosedWon
-                      });
-                    }}
-                    className="rounded border-app-dark-600 text-red-600 focus:ring-red-500"
-                  />
-                  <X className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-app-gray-300">Etapa de cierre perdido</span>
-                </label>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Confirm Delete Dialog */}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title="Eliminar Etapa"
-        description={`¿Estás seguro de que quieres eliminar la etapa "${stage.name}"?`}
-        confirmLabel="Eliminar Etapa"
-        cancelLabel="Cancelar"
-      />
-    </>
-  );
-});
+  
+        {/* Confirm Delete Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={handleConfirmDelete}
+          title="Eliminar Etapa"
+          description={`¿Estás seguro de que quieres eliminar la etapa "${stage.name}"?`}
+          confirmLabel="Eliminar Etapa"
+          cancelLabel="Cancelar"
+        />
+      </>
+    );
+  });
 
 StageItem.displayName = 'StageItem';
 
