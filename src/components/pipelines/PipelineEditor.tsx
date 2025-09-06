@@ -538,7 +538,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
 
   // ✅ SUBMIT SIMPLIFICADO - Solo updatePipeline
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
-    console.log('🔥 Guardando pipeline con los siguientes datos:', data);
+    console.log('🔥 Guardando pipeline con los siguientes datos del formulario:', data);
   
     try {
       if (!data.stages || data.stages.length === 0) {
@@ -546,14 +546,26 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         return;
       }
   
-      // ✅ LÓGICA CLAVE: Diferenciar entre etapas nuevas y existentes
-      const stagesForBackend = data.stages.map((stage, index) => {
+      // --- LÓGICA CLAVE: Preparar los datos para el formato del backend ---
+  
+      // 1. OBTENER IDs ACTUALES Y ORIGINALES
+      // IDs de las etapas que están actualmente en el formulario (visibles para el usuario)
+      const currentStageIds = new Set(data.stages.map(s => s.id).filter(id => id !== undefined));
+      // IDs de las etapas que existían cuando se cargó la página
+      const originalStageIds = new Set(pipeline.stages.map(s => s.id));
+  
+      // 2. CALCULAR ETAPAS A ELIMINAR
+      // Compara los IDs originales con los actuales. Los que ya no están, se deben eliminar.
+      const stagesToDelete = [...originalStageIds].filter(id => !currentStageIds.has(id));
+  
+      // 3. CONSTRUIR LA LISTA DE ETAPAS (Nuevas y Actualizadas)
+      // Tu backend acepta una lista mixta, lo cual es genial.
+      const stages = data.stages.map((stage, index) => {
         
-        // Objeto base con los campos comunes
-        const baseStageData = {
+        const stagePayload = {
           name: stage.name,
           description: stage.description || undefined,
-          position: stage.orderIndex ?? index,
+          position: stage.orderIndex ?? index + 1,
           color: stage.color,
           probability: stage.probability ?? undefined,
           isWon: stage.isClosedWon || false,
@@ -561,29 +573,35 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           active: true,
         };
   
-        // Si la etapa tiene un ID, es una ACTUALIZACIÓN.
-        // Incluimos el ID. (Esto se ajustará a UpdatePipelineStageRequest)
+        // Si la etapa tiene ID, es una ACTUALIZACIÓN.
+        // Le añadimos el ID y la versión.
         if (stage.id) {
+          // Encuentra la versión original de la etapa para el control de concurrencia
+          const originalStage = pipeline.stages.find(s => s.id === stage.id);
           return {
             id: stage.id,
-            ...baseStageData,
+            version: originalStage?.version ?? 0, // Importante para la concurrencia por etapa
+            ...stagePayload
           };
         }
   
         // Si no tiene ID, es una CREACIÓN.
-        // No incluimos el ID. (Esto se ajustará a CreatePipelineStageRequest)
-        return baseStageData;
+        return stagePayload;
       });
   
+      // 4. CONSTRUIR EL REQUEST FINAL
       const request: UpdatePipelineRequest = {
+        version: pipeline.version,
         name: data.name,
         description: data.description || undefined,
         isDefault: data.isDefault,
         active: data.isActive,
-        version: pipeline.version,
-  
-        // TypeScript ahora entenderá que este array contiene objetos con y sin 'id'
-        stages: stagesForBackend, 
+        
+        // Lista mixta de etapas nuevas y actualizadas
+        stages: stages,
+        
+        // Lista separada con los IDs de las etapas a eliminar
+        stagesToDelete: stagesToDelete.length > 0 ? stagesToDelete : undefined,
       };
   
       console.log('🚀 Enviando la siguiente petición de actualización:', request);
