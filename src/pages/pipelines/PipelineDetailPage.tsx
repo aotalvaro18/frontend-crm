@@ -80,8 +80,8 @@ const PipelineStageItem: React.FC<PipelineStageItemProps> = ({
   onDelete
 }) => {
   const getStageIcon = () => {
-    if (stage.isClosedWon) return <CheckCircle className="h-4 w-4 text-green-400" />;
-    if (stage.isClosedLost) return <X className="h-4 w-4 text-red-400" />;
+    if (stage.isWon) return <CheckCircle className="h-4 w-4 text-green-400" />;
+    if (stage.isLost) return <X className="h-4 w-4 text-red-400" />;
     return <Target className="h-4 w-4 text-blue-400" />;
   };
 

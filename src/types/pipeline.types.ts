@@ -46,28 +46,33 @@ export const PIPELINE_CATEGORY_LABELS: Record<PipelineCategory, string> = {
   /**
    * Etapa individual de un pipeline (matching PipelineStageDTO del backend)
    */
+  
+  // ✅ DEFINICIÓN FINAL Y CORRECTA (Reflejo exacto del StageDTO.java)
   export interface PipelineStage extends BaseEntity {
     // Información básica obligatoria
     name: string;
-    orderIndex:number  // Para la secuencia en el Kanban (0, 1, 2...)
-    pipelineId: number;         // FK al pipeline padre
+    orderIndex: number;
+    pipelineId: number;
     
-    // Configuración opcional
-    description?: string;
-    color?: string;             // Color para el Kanban (#FF5733, etc.)
-    isClosedWon?: boolean;      // Etapa que marca como "ganado"
-    isClosedLost?: boolean;     // Etapa que marca como "perdido"
-    probability?: number;       // Probabilidad de cierre (0-100)
+    // Configuración opcional (matching StageDTO.java)
+    description?: string | null; // Puede ser null desde la BD
+    color?: string | null;
+    
+    // ✅ CORRECCIÓN: Nombres exactos del DTO de Java
+    isWon?: boolean | null;
+    isLost?: boolean | null;
+    
+    probability?: number | null; // Integer en Java puede ser null
     
     // Métricas computadas (del backend)
-    dealCount?: number;         // Número de deals en esta etapa
-    totalValue?: number;        // Valor total de deals en esta etapa
-    averageDealValue?: number;  // Valor promedio
-    averageTimeInStage?: number; // Días promedio en esta etapa
+    dealCount?: number;
+    totalValue?: number;
+    averageDealValue?: number;
+    averageTimeInStage?: number;
     
     // Ownership
     ownerCognitoSub: CognitoSub;
-    ownerName?: string;         // Computed field
+    ownerName?: string;
   }
 
 /**
