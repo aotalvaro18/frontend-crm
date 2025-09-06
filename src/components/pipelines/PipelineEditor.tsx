@@ -35,9 +35,11 @@ import toast from 'react-hot-toast';
 // TYPES
 // ============================================
 import type {
-  PipelineDTO,
-  UpdatePipelineRequest
-} from '@/types/pipeline.types';
+    PipelineDTO,
+    UpdatePipelineRequest,
+    CreatePipelineStageRequest,
+    UpdatePipelineStageRequest
+  } from '@/types/pipeline.types';
 import { DEFAULT_STAGE_COLORS } from '@/types/pipeline.types';
 import { cn } from '@/utils/cn';
 
@@ -558,10 +560,11 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       // Compara los IDs originales con los actuales. Los que ya no están, se deben eliminar.
       const stagesToDelete = [...originalStageIds].filter(id => !currentStageIds.has(id));
   
-      // 3. CONSTRUIR LA LISTA DE ETAPAS (Nuevas y Actualizadas)
-      // Tu backend acepta una lista mixta, lo cual es genial.
-      const stages = data.stages.map((stage, index) => {
-        
+      // 3. SEPARAR ETAPAS EN NUEVAS Y ACTUALIZACIONES
+      const newStages: CreatePipelineStageRequest[] = [];
+      const stageUpdates: UpdatePipelineStageRequest[] = [];
+
+      data.stages.forEach((stage, index) => {
         const stagePayload = {
           name: stage.name,
           description: stage.description || undefined,
@@ -572,24 +575,24 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
           isLost: stage.isClosedLost || false,
           active: true,
         };
-  
-        // Si la etapa tiene ID, es una ACTUALIZACIÓN.
-        // Le añadimos el ID y la versión.
-        if (stage.id) {
+
+        // Si la etapa no tiene ID, es NUEVA
+        if (!stage.id) {
+          newStages.push(stagePayload);
+        } 
+        // Si la etapa tiene ID, es una ACTUALIZACIÓN
+        else {
           // Encuentra la versión original de la etapa para el control de concurrencia
           const originalStage = pipeline.stages.find(s => s.id === stage.id);
-          return {
-            id: stage.id,
-            version: originalStage?.version ?? 0, // Importante para la concurrencia por etapa
+          stageUpdates.push({
+            stageId: stage.id,
+            version: originalStage?.version ?? 0,
             ...stagePayload
-          };
+          });
         }
-  
-        // Si no tiene ID, es una CREACIÓN.
-        return stagePayload;
       });
-  
-      // 4. CONSTRUIR EL REQUEST FINAL
+
+      // 4. CONSTRUIR EL REQUEST FINAL CON TRES LISTAS SEPARADAS
       const request: UpdatePipelineRequest = {
         version: pipeline.version,
         name: data.name,
@@ -597,11 +600,10 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         isDefault: data.isDefault,
         active: data.isActive,
         
-        // Lista mixta de etapas nuevas y actualizadas
-        stages: stages,
-        
-        // Lista separada con los IDs de las etapas a eliminar
-        stagesToDelete: stagesToDelete.length > 0 ? stagesToDelete : undefined,
+        // Tres listas separadas como espera el backend
+        stageUpdates: stageUpdates.length > 0 ? stageUpdates : undefined,
+        newStages: newStages.length > 0 ? newStages : undefined,
+        stageIdsToDelete: stagesToDelete.length > 0 ? stagesToDelete : undefined,
       };
   
       console.log('🚀 Enviando la siguiente petición de actualización:', request);

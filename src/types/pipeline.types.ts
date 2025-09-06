@@ -46,7 +46,7 @@ export const PIPELINE_CATEGORY_LABELS: Record<PipelineCategory, string> = {
   /**
    * Etapa individual de un pipeline (matching PipelineStageDTO del backend)
    */
-  
+
   // ✅ DEFINICIÓN FINAL Y CORRECTA (Reflejo exacto del StageDTO.java)
   export interface PipelineStage extends BaseEntity {
     // Información básica obligatoria
@@ -94,13 +94,30 @@ export interface CreatePipelineStageRequest {
   autoMoveDays?: number;
   active?: boolean;
 }
+
+/**
+ * Request para actualizar una etapa existente (matching StageUpdateRequest del backend)
+ */
+export interface UpdatePipelineStageRequest {
+    stageId: number;
+    version?: number;
+    name?: string;
+    description?: string;
+    position?: number;
+    color?: string;
+    probability?: number;
+    isWon?: boolean;
+    isLost?: boolean;
+    active?: boolean;
+    autoMoveDays?: number;
+  }
   
   /**
    * Request para actualizar una etapa existente
    */
-  export type UpdatePipelineStageRequest = Partial<CreatePipelineStageRequest> & {
-    version: number;
-  };
+  //export type UpdatePipelineStageRequest = Partial<CreatePipelineStageRequest> & {
+   // version: number;
+  //};
   
   // ============================================
   // PIPELINE CORE TYPES (Matching PipelineDTO)
@@ -295,15 +312,17 @@ export interface CreatePipelineRequest {
 }
   
   /**
-   * Request para actualizar un pipeline existente
-   */
-  export type UpdatePipelineRequest = Partial<CreatePipelineRequest> & {
-    version: number;
-    // Para actualizar etapas existentes o añadir nuevas
-    stages?: (UpdatePipelineStageRequest | CreatePipelineStageRequest)[];
-    // IDs de etapas a eliminar
-    stagesToDelete?: number[];
-  };
+ * Request para actualizar un pipeline existente
+ */
+export type UpdatePipelineRequest = Partial<CreatePipelineRequest> & {
+  version: number;
+  // Para actualizar etapas existentes (con ID y version)
+  stageUpdates?: UpdatePipelineStageRequest[];
+  // Para crear nuevas etapas (sin ID)
+  newStages?: CreatePipelineStageRequest[];
+  // IDs de etapas a eliminar
+  stageIdsToDelete?: number[];
+};
   
   /**
    * Request para reordenar etapas de un pipeline
