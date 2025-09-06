@@ -539,30 +539,41 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
   // ✅ SUBMIT SIMPLIFICADO - Solo updatePipeline
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
     console.log('🔥 Guardando pipeline con los siguientes datos:', data);
-    
+  
     try {
       if (!data.stages || data.stages.length === 0) {
         toast.error('Debe agregar al menos una etapa al pipeline');
         return;
       }
   
-      // ✅ Mapear etapas para el backend usando el 'orderIndex' del formulario
-      const stagesForBackend = data.stages.map((stage, index) => ({
-        ...(stage.id && { id: stage.id }), // ID real si la etapa ya existe
-        name: stage.name,
-        description: stage.description || undefined,
+      // ✅ LÓGICA CLAVE: Diferenciar entre etapas nuevas y existentes
+      const stagesForBackend = data.stages.map((stage, index) => {
+        
+        // Objeto base con los campos comunes
+        const baseStageData = {
+          name: stage.name,
+          description: stage.description || undefined,
+          position: stage.orderIndex ?? index,
+          color: stage.color,
+          probability: stage.probability ?? undefined,
+          isWon: stage.isClosedWon || false,
+          isLost: stage.isClosedLost || false,
+          active: true,
+        };
   
-        // ✅ LA CORRECCIÓN CLAVE:
-        // Usamos el 'orderIndex' del estado del formulario.
-        // Si por alguna razón es nulo, usamos el índice como fallback.
-        position: stage.orderIndex ?? index,
+        // Si la etapa tiene un ID, es una ACTUALIZACIÓN.
+        // Incluimos el ID. (Esto se ajustará a UpdatePipelineStageRequest)
+        if (stage.id) {
+          return {
+            id: stage.id,
+            ...baseStageData,
+          };
+        }
   
-        color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
-        probability: stage.probability ?? undefined, // Limpia nulls
-        isWon: stage.isClosedWon || false,
-        isLost: stage.isClosedLost || false,
-        active: true,
-      }));
+        // Si no tiene ID, es una CREACIÓN.
+        // No incluimos el ID. (Esto se ajustará a CreatePipelineStageRequest)
+        return baseStageData;
+      });
   
       const request: UpdatePipelineRequest = {
         name: data.name,
@@ -570,7 +581,9 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         isDefault: data.isDefault,
         active: data.isActive,
         version: pipeline.version,
-        stages: stagesForBackend,
+  
+        // TypeScript ahora entenderá que este array contiene objetos con y sin 'id'
+        stages: stagesForBackend, 
       };
   
       console.log('🚀 Enviando la siguiente petición de actualización:', request);
@@ -584,7 +597,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       console.error('🔥 Error en handleSubmit:', error);
       toast.error("Error al actualizar el pipeline. Por favor, inténtalo de nuevo.");
     }
-  }, [pipeline.id, pipeline.version, updatePipeline, onSave]);
+  }, [pipeline, updatePipeline, onSave]);
 
   // Render
   return (
