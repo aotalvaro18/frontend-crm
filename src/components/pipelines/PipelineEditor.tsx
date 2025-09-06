@@ -37,8 +37,8 @@ import toast from 'react-hot-toast';
 import type {
     PipelineDTO,
     UpdatePipelineRequest,
-    CreatePipelineStageRequest,
-    UpdatePipelineStageRequest
+    StageCreateRequest,
+    StageUpdateRequest
   } from '@/types/pipeline.types';
 import { DEFAULT_STAGE_COLORS } from '@/types/pipeline.types';
 import { cn } from '@/utils/cn';
@@ -561,8 +561,8 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       const stagesToDelete = [...originalStageIds].filter(id => !currentStageIds.has(id));
   
       // 3. SEPARAR ETAPAS EN NUEVAS Y ACTUALIZACIONES
-      const newStages: CreatePipelineStageRequest[] = [];
-      const stageUpdates: UpdatePipelineStageRequest[] = [];
+      const newStages: StageCreateRequest[] = [];
+      const stageUpdates: StageUpdateRequest[] = [];
 
       data.stages.forEach((stage, index) => {
         const stagePayload = {

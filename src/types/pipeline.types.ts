@@ -314,15 +314,65 @@ export interface CreatePipelineRequest {
   /**
  * Request para actualizar un pipeline existente
  */
-export type UpdatePipelineRequest = Partial<CreatePipelineRequest> & {
-  version: number;
-  // Para actualizar etapas existentes (con ID y version)
-  stageUpdates?: UpdatePipelineStageRequest[];
-  // Para crear nuevas etapas (sin ID)
-  newStages?: CreatePipelineStageRequest[];
-  // IDs de etapas a eliminar
-  stageIdsToDelete?: number[];
-};
+  export interface UpdatePipelineRequest {
+    // Control de concurrencia (requerido)
+    version: number;
+    
+    // Campos opcionales del pipeline
+    name?: string;
+    description?: string;
+    category?: PipelineCategory;
+    icon?: string;
+    color?: string;
+    settings?: Record<string, any>;
+    trackingMetrics?: string[];
+    active?: boolean;
+    isDefault?: boolean;
+    enableAutomations?: boolean;
+    enableNotifications?: boolean;
+    enableReports?: boolean;
+    
+    // Etapas (tres listas separadas como espera el backend)
+    stageUpdates?: StageUpdateRequest[];
+    newStages?: StageCreateRequest[];
+    stageIdsToDelete?: number[];
+    
+    // Campos de control
+    forceUpdate?: boolean;
+    changeReason?: string;
+  }
+  
+  /**
+   * Clase interna StageUpdateRequest (matching backend exacto)
+   */
+  export interface StageUpdateRequest {
+    stageId: number;
+    version?: number;
+    name?: string;
+    description?: string;
+    position?: number;
+    color?: string;
+    probability?: number;
+    isWon?: boolean;
+    isLost?: boolean;
+    autoMoveDays?: number;
+    active?: boolean;
+  }
+  
+  /**
+   * Clase interna StageCreateRequest (matching backend exacto)
+   */
+  export interface StageCreateRequest {
+    name: string;
+    description?: string;
+    position?: number;
+    color?: string;
+    probability?: number;
+    isWon?: boolean;
+    isLost?: boolean;
+    autoMoveDays?: number;
+    active?: boolean;
+  }
   
   /**
    * Request para reordenar etapas de un pipeline
