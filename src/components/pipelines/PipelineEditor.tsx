@@ -462,23 +462,39 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
 
   // ✅ EFFECT SIMPLIFICADO - Solo cargar datos del pipeline existente
   useEffect(() => {
+    // El pipeline siempre existe gracias a la página orquestadora
     if (pipeline) {
       console.log('🔥 Cargando pipeline en editor:', pipeline);
       
       form.reset({
+        // --- MAPEANDO CAMPOS DEL PIPELINE ---
         name: pipeline.name,
-        description: pipeline.description || '',
-        isDefault: pipeline.isDefault || false,
+        description: pipeline.description || '', // Seguro contra null
+        
+        // ✅ TRADUCCIÓN: El DTO usa isActive, el formulario también. Coinciden.
         isActive: pipeline.isActive !== false,
+        
+        // ✅ TRADUCCIÓN: El DTO usa isDefault, el formulario también. Coinciden.
+        isDefault: pipeline.isDefault || false,
+  
+        // --- MAPEANDO ETAPAS (AQUÍ ESTÁ LA LÓGICA CLAVE) ---
         stages: pipeline.stages?.map((stage, index) => ({
-          id: stage.id, // ✅ ID real del backend
+          id: stage.id,
           name: stage.name,
-          description: stage.description || '',
+          description: stage.description || '', // Seguro contra null
+  
+          // ✅ TRADUCCIÓN: El DTO de Java envía 'isWon', el formulario espera 'isClosedWon'.
+          isClosedWon: stage.isWon || false,
+          
+          // ✅ TRADUCCIÓN: El DTO de Java envía 'isLost', el formulario espera 'isClosedLost'.
+          isClosedLost: stage.isLost || false,
+  
+          // ✅ MANEJO DE NULLS: El DTO de Java envía 'probability' como Integer (puede ser null).
+          // Lo convertimos a undefined si es null para que el formulario y Zod lo manejen.
+          probability: stage.probability ?? undefined,
+  
+          orderIndex: stage.orderIndex ?? index, // Seguro contra null
           color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
-          probability: stage.probability,
-          isClosedWon: stage.isClosedWon,
-          isClosedLost: stage.isClosedLost,
-          orderIndex: stage.orderIndex ?? index,
         })) || [],
       });
     }
@@ -522,46 +538,51 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
 
   // ✅ SUBMIT SIMPLIFICADO - Solo updatePipeline
   const handleSubmit = useCallback(async (data: PipelineEditorForm) => {
-    console.log('🔥 Actualizando pipeline:', data);
+    console.log('🔥 Guardando pipeline con los siguientes datos:', data);
     
     try {
       if (!data.stages || data.stages.length === 0) {
         toast.error('Debe agregar al menos una etapa al pipeline');
         return;
       }
-
-      // ✅ Mapear etapas para el backend con nombres exactos
+  
+      // ✅ Mapear etapas para el backend usando el 'orderIndex' del formulario
       const stagesForBackend = data.stages.map((stage, index) => ({
-        ...(stage.id && { id: stage.id }), // ✅ ID real si existe
+        ...(stage.id && { id: stage.id }), // ID real si la etapa ya existe
         name: stage.name,
         description: stage.description || undefined,
-        position: index + 1, // ✅ Backend espera position 1-based
+  
+        // ✅ LA CORRECCIÓN CLAVE:
+        // Usamos el 'orderIndex' del estado del formulario.
+        // Si por alguna razón es nulo, usamos el índice como fallback.
+        position: stage.orderIndex ?? index,
+  
         color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
-        probability: stage.probability || undefined,
-        isWon: stage.isClosedWon || false, // ✅ Backend usa isWon
-        isLost: stage.isClosedLost || false, // ✅ Backend usa isLost
+        probability: stage.probability ?? undefined, // Limpia nulls
+        isWon: stage.isClosedWon || false,
+        isLost: stage.isClosedLost || false,
         active: true,
       }));
-
-      // ✅ Request con nombres exactos del backend
+  
       const request: UpdatePipelineRequest = {
         name: data.name,
         description: data.description || undefined,
         isDefault: data.isDefault,
-        active: data.isActive, // ✅ Backend usa active
-        version: pipeline.version, // ✅ Importante para optimistic locking
+        active: data.isActive,
+        version: pipeline.version,
         stages: stagesForBackend,
       };
-
+  
+      console.log('🚀 Enviando la siguiente petición de actualización:', request);
+  
       await updatePipeline(pipeline.id, request, () => {
         toast.success(`Pipeline "${data.name}" actualizado exitosamente`);
         onSave?.();
       });
-
+  
     } catch (error) {
-      // Error ya manejado por el hook, pero agregamos fallback
       console.error('🔥 Error en handleSubmit:', error);
-      toast.error("Error actualizando pipeline. Verifica los datos e inténtalo de nuevo.");
+      toast.error("Error al actualizar el pipeline. Por favor, inténtalo de nuevo.");
     }
   }, [pipeline.id, pipeline.version, updatePipeline, onSave]);
 
