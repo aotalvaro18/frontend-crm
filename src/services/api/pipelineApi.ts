@@ -440,6 +440,7 @@ export class PipelineApiService {
   }
 
   private validateUpdatePipelineRequest(request: UpdatePipelineRequest): void {
+    // Validación de nombre del pipeline
     if (request.name !== undefined) {
       if (!request.name?.trim()) {
         throw new Error('Pipeline name cannot be empty');
@@ -448,14 +449,125 @@ export class PipelineApiService {
         throw new Error('Pipeline name cannot exceed 100 characters');
       }
     }
-
-    if (request.stages) {
-      if (request.stages.length < 2) {
-        throw new Error('Pipeline must have at least 2 stages');
+  
+    // Validación de descripción
+    if (request.description !== undefined && request.description !== null) {
+      if (request.description.length > 1000) {
+        throw new Error('Pipeline description cannot exceed 1000 characters');
       }
-      if (request.stages.length > 20) {
-        throw new Error('Pipeline cannot have more than 20 stages');
+    }
+  
+    // Validación de etapas - NUEVA LÓGICA PARA TRES LISTAS SEPARADAS
+    const hasStageChanges = request.stageUpdates || request.newStages || request.stageIdsToDelete;
+    
+    if (hasStageChanges) {
+      // Contar etapas actuales, nuevas y a eliminar
+      const updateCount = request.stageUpdates?.length || 0;
+      const newCount = request.newStages?.length || 0;
+      const deleteCount = request.stageIdsToDelete?.length || 0;
+      
+      // Validar límites individuales
+      if (updateCount > 20) {
+        throw new Error('Cannot update more than 20 stages at once');
       }
+      
+      if (newCount > 10) {
+        throw new Error('Cannot add more than 10 new stages at once');
+      }
+      
+      if (deleteCount > 15) {
+        throw new Error('Cannot delete more than 15 stages at once');
+      }
+  
+      // Validar stageUpdates
+      if (request.stageUpdates) {
+        request.stageUpdates.forEach((stageUpdate, index) => {
+          if (!stageUpdate.stageId || stageUpdate.stageId <= 0) {
+            throw new Error(`Stage update ${index + 1}: stageId is required and must be positive`);
+          }
+          
+          if (stageUpdate.name !== undefined) {
+            if (!stageUpdate.name?.trim()) {
+              throw new Error(`Stage update ${index + 1}: name cannot be empty`);
+            }
+            if (stageUpdate.name.length > 255) {
+              throw new Error(`Stage update ${index + 1}: name cannot exceed 255 characters`);
+            }
+          }
+          
+          if (stageUpdate.position !== undefined) {
+            if (stageUpdate.position < 1 || stageUpdate.position > 20) {
+              throw new Error(`Stage update ${index + 1}: position must be between 1 and 20`);
+            }
+          }
+          
+          if (stageUpdate.probability !== undefined) {
+            if (stageUpdate.probability < 0 || stageUpdate.probability > 100) {
+              throw new Error(`Stage update ${index + 1}: probability must be between 0 and 100`);
+            }
+          }
+        });
+      }
+  
+      // Validar newStages
+      if (request.newStages) {
+        request.newStages.forEach((newStage, index) => {
+          if (!newStage.name?.trim()) {
+            throw new Error(`New stage ${index + 1}: name is required and cannot be empty`);
+          }
+          if (newStage.name.length > 255) {
+            throw new Error(`New stage ${index + 1}: name cannot exceed 255 characters`);
+          }
+          
+          if (newStage.position !== undefined) {
+            if (newStage.position < 1 || newStage.position > 20) {
+              throw new Error(`New stage ${index + 1}: position must be between 1 and 20`);
+            }
+          }
+          
+          if (newStage.probability !== undefined) {
+            if (newStage.probability < 0 || newStage.probability > 100) {
+              throw new Error(`New stage ${index + 1}: probability must be between 0 and 100`);
+            }
+          }
+        });
+      }
+  
+      // Validar stageIdsToDelete
+      if (request.stageIdsToDelete) {
+        request.stageIdsToDelete.forEach((stageId, index) => {
+          if (!stageId || stageId <= 0) {
+            throw new Error(`Stage to delete ${index + 1}: stageId must be a positive number`);
+          }
+        });
+        
+        // Verificar que no haya IDs duplicados
+        const uniqueIds = new Set(request.stageIdsToDelete);
+        if (uniqueIds.size !== request.stageIdsToDelete.length) {
+          throw new Error('Cannot delete the same stage multiple times');
+        }
+      }
+  
+      // Validación de nombres únicos entre nuevas etapas
+      if (request.newStages && request.newStages.length > 1) {
+        const newStageNames = request.newStages
+          .map(stage => stage.name?.trim().toLowerCase())
+          .filter(name => name);
+        
+        const uniqueNames = new Set(newStageNames);
+        if (uniqueNames.size !== newStageNames.length) {
+          throw new Error('New stage names must be unique');
+        }
+      }
+  }
+  
+    // Validar versión requerida
+    if (request.version === undefined || request.version === null) {
+      throw new Error('Version is required for optimistic locking');
+    }
+    
+    if (request.version < 0) {
+      throw new Error('Version must be greater than or equal to 0');
     }
   }
 
