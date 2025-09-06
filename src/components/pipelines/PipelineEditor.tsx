@@ -568,7 +568,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         const stagePayload = {
           name: stage.name,
           description: stage.description || undefined,
-          position: stage.orderIndex ?? index + 1,
+          position: (stage.orderIndex ?? index) + 1,
           color: stage.color,
           probability: stage.probability ?? undefined,
           isWon: stage.isClosedWon || false,
