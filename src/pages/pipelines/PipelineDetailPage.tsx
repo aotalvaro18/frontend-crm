@@ -227,7 +227,7 @@ const PipelineDetailPage: React.FC = () => {
       await deletePipeline(pipelineToDelete.id, () => {
         setPipelineToDelete(null);
         navigate('/pipelines');
-        //toastSuccess('Pipeline eliminado exitosamente');
+        
       });
     } catch (error) {
       handleError(error);

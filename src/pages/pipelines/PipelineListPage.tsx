@@ -50,7 +50,7 @@ import {
 import { pipelineApi } from '@/services/api/pipelineApi';
 import { useSearchDebounce } from '@/hooks/useDebounce';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { toastSuccess } from '@/services/notifications/toastService';
+//import { toastSuccess } from '@/services/notifications/toastService';
 
 // ============================================
 // TYPES - Importando desde types como CompanyListPage
@@ -531,6 +531,10 @@ const PipelineListPage: React.FC = () => {
                   </IconButton>
                 }
                 items={getPipelineActionItems(currentPipeline)}
+                align="end"
+                side="top" 
+                offset={12}
+                className="z-50"
               />
             </div>
           </div>

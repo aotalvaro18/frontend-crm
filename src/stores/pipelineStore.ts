@@ -246,8 +246,6 @@ export const usePipelineStore = create<PipelineUIState>()(
             
             // Invalidar y refrescar todo lo relacionado con pipelines
             await queryClient.invalidateQueries({ queryKey: ['pipelines'] });
-            
-            //toast.success('Pipeline eliminado exitosamente'); //quita el duplicado de eliminar
             onSuccess?.();
           } catch (error: unknown) {
             const errorMessage = handlePipelineApiError ? handlePipelineApiError(error).message : 'Error al eliminar el pipeline';

@@ -68,6 +68,7 @@ export class PipelineApiService {
     if (criteria.maxConversionRate !== undefined) params.append('maxConversionRate', String(criteria.maxConversionRate));
     if (criteria.requiresApproval !== undefined) params.append('requiresApproval', String(criteria.requiresApproval));
     if (criteria.autoProgressRules !== undefined) params.append('autoProgressRules', String(criteria.autoProgressRules));
+    if (criteria.isActive === undefined) criteria.isActive = true; //hace que los pipelines eliminados no aparezcan en la lista
     
     // Añadir la paginación
     params.append('page', String(pagination.page));
