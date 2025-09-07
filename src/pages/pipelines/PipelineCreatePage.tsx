@@ -56,7 +56,7 @@ const PipelineCreatePage: React.FC = () => {
     try {
       await createPipeline(request, (newPipeline) => {
         if (newPipeline?.id) {
-          toast.success(`Pipeline "${newPipeline.name}" creado. ¡Ahora puedes personalizarlo!`);
+          //toast.success(`Pipeline "${newPipeline.name}" creado. ¡Ahora puedes personalizarlo!`);
           navigate(`/settings/pipelines/${newPipeline.id}/edit`);
         } else {
           toast.error("Error: No se pudo obtener el ID del pipeline creado.");
@@ -88,12 +88,27 @@ const PipelineCreatePage: React.FC = () => {
       icon: template.icon?.toLowerCase().replace(/[^a-z0-9\-_]/g, '') || 'gitbranch',
       stages: template.stages.map((stage, index): CreatePipelineStageRequest => ({
         name: stage.name,
-        description: stage.description || undefined,
-        position: index + 1, // ✅ Backend espera position 1-based
-        color: stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length],
-        probability: stage.probability || undefined,
-        isWon: stage.isClosedWon || false, // ✅ Backend usa isWon
-        isLost: stage.isClosedLost || false, // ✅ Backend usa isLost
+      
+        // Tus plantillas no tienen 'description', así que este campo siempre será undefined.
+        // Lo dejamos por si en el futuro añades descripciones a las plantillas.
+        description: (stage as any).description || undefined,
+      
+        // 'orderIndex' siempre existe en tus plantillas.
+        position: stage.orderIndex + 1,
+        
+        // 'color' siempre existe en tus plantillas.
+        color: stage.color,
+      
+        // ✅ CORRECCIÓN CLAVE: Si 'probability' no existe en la plantilla,
+        // usa un valor por defecto (ej. 0) o undefined.
+        probability: 'probability' in stage ? stage.probability : undefined,
+      
+        // Si 'isClosedWon' no existe, asume 'false'.
+        isWon: 'isClosedWon' in stage ? stage.isClosedWon : false,
+      
+        // Si 'isClosedLost' no existe, asume 'false'.
+        isLost: 'isClosedLost' in stage ? stage.isClosedLost : false,
+        
         active: true,
       })),
     };

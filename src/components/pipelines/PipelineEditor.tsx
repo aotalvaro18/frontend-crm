@@ -561,7 +561,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       console.log('Enviando la siguiente petición de actualización:', request);
   
       await updatePipeline(pipeline.id, request, () => {
-        toast.success(`Pipeline "${data.name}" actualizado exitosamente`);
+        //toast.success(`Pipeline "${data.name}" actualizado exitosamente`);
         onSave?.();
       });
   

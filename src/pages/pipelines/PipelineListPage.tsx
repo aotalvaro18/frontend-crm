@@ -242,7 +242,7 @@ const PipelineListPage: React.FC = () => {
         }
         refetchPipelines();
         refetchStats();
-        toastSuccess('Pipeline eliminado exitosamente');
+        //toastSuccess('Pipeline eliminado exitosamente');
       });
     } catch (error) {
       handleError(error);
