@@ -109,7 +109,7 @@ const PipelineListPage: React.FC = () => {
     queryFn: () => pipelineApi.searchPipelines(searchCriteria, { 
       page: currentPage, 
       size: 100, // Más pipelines para el selector
-      sort: ['isDefault,desc', 'name,asc'] 
+      sort: ['isDefault,desc', 'updatedAt,desc'] 
     }),
     enabled: true,
     placeholderData: (previousData) => previousData,
@@ -240,9 +240,6 @@ const PipelineListPage: React.FC = () => {
         if (selectedPipelineId === pipelineToDelete.id) {
           setSelectedPipelineId(null);
         }
-        refetchPipelines();
-        refetchStats();
-        //toastSuccess('Pipeline eliminado exitosamente');
       });
     } catch (error) {
       handleError(error);
