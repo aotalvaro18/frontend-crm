@@ -602,9 +602,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
             />
 
             <div>
-              <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                Tipo de Pipeline
-              </label>
+              
               <Controller
   name="category"
   control={form.control}
