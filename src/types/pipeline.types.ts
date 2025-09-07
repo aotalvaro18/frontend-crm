@@ -129,7 +129,7 @@ export interface UpdatePipelineStageRequest {
   export interface Pipeline extends BaseEntity {
     // Información básica obligatoria
     name: string;
-    type?: PipelineType;
+    category: PipelineCategory;
     // Información opcional
     description?: string;
     isDefault?: boolean;        // Pipeline por defecto de la organización

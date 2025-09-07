@@ -342,7 +342,7 @@ const router = createBrowserRouter([
                 path: 'pipelines/:id',
                 element: (
                   <SuspenseWrapper fallbackText="Cargando configuración...">
-                    <PipelineEditPage />      //cambiamos para no mostrar detalle sino directamente al editar aca esta detail,
+                    <PipelineEditPage />
                   </SuspenseWrapper>
                 ),
               },

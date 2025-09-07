@@ -3,9 +3,9 @@
 // Orquestador robusto que gestiona la carga, los estados de error y delega la edición.
 
 import React, { useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, GitBranch, AlertCircle, Edit3, Eye } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Edit3 } from 'lucide-react';
 
 // ============================================
 // UI & LAYOUT COMPONENTS
@@ -129,10 +129,7 @@ const PipelineEditPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button as={Link} to={`/pipelines/${pipeline.id}`} variant="outline" disabled={isCurrentlyUpdating}>
-            <Eye className="h-4 w-4 mr-2" />
-            Vista Previa
-          </Button>
+          
         </div>
       </div>
 

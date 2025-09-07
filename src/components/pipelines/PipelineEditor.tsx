@@ -71,6 +71,9 @@ const StageSchema = z.object({
 const PipelineEditorSchema = z.object({
   name: z.string().min(1, 'El nombre del pipeline es obligatorio').max(255),
   description: z.string().max(1000).optional(),
+  category: z.enum(['CHURCH', 'BUSINESS', 'NONPROFIT', 'EDUCATION', 'GENERAL'], {
+    required_error: 'Debe seleccionar una categoría',
+  }),
   isDefault: z.boolean().optional().default(false),
   isActive: z.boolean().optional().default(true),
   stages: z.array(StageSchema).min(1, 'Debe tener al menos una etapa'),
@@ -450,6 +453,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
       form.reset({
         name: pipeline.name,
         description: pipeline.description || '',
+        category: pipeline.category,
         isActive: pipeline.isActive !== false,
         isDefault: pipeline.isDefault || false,
         stages: pipeline.stages?.map((stage, index) => ({
@@ -601,15 +605,36 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
               <label className="block text-sm font-medium text-app-gray-300 mb-2">
                 Tipo de Pipeline
               </label>
-              <select
-                disabled={isLoadingTypes}
-                className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2"
-              >
-                <option value="SALES">Ventas</option>
-                <option value="LEAD_NURTURING">Cultivo de Leads</option>
-                <option value="SUPPORT">Soporte</option>
-                <option value="CUSTOM">Personalizado</option>
-              </select>
+              <Controller
+  name="category"
+  control={form.control}
+  render={({ field, fieldState }) => (
+    <FormField
+      label="Categoría del Pipeline"
+      name="category"
+      required
+      error={fieldState.error?.message}
+    >
+      {isLoadingTypes ? (
+        <div className="flex items-center space-x-2 py-2">
+          <LoadingSpinner size="sm" />
+          <span className="text-sm text-app-gray-400">Cargando categorías...</span>
+        </div>
+      ) : (
+        <select
+          {...field}
+          className="w-full rounded-md border-app-dark-600 bg-app-dark-700 text-app-gray-100 px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+        >
+          {pipelineTypes?.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </FormField>
+  )}
+/>
             </div>
           </div>
 
