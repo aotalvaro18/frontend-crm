@@ -79,7 +79,7 @@ const PipelinesSettingsPage: React.FC = () => {
       criteria.search = debouncedSearchTerm;
     }
     // Filtros adicionales específicos de pipelines
-    criteria.isActive = true; // Solo mostrar pipelines activos por defecto
+    criteria.includeInactive = false; // Solo mostrar pipelines activos por defecto
     return criteria;
   }, [debouncedSearchTerm]);
 
@@ -98,7 +98,7 @@ const PipelinesSettingsPage: React.FC = () => {
     queryFn: () => pipelineApi.searchPipelines(searchCriteria, { 
       page: currentPage, 
       size: 25, 
-      sort: ['isDefault,desc', 'updatedAt,desc'] 
+      sort: ['updatedAt,desc'] 
     }),
     enabled: true,
     placeholderData: (previousData) => previousData,
@@ -187,9 +187,8 @@ const PipelinesSettingsPage: React.FC = () => {
     try {
       await deletePipeline(pipelineToDelete.id, () => {
         setPipelineToDelete(null);
-        refetchPipelines();
-        refetchStats();
-        toastSuccess('Pipeline eliminado exitosamente');
+        
+        //toastSuccess('Pipeline eliminado exitosamente');
       });
     } catch (error) {
       handleError(error);
