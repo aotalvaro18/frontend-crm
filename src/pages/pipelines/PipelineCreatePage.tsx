@@ -30,9 +30,9 @@ import {
   type CreatePipelineStageRequest
 } from '@/types/pipeline.types';
 
-// ✅ HELPER PARA NO REPETIR CÓDIGO (DRY) - Función definida correctamente
-const createBasePipelineRequest = (): Omit<CreatePipelineRequest, 'name' | 'description' | 'stages' | 'icon'> => ({
-  category: 'BUSINESS', // ✅ Backend field correcto
+// ✅ HELPER PARA NO REPETIR CÓDIGO (DRY) - Función corregida quirúrgicamente
+const createBasePipelineRequest = (): Omit<CreatePipelineRequest, 'name' | 'description' | 'stages' | 'icon' | 'category'> => ({
+  // category: 'BUSINESS', // ← REMOVIDO: Ya no hardcodeamos la categoría
   color: '#3B82F6',
   active: true, // ✅ Backend field correcto (no isActive)
   isDefault: false,
@@ -70,7 +70,7 @@ const PipelineCreatePage: React.FC = () => {
     }
   }, [createPipeline, navigate]);
 
-  // ✅ HANDLER REFACTORIZADO PARA PLANTILLAS - Usa lógica centralizada
+  // ✅ HANDLER REFACTORIZADO PARA PLANTILLAS - Usa categoría de la plantilla
   const handleSelectTemplate = useCallback(async (templateKey: string) => {
     setCreatingTemplate(templateKey);
     
@@ -82,9 +82,10 @@ const PipelineCreatePage: React.FC = () => {
     }
 
     const request: CreatePipelineRequest = {
-      ...createBasePipelineRequest(), // ✅ CORREGIDO: Función definida correctamente
+      ...createBasePipelineRequest(),
       name: template.name,
       description: template.description,
+      category: template.category, // ✅ CORREGIDO: Usar categoría de la plantilla
       icon: template.icon?.toLowerCase().replace(/[^a-z0-9\-_]/g, '') || 'gitbranch',
       stages: template.stages.map((stage, index): CreatePipelineStageRequest => ({
         name: stage.name,
@@ -116,14 +117,15 @@ const PipelineCreatePage: React.FC = () => {
     await handleCreateAndNavigate(request);
   }, [handleCreateAndNavigate]);
 
-  // ✅ HANDLER REFACTORIZADO PARA "DESDE CERO" - Usa lógica centralizada
+  // ✅ HANDLER REFACTORIZADO PARA "DESDE CERO" - Usa categoría GENERAL
   const handleStartFromScratch = useCallback(async () => {
     setCreatingTemplate('scratch');
     
     const request: CreatePipelineRequest = {
-      ...createBasePipelineRequest(), // ✅ CORREGIDO: Función definida correctamente
+      ...createBasePipelineRequest(),
       name: 'Nuevo Pipeline',
       description: 'Pipeline personalizado creado desde cero',
+      category: 'GENERAL', // ✅ CORREGIDO: Categoría apropiada para pipelines desde cero
       icon: 'gitbranch',
       stages: [
         { 
