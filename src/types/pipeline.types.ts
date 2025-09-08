@@ -230,6 +230,7 @@ export interface UpdatePipelineStageRequest {
     // Filtros específicos
     isDefault?: boolean;          // Solo pipelines por defecto
     isActive?: boolean;           // Solo pipelines activos
+    includeInactive?: boolean;    // Incluir pipelines inactivos
     type?: PipelineType;          // Tipo de pipeline
     hasDeals?: boolean;           // Solo pipelines con deals
     

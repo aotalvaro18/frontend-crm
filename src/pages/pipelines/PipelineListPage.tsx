@@ -90,7 +90,8 @@ const PipelineListPage: React.FC = () => {
       criteria.search = debouncedSearchTerm;
     }
     // Solo pipelines activos por defecto para el Kanban
-    criteria.isActive = true;
+    //criteria.isActive = true;
+    criteria.includeInactive = false;  // Excluir inactivos (incluyendo eliminados)
     return criteria;
   }, [debouncedSearchTerm]);
 
@@ -109,7 +110,7 @@ const PipelineListPage: React.FC = () => {
     queryFn: () => pipelineApi.searchPipelines(searchCriteria, { 
       page: currentPage, 
       size: 100, // Más pipelines para el selector
-      sort: ['isDefault,desc', 'updatedAt,desc'] 
+      sort: ['updatedAt,desc'] 
     }),
     enabled: true,
     placeholderData: (previousData) => previousData,

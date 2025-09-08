@@ -171,7 +171,7 @@ export const usePipelineStore = create<PipelineState>()(
           await queryClient.invalidateQueries({ queryKey: ['pipelines'] });
           // Remover caché específica del pipeline eliminado
           queryClient.removeQueries({ queryKey: PIPELINE_DETAIL_QUERY_KEY(id) });
-          toast.success('Pipeline eliminado exitosamente');
+          //toast.success('Pipeline eliminado exitosamente');
           onSuccess?.();
         } catch (error: unknown) {
           toast.error(handlePipelineApiError(error).message);
