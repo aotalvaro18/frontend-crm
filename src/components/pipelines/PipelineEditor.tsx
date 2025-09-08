@@ -551,6 +551,7 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
         version: pipeline.version,
         name: data.name,
         description: data.description || undefined,
+        category: data.category,
         isDefault: data.isDefault,
         active: data.isActive,
         stageUpdates: stageUpdates.length > 0 ? stageUpdates : undefined,
