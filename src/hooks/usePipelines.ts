@@ -240,6 +240,7 @@ export const usePipelineStore = create<PipelineState>()(
           // 3. ✅ LA SOLUCIÓN: Usa el pipelineId de la RESPUESTA para invalidar al padre
           if (updatedStage.pipelineId) {
             await queryClient.invalidateQueries({ queryKey: PIPELINE_DETAIL_QUERY_KEY(updatedStage.pipelineId) });
+            await queryClient.invalidateQueries({ queryKey: ['pipelines', 'list'] });
           }
           
           toast.success('Etapa actualizada exitosamente');
