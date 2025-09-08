@@ -64,7 +64,7 @@ const PipelineCreatePage: React.FC = () => {
         }
       });
     } catch (error) {
-      toast.error("No se pudo crear el pipeline. Verifica tu conexión e inténtalo de nuevo.");
+      //toast.error("No se pudo crear el pipeline. Verifica tu conexión e inténtalo de nuevo."); //ojo
       console.error("Error al crear el pipeline:", error);
       setCreatingTemplate(null);
     }
