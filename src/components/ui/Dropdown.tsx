@@ -385,6 +385,7 @@ const Dropdown: React.FC<DropdownProps> = ({
             afterLeave={() => onOpenChange?.(false)}
           >
             <Menu.Items
+              static
               className={cn(
                 'absolute z-50 rounded-xl focus:outline-none backdrop-blur-sm',
                 'max-w-[calc(100vw-2rem)] md:max-w-none', // ✅ AGREGADO: Max width para mobile, con un padding de 1rem a cada lado
