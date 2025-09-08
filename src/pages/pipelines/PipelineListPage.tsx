@@ -478,7 +478,7 @@ const PipelineListPage: React.FC = () => {
           }
         />
       ) : (
-        <div id="kanban-section" className="border-app-dark-600 bg-app-dark-800/50 p-6">
+        <div id="kanban-section" className="border-app-dark-600 bg-app-dark-800/50 p-6 pb-24">
           {/* 🔧 PIPELINE HEADER - ACTUALIZADO CON DROPDOWN ESTILO SALESFORCE */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
