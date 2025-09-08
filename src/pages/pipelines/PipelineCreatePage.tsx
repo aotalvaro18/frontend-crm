@@ -146,15 +146,6 @@ const PipelineCreatePage: React.FC = () => {
           isLost: false, 
           active: true 
         },
-        { 
-          name: 'Ganado', 
-          position: 3, 
-          probability: 100, 
-          color: DEFAULT_STAGE_COLORS[2], 
-          isWon: true, 
-          isLost: false, 
-          active: true 
-        },
       ],
     };
 
