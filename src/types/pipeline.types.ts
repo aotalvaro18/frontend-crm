@@ -553,6 +553,7 @@ export interface CreatePipelineRequest {
     BUSINESS_SALES: {
       key: 'BUSINESS_SALES',
       name: 'Proceso de Ventas B2B',
+      category: 'BUSINESS',
       description: 'Un embudo de ventas estándar para seguir oportunidades comerciales desde el lead hasta el cierre.',
       icon: 'TrendingUp', // Sugerencia de icono (nombre de Lucide React)
       stages: [
@@ -569,6 +570,7 @@ export interface CreatePipelineRequest {
     BUSINESS_SERVICE_DELIVERY: {
       key: 'BUSINESS_SERVICE_DELIVERY',
       name: 'Proceso de Entrega de Servicio',
+      category: 'BUSINESS',
       description: 'Flujo de trabajo para gestionar la entrega de un proyecto o servicio desde la orden hasta la facturación.',
       icon: 'ClipboardCheck',
       stages: [
@@ -589,6 +591,7 @@ export interface CreatePipelineRequest {
     CHURCH_CONSOLIDATION: {
       key: 'CHURCH_CONSOLIDATION',
       name: 'Proceso de Consolidación',
+      category: 'CHURCH',
       description: 'Seguimiento de nuevos contactos hasta que se consolidan como miembros activos en la comunidad.',
       icon: 'HeartHandshake',
       stages: [
@@ -608,6 +611,7 @@ export interface CreatePipelineRequest {
     NONPROFIT_VOLUNTEER_MANAGEMENT: {
       key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',
       name: 'Gestión de Voluntarios',
+      category: 'NONPROFIT',
       description: 'Proceso para reclutar, entrenar e integrar voluntarios a una causa u ONG.',
       icon: 'Megaphone',
       stages: [
