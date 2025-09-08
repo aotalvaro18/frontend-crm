@@ -4,7 +4,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitBranch, Star, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
+import { ArrowLeft, GitBranch, Star, Sparkles, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
 
 // ============================================
 // UI & LAYOUT COMPONENTS
@@ -325,7 +325,7 @@ const PipelineCreatePage: React.FC = () => {
             onClick={handleStartFromScratch}
             loading={creatingTemplate === 'scratch'}
             loadingText="Creando..."
-            leftIcon={<Star className="h-4 w-4" />}
+            leftIcon={<Sparkles className="h-4 w-4" />}
             className="w-full max-w-[280px] sm:w-auto"
           >
             Empezar desde Cero

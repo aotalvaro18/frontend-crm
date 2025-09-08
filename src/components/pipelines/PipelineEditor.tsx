@@ -765,16 +765,14 @@ const PipelineEditor: React.FC<PipelineEditorProps> = ({
               Cancelar
             </Button>
             
+            {/* Botón "Guardar Cambios" - Usando Button existente */}
             <Button
               type="submit"
-              disabled={loading || isUpdating(pipeline.id) || form.formState.isSubmitting}
+              loading={loading || isUpdating(pipeline.id) || form.formState.isSubmitting}
+              loadingText="Guardando..."
+              leftIcon={<Save className="h-4 w-4" />}
               className="min-w-32 w-full sm:w-auto"
             >
-              {loading || isUpdating(pipeline.id) || form.formState.isSubmitting ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
               Guardar Cambios
             </Button>
           </div>
