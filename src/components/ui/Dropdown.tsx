@@ -1,8 +1,8 @@
 // src/components/ui/Dropdown.tsx
 // ✅ DROPDOWN UX TALLA MUNDIAL - Mobile-First + TypeScript strict + Headless UI
-// MEJORADO: Spacing generoso, touch targets, mejor contraste, transiciones suaves
+// 🔧 SOLUCIÓN QUIRÚRGICA: Solo agregar auto-detection de espacio para el lado
 
-import React, { Fragment } from 'react';
+import React, { Fragment, useRef, useEffect, useState } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { 
   ChevronDown, 
@@ -10,7 +10,7 @@ import {
   ChevronRight,
   type LucideIcon 
 } from 'lucide-react';
-import { cn } from '@/utils/cn'; // Asegúrate de que '@/utils/cn' es correcto. Si no, usa '../../utils/cn'
+import { cn } from '@/utils/cn';
 
 // ============================================
 // DROPDOWN TYPES - Sin cambios
@@ -52,7 +52,7 @@ export interface DropdownProps {
   items: DropdownMenuItems;
   
   // Positioning
-  align?: 'start' | 'end' | 'center'; // ✅ AGREGADO: 'center' para mejor mobile
+  align?: 'start' | 'end' | 'center';
   side?: 'top' | 'bottom';
   offset?: number;
   
@@ -75,7 +75,49 @@ export interface DropdownProps {
 }
 
 // ============================================
-// DROPDOWN VARIANTS - ✅ MEJORADO PARA UX TALLA MUNDIAL
+// 🔧 NUEVO HOOK: Auto-detect side basado en espacio disponible
+// ============================================
+const useAutoSide = (triggerRef: React.RefObject<HTMLElement>, isOpen: boolean, preferredSide?: 'top' | 'bottom') => {
+  const [actualSide, setActualSide] = useState<'top' | 'bottom'>(preferredSide || 'bottom');
+
+  useEffect(() => {
+    if (!isOpen || !triggerRef.current) return;
+
+    const trigger = triggerRef.current;
+    const triggerRect = trigger.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    // Estimar altura del menú (aproximadamente)
+    const estimatedMenuHeight = 200; // Aproximadamente 5-6 items
+    const buffer = 20; // Buffer de seguridad
+
+    const spaceBelow = viewportHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+
+    // Si el usuario especificó un side, respetarlo a menos que no haya espacio
+    if (preferredSide) {
+      if (preferredSide === 'bottom' && spaceBelow < estimatedMenuHeight + buffer && spaceAbove > estimatedMenuHeight + buffer) {
+        setActualSide('top');
+      } else if (preferredSide === 'top' && spaceAbove < estimatedMenuHeight + buffer && spaceBelow > estimatedMenuHeight + buffer) {
+        setActualSide('bottom');
+      } else {
+        setActualSide(preferredSide);
+      }
+    } else {
+      // Auto-detectar basado en espacio disponible
+      if (spaceBelow < estimatedMenuHeight + buffer && spaceAbove > estimatedMenuHeight + buffer) {
+        setActualSide('top');
+      } else {
+        setActualSide('bottom');
+      }
+    }
+  }, [isOpen, preferredSide]);
+
+  return actualSide;
+};
+
+// ============================================
+// DROPDOWN VARIANTS - Sin cambios
 // ============================================
 
 const dropdownVariants = {
@@ -130,7 +172,7 @@ const dropdownVariants = {
 };
 
 // ============================================
-// MENU ITEM COMPONENT - ✅ COMPLETAMENTE MEJORADO
+// MENU ITEM COMPONENT - Sin cambios
 // ============================================
 
 const DropdownMenuItem: React.FC<{
@@ -262,7 +304,7 @@ const DropdownMenuItem: React.FC<{
 };
 
 // ============================================
-// SEPARATOR COMPONENT - Sin cambios importantes
+// SEPARATOR COMPONENT - Sin cambios
 // ============================================
 
 const DropdownSeparator: React.FC<{
@@ -276,7 +318,7 @@ const DropdownSeparator: React.FC<{
 };
 
 // ============================================
-// GROUP COMPONENT - Sin cambios importantes
+// GROUP COMPONENT - Sin cambios
 // ============================================
 
 const DropdownGroup: React.FC<{
@@ -332,15 +374,15 @@ const DropdownGroup: React.FC<{
 };
 
 // ============================================
-// MAIN DROPDOWN COMPONENT - ✅ CORREGIDO COMPLETAMENTE
+// MAIN DROPDOWN COMPONENT - 🔧 SOLO CAMBIOS MÍNIMOS
 // ============================================
 
 const Dropdown: React.FC<DropdownProps> = ({
   trigger,
   items,
-  align = 'end', // ✅ CAMBIADO: Default a 'end' para consistencia con el botón de 3 puntos
+  align = 'end',
   side = 'bottom',
-  offset = 8, // ✅ AUMENTADO: Offset para mejor separación en mobile
+  offset = 8,
   variant = 'default',
   size = 'md',
   fullWidth = false,
@@ -353,118 +395,125 @@ const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const variantStyles = dropdownVariants.variants.variant[variant];
   const sizeStyles = dropdownVariants.variants.size[size];
+  
+  // 🔧 NUEVO: Referencias y estado para auto-detection
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // 🔧 NUEVO: Auto-detectar el lado óptimo
+  const actualSide = useAutoSide(triggerRef, isOpen, side);
 
   return (
     <Menu as="div" className={cn('relative inline-block text-left', className)}>
-      {({ open }) => (
-        <>
-          <Menu.Button 
-            className={cn(
-              'cursor-pointer focus:outline-none',
-              disabled && 'cursor-not-allowed opacity-50 pointer-events-none',
-              triggerClassName
-            )}
-            disabled={disabled}
-            onClick={() => {
-              onOpenChange?.(!open);
-            }}
-          >
-            {trigger}
-          </Menu.Button>
+      {({ open }) => {
+        // 🔧 SINCRONIZAR estado interno
+        if (open !== isOpen) {
+          setIsOpen(open);
+        }
 
-          <Transition
-            as={Fragment}
-            show={open}
-            enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
-            afterEnter={() => onOpenChange?.(true)}
-            afterLeave={() => onOpenChange?.(false)}
-          >
-            <Menu.Items
-              static
+        return (
+          <>
+            <Menu.Button 
+              ref={triggerRef} // 🔧 NUEVO: Ref para medición
               className={cn(
-                'absolute z-50 rounded-xl focus:outline-none backdrop-blur-sm',
-                'max-w-[calc(100vw-2rem)] md:max-w-none', // ✅ AGREGADO: Max width para mobile, con un padding de 1rem a cada lado
-                'overflow-hidden', // Para asegurar que los bordes redondeados se respeten con el backdrop-blur
-                
-                // Size
-                sizeStyles.menu,
-                fullWidth && 'w-full',
-                
-                // Variant
-                variantStyles.menu,
-                
-                // Positioning
-                // 🔧 MEJORADO: En mobile, para actions (align="end") mover hacia la izquierda
-                // En pantallas más grandes, usar 'align' normal
-                align === 'end' ? 'right-4' : 'left-1/2 -translate-x-1/2', // Actions hacia la izquierda en mobile
-                'md:left-auto md:right-auto md:transform-none', // Reset en md+
-                align === 'start' && 'md:left-0 md:right-auto', // Alineación a la izquierda en md+
-                align === 'end' && 'md:right-0 md:left-auto', // Alineación a la derecha en md+
-                align === 'center' && 'md:left-1/2 md:-translate-x-1/2', // Centrado explícito en md+
-                
-                side === 'top' && 'bottom-full mb-2 mt-0',
-                
-                // Custom classes
-                menuClassName
+                'cursor-pointer focus:outline-none',
+                disabled && 'cursor-not-allowed opacity-50 pointer-events-none',
+                triggerClassName
               )}
-              style={{
-                marginTop: side === 'bottom' ? offset : undefined,
-                marginBottom: side === 'top' ? offset : undefined,
-                // Si el alineamiento es 'center' en móvil, necesitamos asegurar que no haya left/right explícitos del align
-                // Esto se maneja mejor con las clases de Tailwind condicionales
+              disabled={disabled}
+              onClick={() => {
+                onOpenChange?.(!open);
               }}
             >
-              <div className="py-2">
-                {items.map((item, index) => {
-                  const key = 'id' in item && item.id ? item.id : `item-${index}`;
+              {trigger}
+            </Menu.Button>
+
+            <Transition
+              as={Fragment}
+              show={open}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+              afterEnter={() => onOpenChange?.(true)}
+              afterLeave={() => onOpenChange?.(false)}
+            >
+              <Menu.Items
+                static
+                className={cn(
+                  'absolute z-50 rounded-xl focus:outline-none backdrop-blur-sm',
+                  'max-w-[calc(100vw-2rem)] md:max-w-none',
+                  'overflow-hidden',
                   
-                  if ('type' in item && item.type === 'separator') {
-                    return <DropdownSeparator key={key} variant={variant} />;
-                  }
+                  // Size
+                  sizeStyles.menu,
+                  fullWidth && 'w-full',
                   
-                  if ('type' in item && item.type === 'group') {
-                    return (
-                      <DropdownGroup
-                        key={key}
-                        group={item as DropdownItemGroup}
-                        variant={variant}
-                        size={size}
-                        closeMenu={closeOnItemClick ? () => {} : undefined} // Asegurarse de que `close` se pase correctamente si es necesario
-                        closeOnClick={closeOnItemClick}
-                      />
-                    );
-                  }
+                  // Variant
+                  variantStyles.menu,
                   
-                  return (
-                    <Menu.Item key={key}>
-                      {({ close }) => (
-                        <DropdownMenuItem
-                          item={item as DropdownItem}
+                  // 🔧 POSITIONING CON AUTO-DETECTION
+                  align === 'end' ? 'right-0' : align === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2',
+                  actualSide === 'top' ? 'bottom-full' : 'top-full', // 🔧 USAR actualSide en lugar de side
+                  
+                  // Custom classes
+                  menuClassName
+                )}
+                style={{
+                  // 🔧 USAR actualSide para margins
+                  marginTop: actualSide === 'bottom' ? offset : undefined,
+                  marginBottom: actualSide === 'top' ? offset : undefined,
+                }}
+              >
+                <div className="py-2">
+                  {items.map((item, index) => {
+                    const key = 'id' in item && item.id ? item.id : `item-${index}`;
+                    
+                    if ('type' in item && item.type === 'separator') {
+                      return <DropdownSeparator key={key} variant={variant} />;
+                    }
+                    
+                    if ('type' in item && item.type === 'group') {
+                      return (
+                        <DropdownGroup
+                          key={key}
+                          group={item as DropdownItemGroup}
                           variant={variant}
                           size={size}
-                          closeMenu={closeOnItemClick ? close : undefined}
+                          closeMenu={closeOnItemClick ? () => {} : undefined}
                           closeOnClick={closeOnItemClick}
                         />
-                      )}
-                    </Menu.Item>
-                  );
-                })}
-              </div>
-            </Menu.Items>
-          </Transition>
-        </>
-      )}
+                      );
+                    }
+                    
+                    return (
+                      <Menu.Item key={key}>
+                        {({ close }) => (
+                          <DropdownMenuItem
+                            item={item as DropdownItem}
+                            variant={variant}
+                            size={size}
+                            closeMenu={closeOnItemClick ? close : undefined}
+                            closeOnClick={closeOnItemClick}
+                          />
+                        )}
+                      </Menu.Item>
+                    );
+                  })}
+                </div>
+              </Menu.Items>
+            </Transition>
+          </>
+        );
+      }}
     </Menu>
   );
 };
 
 // ============================================
-// SPECIALIZED DROPDOWN COMPONENTS - ✅ MEJORADOS
+// SPECIALIZED DROPDOWN COMPONENTS - Sin cambios
 // ============================================
 
 /**
@@ -475,13 +524,13 @@ export const ActionDropdown: React.FC<{
   items: DropdownMenuItems;
   disabled?: boolean;
   className?: string;
-  align?: 'start' | 'end' | 'center'; // ✅ AGREGADO: permitir control del alineamiento
+  align?: 'start' | 'end' | 'center';
 }> = ({ 
   trigger, 
   items, 
   disabled = false, 
   className,
-  align = 'end' // ✅ DEFAULT: end para acciones
+  align = 'end'
 }) => (
   <Dropdown
     trigger={trigger || (
@@ -504,11 +553,11 @@ export const ActionDropdown: React.FC<{
       </button>
     )}
     items={items}
-    align={align} // ✅ PASADO: align ahora se puede controlar
+    align={align}
     size="md"
     disabled={disabled}
     className={className}
-    offset={8} // ✅ CONSISTENTE: Aumentar el offset para ActionDropdown también
+    offset={8}
   />
 );
 
@@ -528,7 +577,7 @@ export const SelectDropdown: React.FC<{
   disabled?: boolean;
   fullWidth?: boolean;
   className?: string;
-  align?: 'start' | 'end' | 'center'; // ✅ AGREGADO: permitir control del alineamiento
+  align?: 'start' | 'end' | 'center';
 }> = ({ 
   value, 
   placeholder = 'Seleccionar...', 
@@ -537,7 +586,7 @@ export const SelectDropdown: React.FC<{
   disabled = false,
   fullWidth = true,
   className,
-  align = 'start' // ✅ DEFAULT: start para selects
+  align = 'start'
 }) => {
   const selectedOption = options.find(opt => opt.value === value);
   
@@ -577,17 +626,14 @@ export const SelectDropdown: React.FC<{
       disabled={disabled}
       variant="default"
       size="md"
-      align={align} // ✅ PASADO: align ahora se puede controlar
-      offset={8} // ✅ CONSISTENTE: Aumentar el offset para SelectDropdown también
+      align={align}
+      offset={8}
     />
   );
 };
 
 /**
  * Context Menu - Para click derecho
- * NOTA: El ContextMenu usa una implementación diferente (posición fija manual)
- * por lo que no se ve afectado por los cambios de `Menu.Items` de Headless UI
- * pero se revisa por consistencia de estilos y UX.
  */
 export const ContextMenu: React.FC<{
   children: React.ReactNode;
@@ -601,19 +647,17 @@ export const ContextMenu: React.FC<{
     if (disabled) return;
     
     e.preventDefault();
-    // ✅ MEJORADO: Ajustar la posición para que el menú no se salga de la pantalla
-    // Esto es un cálculo básico, se podría mejorar para que siempre se ajuste
-    const menuWidth = 160; // min-w-40 (40 * 4 = 160px)
-    const menuHeight = items.length * 40; // Estimado, py-2 + item height
+    const menuWidth = 160;
+    const menuHeight = items.length * 40;
     
     let newX = e.pageX;
     let newY = e.pageY;
 
     if (newX + menuWidth > window.innerWidth) {
-      newX = window.innerWidth - menuWidth - 10; // 10px padding from right
+      newX = window.innerWidth - menuWidth - 10;
     }
     if (newY + menuHeight > window.innerHeight) {
-      newY = window.innerHeight - menuHeight - 10; // 10px padding from bottom
+      newY = window.innerHeight - menuHeight - 10;
     }
 
     setPosition({ x: newX, y: newY });
@@ -639,8 +683,8 @@ export const ContextMenu: React.FC<{
             className={cn(
               'fixed z-50 min-w-40 text-sm',
               'bg-app-dark-800 border border-app-dark-600',
-              'rounded-xl shadow-lg py-2', // ✅ MEJORADO: rounded-lg→rounded-xl, py-1→py-2
-              'max-h-[calc(100vh-2rem)] overflow-y-auto' // ✅ AGREGADO: Max height y scroll para mobile
+              'rounded-xl shadow-lg py-2',
+              'max-h-[calc(100vh-2rem)] overflow-y-auto'
             )}
             style={{
               left: position.x,
@@ -648,12 +692,11 @@ export const ContextMenu: React.FC<{
             }}
           >
             {items.map((item, index) => {
-              // Necesitamos usar la renderización de DropdownMenuItem para consistencia
               if ('type' in item && item.type === 'separator') {
                 return (
                   <DropdownSeparator 
                     key={index} 
-                    variant="default" // Asumimos default para context menu
+                    variant="default"
                   />
                 );
               }
@@ -675,8 +718,8 @@ export const ContextMenu: React.FC<{
                 <DropdownMenuItem
                   key={index}
                   item={item as DropdownItem}
-                  variant="default" // Asumimos default
-                  size="md" // Asumimos md
+                  variant="default"
+                  size="md"
                   closeMenu={() => setIsOpen(false)}
                   closeOnClick={true}
                 />
