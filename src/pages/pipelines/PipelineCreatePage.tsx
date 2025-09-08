@@ -318,20 +318,17 @@ const PipelineCreatePage: React.FC = () => {
           })}
         </div>
 
-        {/* Botón "Empezar desde Cero" con spinner */}
-        <div className="flex justify-center pt-6">
+        {/* Botón "Empezar desde Cero" - Usando Button existente */}
+        <div className="flex justify-center pt-4 md:pt-6">
           <Button
             variant="outline"
             onClick={handleStartFromScratch}
-            disabled={isCreating}
-            className="flex items-center gap-2"
+            loading={creatingTemplate === 'scratch'}
+            loadingText="Creando..."
+            leftIcon={<Star className="h-4 w-4" />}
+            className="w-full max-w-[280px] sm:w-auto"
           >
-            {creatingTemplate === 'scratch' ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <Star className="h-4 w-4" />
-            )}
-            {creatingTemplate === 'scratch' ? 'Creando...' : 'Empezar desde Cero'}
+            Empezar desde Cero
           </Button>
         </div>
       </div>
