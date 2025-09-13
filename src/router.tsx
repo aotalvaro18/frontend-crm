@@ -54,9 +54,9 @@ const CompanyCreatePage = lazy(() => {
 });
 
 // ✅ Pipeline pages (para /deals = usuario diario)
-const DealListPage = lazy(() => {
+const PipelineListPage = lazy(() => {
   authLogger.info('Loading PipelineListPage...');
-  return import('@/pages/deals/DealListPage');
+  return import('@/pages/pipelines/PipelineListPage');
 });
 
 const DealDetailPage = lazy(() => {
@@ -283,7 +283,7 @@ const router = createBrowserRouter([
             path: 'deals',
             element: (
               <SuspenseWrapper fallbackText="Cargando oportunidades...">
-                <DealListPage />
+                <PipelineListPage />
               </SuspenseWrapper>
             ),
           },
