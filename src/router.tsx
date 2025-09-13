@@ -85,6 +85,12 @@ const PipelineEditPage = lazy(() => {
   return import('@/pages/pipelines/PipelineEditPage');
 });
 
+// ✅ Deal pages
+const DealCreatePage = lazy(() => {
+  authLogger.info('Loading DealCreatePage...');
+  return import('@/pages/deals/DealCreatePage');
+});
+
 // ✅ Layout
 const MainLayout = lazy(() => {
   authLogger.info('Loading MainLayout...');
@@ -278,6 +284,14 @@ const router = createBrowserRouter([
             element: (
               <SuspenseWrapper fallbackText="Cargando oportunidades...">
                 <PipelineListPage />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'deals/new',  // 👈 AÑADIR ESTA RUTA
+            element: (
+              <SuspenseWrapper fallbackText="Cargando formulario...">
+                <DealCreatePage />
               </SuspenseWrapper>
             ),
           },
