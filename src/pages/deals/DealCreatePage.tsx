@@ -42,17 +42,17 @@ const { createDeal, isCreating } = useDealOperations();
 // HANDLERS
 // ============================================
 const handleBack = useCallback(() => {
-navigate('/crm/deals');
+navigate('/deals');
 }, [navigate]);
 const handleCancel = useCallback(() => {
-navigate('/crm/deals');
+navigate('/deals');
 }, [navigate]);
 const handleSubmit = useCallback(async (data: CreateDealRequest | UpdateDealRequest) => {
 try {
 // La función createDeal ya maneja la invalidación y los toasts automáticamente
 await createDeal(data as CreateDealRequest, (newDeal) => {
 // Callback de éxito: navegar al detalle de la nueva oportunidad
-navigate(`/crm/deals/${newDeal.id}`);
+navigate(`/deals/${newDeal.id}`);
 });
 } catch (error) {
 // El error ya se maneja en el store, pero lo loggeamos para debugging
