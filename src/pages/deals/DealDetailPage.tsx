@@ -84,7 +84,7 @@ const DealDetailPage: React.FC = () => {
   // ============================================
   // HANDLERS - ✅ Actualizados para usar 'dealData'
   // ============================================
-  const handleBack = useCallback(() => navigate('/crm/deals'), [navigate]);
+  const handleBack = useCallback(() => navigate('/deals'), [navigate]);
   const handleEdit = useCallback(() => setShowEditModal(true), []);
   const handleDelete = useCallback(() => setShowDeleteDialog(true), []);
 
@@ -92,7 +92,7 @@ const DealDetailPage: React.FC = () => {
     if (!dealData) return;
     await deleteDeal(dealData.id, () => {
       toastSuccess('Oportunidad eliminada exitosamente');
-      navigate('/crm/deals');
+      navigate('/deals');
     });
   }, [dealData, deleteDeal, navigate]);
 
