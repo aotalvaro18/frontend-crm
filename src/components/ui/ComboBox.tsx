@@ -3,7 +3,7 @@
 // Componente "tonto" - solo recibe props, emite eventos
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Check, X } from 'lucide-react';
+import { ChevronDown, Check, X, Search } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 // ============================================
@@ -15,6 +15,8 @@ export interface ComboBoxOption {
   label: string;
   disabled?: boolean;
   description?: string;
+  icon?: React.ReactNode;
+  isAction?: boolean;
 }
 
 export interface ComboBoxProps {
@@ -29,6 +31,8 @@ export interface ComboBoxProps {
   
   // Placeholder y estados
   placeholder?: string;
+  searchPlaceholder?: string;
+  showSearchIcon?: boolean;
   emptyMessage?: string;
   loadingMessage?: string;
   
@@ -93,6 +97,8 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   searchValue = '',
   onSearchChange,
   placeholder = 'Seleccionar...',
+  searchPlaceholder,
+  showSearchIcon,
   emptyMessage = 'No se encontraron opciones',
   loadingMessage = 'Cargando...',
   loading = false,
@@ -229,6 +235,15 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     >
       {/* Input */}
       <div className="relative">
+        {/* V--- INICIO DEL CAMBIO QUIRÚRGICO ---V */}
+        {/* 1. Renderizar el ícono de búsqueda si showSearchIcon es true */}
+        {showSearchIcon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <Search className="h-4 w-4 text-app-gray-400" />
+          </div>
+        )}
+        {/* ^--- FIN DEL CAMBIO QUIRÚRGICO ---^ */}
+
         <input
           ref={inputRef}
           type="text"
@@ -239,7 +254,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder || placeholder}
           disabled={disabled}
           aria-label={ariaLabel}
           aria-describedby={ariaDescribedBy}
@@ -251,6 +266,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
             'focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+            // V--- INICIO DEL CAMBIO QUIRÚRGICO ---V
+            // 2. Añadir padding a la izquierda solo si el ícono está visible
+            showSearchIcon && 'pl-10',
+            // ^--- FIN DEL CAMBIO QUIRÚRGICO ---^
             inputClassName
           )}
         />
@@ -306,26 +325,44 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
                   <li
                     key={option.value}
                     role="option"
-                    aria-selected={option.value === value}
+                    aria-selected={option.value === value && !option.isAction}
                     className={cn(
                       'px-3 py-2 cursor-pointer flex items-center justify-between',
                       'hover:bg-app-dark-700 transition-colors',
-                      focusedIndex === index && 'bg-app-dark-700',
-                      option.value === value && 'text-primary-400'
+                      focusedIndex === index && 'bg-app-dark-700'
+                      // El color del texto se maneja dentro para más control
                     )}
                     onClick={() => handleOptionSelect(option.value)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-app-gray-100">
-                        {option.label}
-                      </div>
-                      {option.description && (
-                        <div className="text-xs text-app-gray-400 mt-1">
-                          {option.description}
+                    <div className="flex items-center flex-1 min-w-0">
+                      {/* 1. Renderizar el Ícono si existe */}
+                      {option.icon && (
+                        <div className={cn(
+                          "mr-3 flex-shrink-0",
+                          option.isAction ? "text-blue-400" : "text-app-gray-400"
+                        )}>
+                          {option.icon}
                         </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        {/* 2. Aplicar estilo especial al Label si es una acción */}
+                        <div className={cn(
+                          "text-sm font-medium",
+                          option.isAction ? "text-blue-400" : "text-app-gray-100",
+                          option.value === value && !option.isAction && "text-primary-400"
+                        )}>
+                          {option.label}
+                        </div>
+                        {option.description && (
+                          <div className="text-xs text-app-gray-400 mt-1">
+                            {option.description}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {option.value === value && (
+                    
+                    {/* 3. Mostrar el check solo si es una selección activa Y NO es una acción */}
+                    {option.value === value && !option.isAction && (
                       <Check className="h-4 w-4 text-primary-400 ml-2 flex-shrink-0" />
                     )}
                   </li>

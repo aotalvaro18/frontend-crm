@@ -1,6 +1,6 @@
 // src/components/deals/DealForm.tsx
-// ✅ DEAL FORM DE TALLA MUNDIAL - Basado en el "Golden Standard" de CompanyForm
-// Lógica de formulario robusta, validación con Zod, y componentes de UI reutilizables.
+// ✅ DEAL FORM DE TALLA MUNDIAL - Con ContactSelector inteligente actualizado
+// Cambio quirúrgico: Reemplazado Select básico por ContactSelector con autocompletado
 
 import React, { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { 
-  DollarSign, Calendar, User, Building, Target, Save, X, AlertCircle, Workflow, FileText
+  DollarSign, Calendar, Building, Target, Save, X, AlertCircle, Workflow, FileText
 } from 'lucide-react';
 
 // ============================================
@@ -34,15 +34,19 @@ import { FormField } from '@/components/forms/FormField';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 
+// ✅ CAMBIO QUIRÚRGICO: Importar el nuevo ContactSelector
+import { ContactSelector } from '@/components/contacts/ContactSelector';
+
 // ============================================
 // HOOKS & SERVICES
 // ============================================
 import { pipelineApi } from '@/services/api/pipelineApi';
-import { contactApi } from '@/services/api/contactApi';
+// ✅ CAMBIO QUIRÚRGICO: Ya no necesitamos contactApi para el select básico
+// import { contactApi } from '@/services/api/contactApi';
 import { companyApi } from '@/services/api/companyApi';
 
 // ============================================
-// VALIDATION SCHEMA - Adaptado para Deals
+// VALIDATION SCHEMA - Sin cambios
 // ============================================
 
 const dealFormSchema = z.object({
@@ -83,7 +87,7 @@ const dealFormSchema = z.object({
 type DealFormData = z.infer<typeof dealFormSchema>;
 
 // ============================================
-// PROPS INTERFACE
+// PROPS INTERFACE - Sin cambios
 // ============================================
 
 interface DealFormProps {
@@ -114,7 +118,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
   }, ref) => {
 
     // ============================================
-    // FORM SETUP
+    // FORM SETUP - Sin cambios
     // ============================================
     const {
       register, control, handleSubmit,
@@ -146,6 +150,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
 
     // ============================================
     // DATA FETCHING PARA SELECTS
+    // ✅ CAMBIO QUIRÚRGICO: Removido contactApi query, ahora ContactSelector maneja su propia lógica
     // ============================================
     const { data: pipelines, isLoading: isLoadingPipelines } = useQuery({
       queryKey: ['pipelinesForSelect'],
@@ -153,11 +158,12 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       select: (data) => data.content,
     });
 
-    const { data: contacts, isLoading: isLoadingContacts } = useQuery({
-      queryKey: ['contactsForSelect'],
-      queryFn: () => contactApi.searchContacts({ status: 'ACTIVE' }, { page: 0, size: 100, sort: ['name,asc'] }),
-      select: (data) => data.content,
-    });
+    // ✅ CAMBIO QUIRÚRGICO: Esta query fue removida porque ContactSelector maneja su propia búsqueda
+    // const { data: contacts, isLoading: isLoadingContacts } = useQuery({
+    //   queryKey: ['contactsForSelect'],
+    //   queryFn: () => contactApi.searchContacts({ status: 'ACTIVE' }, { page: 0, size: 100, sort: ['name,asc'] }),
+    //   select: (data) => data.content,
+    // });
 
     const { data: companies, isLoading: isLoadingCompanies } = useQuery({
         queryKey: ['companiesForSelect'],
@@ -175,7 +181,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
     }, [selectedPipelineId, pipelines]);
 
     // ============================================
-    // HANDLERS
+    // HANDLERS - Sin cambios
     // ============================================
     const handleFormSubmit = async (data: DealFormData) => {
         const payload = {
@@ -273,19 +279,28 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
             )}
           />
 
+          {/* ✅ CAMBIO QUIRÚRGICO PRINCIPAL: Reemplazado Select por ContactSelector */}
           <Controller
             name="contactId"
             control={control}
             render={({ field }) => (
-              <FormField label="Contacto Principal" name="contactId" required icon={<User />} error={errors.contactId?.message}>
-                <Select
-                  options={contacts?.map(c => ({ value: c.id.toString(), label: `${c.firstName} ${c.lastName}` })) || []}
-                  value={field.value?.toString() || ''}
-                  onValueChange={field.onChange}
-                  placeholder={isLoadingContacts ? 'Cargando...' : 'Seleccionar contacto...'}
-                  disabled={isLoadingContacts}
-                />
-              </FormField>
+              <ContactSelector
+                label="Contacto Principal"
+                name="contactId"
+                required={true}
+                value={field.value || null}
+                onValueChange={(contactId) => field.onChange(contactId)}
+                error={errors.contactId?.message}
+                placeholder="Buscar contacto por nombre..."
+                description="Selecciona el contacto responsable de esta oportunidad"
+                disabled={loading}
+                allowClear={false}
+                // ✅ MEJORA: Callback opcional para crear contacto on-the-fly
+                onCreateNew={() => {
+                  // TODO: Implementar lógica para abrir modal de crear contacto
+                  console.log('TODO: Abrir modal crear contacto');
+                }}
+              />
             )}
           />
 
@@ -307,7 +322,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
           />
         </div>
         
-        {/* --- SECCIÓN ADICIONAL --- */}
+        {/* --- SECCIÓN ADICIONAL - Sin cambios --- */}
         <div className="space-y-6">
           <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">Información Adicional</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
