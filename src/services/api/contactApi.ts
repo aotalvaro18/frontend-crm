@@ -77,7 +77,7 @@ export class ContactApiService {
 
   /**
    * Autocompletar contactos
-   * CORREGIDO: Usa el endpoint correcto y parámetro consistente con backend
+   * CORREGIDO: Backend espera 'term', no 'search'
    */
   async autocompleteContacts(
     term: string, 
@@ -89,7 +89,7 @@ export class ContactApiService {
     }
 
     const params = new URLSearchParams();
-    params.append('search', term.trim()); // 👈 CORRECCIÓN: usar 'search' en lugar de 'term'
+    params.append('term', term.trim()); // ← Usar 'term' como espera el backend
     params.append('limit', String(limit));
 
     const url = `${API_ENDPOINTS.CONTACT_AUTOCOMPLETE}?${params.toString()}`;
