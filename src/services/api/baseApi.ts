@@ -487,6 +487,34 @@ export class BaseApiClient {
     return result;
   }
 
+  // ✅ MÉTODO AÑADIDO
+  /**
+   * Envía una petición PATCH para actualizaciones parciales.
+   */
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    if (!this.networkManager.getConnectionInfo().isOnline && this.config.enableOfflineQueue) {
+      this.offlineQueue.add('PATCH', endpoint, data); // <-- Añadido PATCH a la cola offline
+      const offlineError: ApiError = {
+        code: ERROR_CODES.NETWORK_ERROR,
+        message: 'Sin conexión. La acción se realizará cuando recuperes la conexión.',
+        status: 0,
+      };
+      throw offlineError;
+    }
+
+    const headers = await this.getAuthHeaders();
+    
+    // ✅ CORRECCIÓN: Accede a la configuración a través de 'this.config'
+    const response = await fetch(`${this.config.baseURL}${endpoint}`, {
+      method: 'PATCH',
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      signal: AbortSignal.timeout(this.config.timeout),
+    });
+  
+    return this.handleResponse<T>(response);
+  }
+
   // ============================================
   // UTILITY METHODS
   // ============================================
@@ -516,6 +544,33 @@ const apiConfig: ApiConfig = {
   retries: 3,
   retryDelay: 1000,
   enableOfflineQueue: true,
+};
+
+// ============================================
+// ✅ HELPERS DE MANEJO DE ERRORES EXPORTABLES
+// ============================================
+
+/**
+ * Extrae de forma segura el código de error de un objeto de error desconocido.
+ */
+export const getErrorCode = (error: unknown): string | null => {
+  if (error && typeof error === 'object' && 'code' in error) {
+    return String(error.code);
+  }
+  return null;
+};
+
+/**
+ * Extrae de forma segura el mensaje de error de un objeto de error desconocido.
+ */
+export const getErrorMessage = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String(error.message);
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Error desconocido';
 };
 
 export const apiClient = new BaseApiClient(apiConfig);

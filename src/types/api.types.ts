@@ -356,7 +356,7 @@ import {
    * Request para métricas
    */
   export interface MetricsRequest {
-    entityType: 'CONTACT' | 'COMPANY' | 'DEAL' | 'ACTIVITY';
+    entityType: 'CONTACT' | 'COMPANY' | 'DEAL' | 'ACTIVITY' | 'USER';
     metricType: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX';
     field?: string;
     groupBy?: string;

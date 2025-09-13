@@ -4,7 +4,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitBranch, Star, Sparkles, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
+import { ArrowLeft, GitBranch, Sparkles, Building, ClipboardCheck, HeartHandshake, Megaphone } from 'lucide-react';
 
 // ============================================
 // UI & LAYOUT COMPONENTS

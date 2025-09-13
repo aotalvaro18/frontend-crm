@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import toast from 'react-hot-toast';
 import { queryClient } from '@/lib/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { 
   contactApi, 
@@ -197,6 +198,41 @@ export const useContactStore = create<ContactState>()(
     }
   )
 );
+
+// ============================================
+// HOOKS DE FETCHING (React Query)
+// ============================================
+
+/**
+ * ✅ HOOK AÑADIDO
+ * Hook para obtener los contactos de una empresa específica.
+ * Ideal para el selector en ActivityFormModal.
+ * 
+ * @param companyId El ID de la compañía
+ * @param options Opciones adicionales para useQuery (ej. 'enabled')
+ */
+export const useContactsByCompany = (
+  companyId: number | undefined | null,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    // La query key incluye el companyId para cachear los resultados por empresa
+    queryKey: ['contacts', 'by-company', companyId],
+    
+    // Llama al método 'searchContacts' de la API con el filtro de companyId
+    queryFn: () => contactApi.searchContacts({ companyId: companyId! }),
+    
+    // Habilitar la query solo si companyId es un número válido.
+    // También respeta la opción 'enabled' que se le pueda pasar desde fuera.
+    enabled: !!companyId && (options?.enabled ?? true),
+
+    // La API devuelve una PageResponse, pero el componente solo necesita el array de contactos.
+    select: (data) => data.content,
+
+    // Cachear esta lista por 5 minutos, no cambia tan a menudo.
+    staleTime: 1000 * 60 * 5, 
+  });
+};
 
 // ============================================
 // HOOKS ESPECIALIZADOS (Exportados para uso en componentes)

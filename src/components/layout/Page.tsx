@@ -4,6 +4,9 @@
 
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/utils/cn';
 
 // ============================================
 // TYPES
@@ -19,6 +22,7 @@ interface PageProps extends React.HTMLAttributes<HTMLElement> {
   // --- TUS PROPS DE SEO (Están perfectas) ---
   children: React.ReactNode;
   title: string;
+  subtitle?: string;
   description?: string;
   keywords?: string;
   canonical?: string;
@@ -32,6 +36,8 @@ interface PageProps extends React.HTMLAttributes<HTMLElement> {
    */
   breadcrumbs?: BreadcrumbItem[];
   showHeader?: boolean;
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 // ============================================
 // CONSTANTS
@@ -55,57 +61,89 @@ const SITE_NAME = 'Eklesa CRM';
  * </Page>
  * ```
  */
+// ============================================
+// PAGE COMPONENT
+// ============================================
 export const Page: React.FC<PageProps> = ({ 
   children, 
   title, 
+  subtitle, // Añadido
   description = DEFAULT_DESCRIPTION,
   keywords,
   canonical,
   ogImage,
   ogType = 'website',
-  noIndex = false
+  noIndex = false,
+  breadcrumbs, // Añadido
+  showHeader = true, // Añadido
+  showBackButton = false, // Añadido
+  onBack, // Añadido
+  className, // Añadido
+  ...props // Añadido
 }) => {
   const fullTitle = `${title} | ${SITE_NAME}`;
 
   return (
     <>
       <Helmet>
-        {/* Basic meta tags */}
+        {/* Tu código de Helmet se queda exactamente igual */}
         <title>{fullTitle}</title>
         <meta name="description" content={description} />
-        
-        {/* Keywords (if provided) */}
         {keywords && <meta name="keywords" content={keywords} />}
-        
-        {/* Canonical URL */}
         {canonical && <link rel="canonical" href={canonical} />}
-        
-        {/* Robots meta (for internal pages) */}
         {noIndex && <meta name="robots" content="noindex, nofollow" />}
-        
-        {/* Open Graph for social sharing */}
         <meta property="og:title" content={fullTitle} />
         <meta property="og:description" content={description} />
         <meta property="og:type" content={ogType} />
         <meta property="og:site_name" content={SITE_NAME} />
         {ogImage && <meta property="og:image" content={ogImage} />}
-        
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={fullTitle} />
         <meta name="twitter:description" content={description} />
         {ogImage && <meta name="twitter:image" content={ogImage} />}
-        
-        {/* Mobile optimization */}
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="format-detection" content="telephone=no" />
-        
-        {/* Theme colors para mobile */}
         <meta name="theme-color" content="#3b82f6" />
         <meta name="msapplication-navbutton-color" content="#3b82f6" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Helmet>
-      {children}
+      
+      {/* ✅ 2. ENVOLVEMOS EL CONTENIDO EN UN <main> Y AÑADIMOS EL HEADER */}
+      <main className={cn("p-4 sm:p-6", className)} {...props}>
+        {showHeader && (
+          <header className="mb-6">
+            {breadcrumbs && breadcrumbs.length > 0 && (
+              <nav aria-label="Breadcrumb" className="mb-2">
+                {/* ... (lógica de breadcrumbs si la necesitas) ... */}
+              </nav>
+            )}
+            
+            <div className="flex items-center gap-3">
+              {showBackButton && onBack && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="flex-shrink-0 -ml-2 text-app-gray-400 hover:text-white"
+                  aria-label="Volver"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-app-gray-100">{title}</h1>
+                {subtitle && (
+                  <p className="mt-1 text-sm text-app-gray-400">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
+          </header>
+        )}
+        
+        {children}
+      </main>
     </>
   );
 };

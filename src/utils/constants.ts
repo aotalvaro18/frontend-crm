@@ -69,6 +69,7 @@ export const APP_CONFIG = {
     DEAL_CLOSE_WON: (id: number) => `/api/crm/deals/${id}/close-won`,
     DEAL_CLOSE_LOST: (id: number) => `/api/crm/deals/${id}/close-lost`,
     DEAL_REOPEN: (id: number) => `/api/crm/deals/${id}/reopen`,
+    PIPELINE_KANBAN_DATA: (pipelineId: number) => `/api/crm/pipelines/${pipelineId}/kanban`,
     
     // ============================================
     // PIPELINE ENDPOINTS (PipelineController)

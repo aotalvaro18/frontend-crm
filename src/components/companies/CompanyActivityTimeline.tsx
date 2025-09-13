@@ -1,4 +1,7 @@
-// Usa datos reales, tipos centralizados y sigue la arquitectura de hooks.
+// src/components/companies/CompanyActivityTimeline.tsx
+// ✅ COMPANY ACTIVITY TIMELINE - REFACTORIZADO A "TALLA MUNDIAL"
+// Sigue el "Golden Standard" de DealActivityTimeline.
+// Autónomo, usa datos reales, tipos centralizados y hooks.
 
 import React, { useState, useCallback } from 'react';
 import { 
@@ -13,37 +16,37 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import ActivityFormModal from '@/components/activities/ActivityFormModal';
 
 // ============================================
 // HOOKS & SERVICES
 // ============================================
-import { useActivitiesByContact, useActivityOperations } from '@/hooks/useActivities';
+import { useActivitiesByCompany, useActivityOperations } from '@/hooks/useActivities';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
 // TYPES & UTILS
 // ============================================
 import type { ActivityDTO, ActivityType } from '@/types/activity.types';
-import { ACTIVITY_TYPE_COLORS, isActivityCompleted }
-      from '@/types/activity.types';
+import { ACTIVITY_TYPE_LABELS, ACTIVITY_TYPE_COLORS, isActivityCompleted, getFormattedDuration } from '@/types/activity.types';
 import { cn } from '@/utils/cn';
 import { formatDistance, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ActivityFormModal from '@/components/activities/ActivityFormModal';
 
 // ============================================
 // COMPONENT PROPS
 // ============================================
-interface ContactActivityTimelineProps {
-  contactId: number;
+interface CompanyActivityTimelineProps {
+  companyId: number;
   className?: string;
 }
 
 // ============================================
-// SUB-COMPONENTES INTERNOS (Adaptados a ActivityDTO real)
+// SUB-COMPONENTES INTERNOS (Reutilizados de los otros timelines)
 // ============================================
 
 const ActivityIcon: React.FC<{ type: ActivityType }> = ({ type }) => {
+  // ... (Esta lógica es idéntica, puedes incluso moverla a un archivo shared si quieres)
   const iconMap: Record<ActivityType, React.ElementType> = {
     CALL: Phone, EMAIL: Mail, MEETING: Calendar, NOTE: FileText, TASK: Clock,
     STAGE_CHANGE: Users, PROPOSAL: FileText, CONTRACT: FileText,
@@ -51,7 +54,6 @@ const ActivityIcon: React.FC<{ type: ActivityType }> = ({ type }) => {
   };
   const Icon = iconMap[type] || FileText;
   const colors = ACTIVITY_TYPE_COLORS[type] || ACTIVITY_TYPE_COLORS.OTHER;
-
   return (
     <div className={cn('flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', colors.bg)}>
       <Icon className={cn('h-4 w-4', colors.text)} />
@@ -78,7 +80,6 @@ const ActivityItemComponent: React.FC<ActivityItemComponentProps> = ({ activity,
 
   return (
     <div className="relative pl-11">
-      {/* Timeline line */}
       {!isLast && <div className="absolute left-4 top-5 h-full w-px bg-app-dark-600" />}
       <div className="absolute left-0 top-1">
         <ActivityIcon type={activity.type} />
@@ -128,21 +129,23 @@ const ActivityItemComponent: React.FC<ActivityItemComponentProps> = ({ activity,
 };
 
 // ============================================
-// MAIN COMPONENT - Refactorizado para usar datos reales
+// MAIN COMPONENT - Lógica adaptada para Companies
 // ============================================
-const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ contactId, className }) => {
+const CompanyActivityTimeline: React.FC<CompanyActivityTimelineProps> = ({ companyId, className }) => {
   const { handleError } = useErrorHandler();
-  // ✅ ESTADO PARA CONTROLAR EL MODAL
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activityToEdit, setActivityToEdit] = useState<ActivityDTO | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<ActivityDTO | null>(null);
 
-  const { data: activities = [], isLoading, error, refetch, isFetching } = useActivitiesByContact(contactId);
-  const { completeActivity, deleteActivity, isCompleting, isDeleting, isUpdating } = useActivityOperations();
+  // ✅ CAMBIO CLAVE: Usar el hook específico para Companies
+  const { data: activities = [], isLoading, error, refetch, isFetching } = useActivitiesByCompany(companyId);
+  
+  const { completeActivity, deleteActivity, isCompleting, isDeleting } = useActivityOperations();
 
+  // Los handlers son idénticos, solo cambia el contexto del 'console.log'
   const handleAddActivity = useCallback(() => {
-    setActivityToEdit(null); // Asegurarse de que no hay una actividad para editar
+    setActivityToEdit(null);
     setIsModalOpen(true);
   }, []);
   const handleEditActivity = useCallback((activity: ActivityDTO) => {
@@ -169,7 +172,7 @@ const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ conta
   const renderContent = () => {
     if (isLoading) return <div className="flex justify-center py-8"><LoadingSpinner size="lg" /></div>;
     if (error) return <EmptyState icon={Clock} title="Error al cargar" description="No se pudieron cargar las actividades." action={<Button size="sm" variant="outline" onClick={() => refetch()}>Reintentar</Button>} />;
-    if (activities.length === 0) return <EmptyState icon={MessageSquare} title="Sin actividades" description="No hay actividades registradas para este contacto." action={<Button size="sm" onClick={handleAddActivity}>Agregar primera actividad</Button>} />;
+    if (activities.length === 0) return <EmptyState icon={MessageSquare} title="Sin actividades" description="No hay actividades registradas para esta empresa." action={<Button size="sm" onClick={handleAddActivity}>Agregar primera actividad</Button>} />;
 
     return (
       <>
@@ -229,18 +232,16 @@ const ContactActivityTimeline: React.FC<ContactActivityTimelineProps> = ({ conta
         variant="destructive"
       />
 
-      <ActivityFormModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onSuccess={() => {
-              setIsModalOpen(false);
-              // No es necesario refetch manual, la invalidación del store lo hará.
-            }}
-            contactId={contactId}
-            activityToEdit={activityToEdit}
-       />
+        <ActivityFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => setIsModalOpen(false)}
+        contactId={activityToEdit?.contactId} // Puede ser opcional aquí
+        companyId={companyId} // Pasa el companyId del contexto
+        activityToEdit={activityToEdit}
+        />
     </>
   );
 };
 
-export default ContactActivityTimeline;
+export default CompanyActivityTimeline;

@@ -190,6 +190,7 @@ export interface CompanySearchCriteria extends BaseSearchCriteria {
   type?: CompanyType;
   industry?: string;
   companySize?: CompanySize;
+  active?: boolean;
   
   // Ownership y asignación
   ownerCognitoSub?: CognitoSub;

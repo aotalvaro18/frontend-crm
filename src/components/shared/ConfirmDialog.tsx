@@ -6,6 +6,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
+import type { ButtonProps } from '@/components/ui/Button';
+
 interface ConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,6 +18,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   isConfirming?: boolean; // Para mostrar el estado de carga
   children?: React.ReactNode;
+  variant?: ButtonProps<'button'>['variant'];
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
