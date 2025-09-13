@@ -206,9 +206,24 @@ const PipelineListPage: React.FC = () => {
 
   // ✅ NUEVO HANDLER: Para crear nueva oportunidad cuando hay pipelines
   const handleCreateNewDeal = () => {
-    // TODO: Implementar cuando tengamos el formulario de deals
-    console.log('Crear nueva oportunidad en pipeline:', currentPipeline?.id);
-    // navigate('/deals/new?pipeline=' + currentPipeline?.id);
+    // Validación defensiva - enterprise best practice
+    if (!currentPipeline) {
+      console.error("No se puede crear una oportunidad sin un pipeline seleccionado.");
+      // Opcional: mostrar toast de error
+      // toast.error("Por favor selecciona un pipeline primero");
+      return;
+    }
+  
+    // Pre-seleccionar la primera etapa del pipeline
+    const firstStage = currentPipeline.stages
+      ?.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))[0];
+  
+    const params = new URLSearchParams({
+      pipelineId: currentPipeline.id.toString(),
+      ...(firstStage?.id && { stageId: firstStage.id.toString() }),
+    });
+  
+    navigate(`/deals/new?${params.toString()}`);
   };
 
   // 🔧 NUEVOS HANDLERS: Para acciones del dropdown estilo Salesforce
