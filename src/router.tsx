@@ -54,14 +54,14 @@ const CompanyCreatePage = lazy(() => {
 });
 
 // ✅ Pipeline pages (para /deals = usuario diario)
-const PipelineListPage = lazy(() => {
+const DealListPage = lazy(() => {
   authLogger.info('Loading PipelineListPage...');
-  return import('@/pages/pipelines/PipelineListPage');
+  return import('@/pages/deals/DealListPage');
 });
 
-const PipelineDetailPage = lazy(() => {
+const DealDetailPage = lazy(() => {
   authLogger.info('Loading PipelineDetailPage...');
-  return import('@/pages/pipelines/PipelineDetailPage');
+  return import('@/pages/deals/DealDetailPage');
 });
 
 // ✅ Settings pages (hub + pipeline admin)
@@ -283,7 +283,7 @@ const router = createBrowserRouter([
             path: 'deals',
             element: (
               <SuspenseWrapper fallbackText="Cargando oportunidades...">
-                <PipelineListPage />
+                <DealListPage />
               </SuspenseWrapper>
             ),
           },
@@ -299,7 +299,7 @@ const router = createBrowserRouter([
             path: 'deals/:id',
             element: (
               <SuspenseWrapper fallbackText="Cargando oportunidad...">
-                <PipelineDetailPage />
+                <DealDetailPage />
               </SuspenseWrapper>
             ),
           },
