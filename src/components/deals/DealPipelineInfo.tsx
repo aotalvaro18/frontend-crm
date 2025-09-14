@@ -27,9 +27,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 // HOOKS & SERVICES (Arquitectura correcta)
 // ============================================
 import { 
-  useDealOperations, 
-  usePipelineKanbanData,
-  useDealById 
+  useDealOperations 
 } from '@/hooks/useDeals';
 
 import { useErrorHandler } from '@/hooks/useErrorHandler';
@@ -39,7 +37,6 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 // ============================================
 import type { 
   DealDTO, 
-  DealStatus,
   KanbanData 
 } from '@/types/deal.types';
 
@@ -98,10 +95,6 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   // OPERATIONS (Mutaciones desde dealStore)
   // ============================================
   const {
-    moveDealToStage,
-    closeDealWon,
-    closeDealLost,
-    reopenDeal,
     isMovingToStage,
     isClosingWon,
     isClosingLost,
@@ -111,11 +104,27 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   const { handleError } = useErrorHandler();
 
   // ============================================
-  // COMPUTED VALUES
+  // COMPUTED VALUES - CORRECCIÓN QUIRÚRGICA
   // ============================================
   const currentStage = useMemo(() => {
-    if (!deal || !kanbanData) return null;
-    return kanbanData.pipeline.stages.find(stage => stage.stageId === deal.stageId);
+    if (!deal) return null;
+    
+    // PRIORIDAD 1: Buscar en kanbanData
+    if (kanbanData?.pipeline?.stages) {
+      const found = kanbanData.pipeline.stages.find(stage => 
+        Number(stage.stageId) === Number(deal.stageId)
+      );
+      if (found) return found;
+    }
+    
+    // PRIORIDAD 2: Usar datos del deal como fallback
+    return {
+      stageId: deal.stageId,
+      stageName: deal.stageName || 'Etapa sin nombre',
+      dealCount: 1,
+      totalValue: deal.amount || 0,
+      averageDaysInStage: deal.daysInCurrentStage || 0
+    };
   }, [deal, kanbanData]);
 
   const availableStages = useMemo(() => {
@@ -243,7 +252,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
 
         <div className="flex items-center justify-between">
           <h4 className="text-base font-semibold text-gray-900">
-            {currentStage?.stageName || 'Etapa no encontrada'}
+            {currentStage?.stageName || deal.stageName || 'Sin etapa asignada'}
           </h4>
           
           {currentStage && (
@@ -252,7 +261,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
                 {currentStage.dealCount} oportunidades
               </div>
               <div className="text-sm font-medium text-gray-900">
-                {formatDealAmount({ amount: currentStage.totalValue } as DealDTO)}
+               {formatDealAmount({ amount: currentStage.totalValue } as DealDTO)}
               </div>
             </div>
           )}
@@ -270,7 +279,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
             <div className="text-center">
               <div className="text-xs text-gray-500">Valor Total</div>
               <div className="text-sm font-semibold text-gray-900">
-                {formatDealAmount({ amount: currentStage.totalValue } as DealDTO)}
+              {formatDealAmount({ amount: currentStage.totalValue } as DealDTO)}
               </div>
             </div>
             <div className="text-center">
