@@ -297,12 +297,8 @@ export class ActivityApiService {
    */
   async getActivitiesByContact(contactId: number): Promise<ActivityDTO[]> {
     try {
-      const params = new URLSearchParams();
-      params.append('contactId', String(contactId));
-      params.append('sort', 'activityDate,desc');
-      
       const pageResponse = await apiClient.get<PageResponse<ActivityDTO>>(
-        `${API_ENDPOINTS.ACTIVITIES}?${params.toString()}`
+        `${API_ENDPOINTS.ACTIVITY_BY_CONTACT(contactId)}?page=0&size=100`
       );
       return pageResponse.content;
     } catch (error: unknown) {
@@ -335,12 +331,8 @@ export class ActivityApiService {
    */
   async getActivitiesByDeal(dealId: number): Promise<ActivityDTO[]> {
     try {
-      const params = new URLSearchParams();
-      params.append('dealId', String(dealId));
-      params.append('sort', 'activityDate,desc');
-      
       const pageResponse = await apiClient.get<PageResponse<ActivityDTO>>(
-        `${API_ENDPOINTS.ACTIVITIES}?${params.toString()}`
+        `${API_ENDPOINTS.ACTIVITY_BY_DEAL(dealId)}?page=0&size=100`
       );
       return pageResponse.content;
     } catch (error: unknown) {
