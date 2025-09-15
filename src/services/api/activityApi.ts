@@ -308,7 +308,7 @@ export class ActivityApiService {
   }
 
   /**
-   * Obtener actividades por empresa
+   * Obtener actividades por empresa ok
    */
   async getActivitiesByCompany(companyId: number): Promise<ActivityDTO[]> {
     try {
