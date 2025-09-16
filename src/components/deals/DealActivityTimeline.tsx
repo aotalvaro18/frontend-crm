@@ -121,7 +121,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const relativeTime = formatDistance(parseISO(activity.activityDate), new Date(), {
+  const relativeTime = formatDistance(parseISO(activity.scheduledAt), new Date(), {
     addSuffix: true,
     locale: es
   });
@@ -168,7 +168,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({
                 "text-sm font-medium truncate",
                 isCompleted ? "text-app-gray-400 line-through" : "text-app-gray-100"
               )}>
-                {activity.title}
+                {activity.subject}
               </h4>
               <div className="flex items-center space-x-2 mt-1">
                 <span className="text-xs text-app-gray-400">
@@ -282,7 +282,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({
               </Badge>
             )}
             
-            {activity.duration && (
+            {activity.durationMinutes && (
               <Badge variant="outline" size="sm">
                 <Clock className="h-2 w-2 mr-1" />
                 {getFormattedDuration(activity)}
@@ -546,7 +546,7 @@ const DealActivityTimeline: React.FC<DealActivityTimelineProps> = ({
         onClose={() => setActivityToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Eliminar actividad"
-        description={`¿Estás seguro que quieres eliminar la actividad "${activityToDelete?.title}"? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro que quieres eliminar la actividad "${activityToDelete?.subject}"? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
         cancelLabel="Cancelar"
         variant="destructive"

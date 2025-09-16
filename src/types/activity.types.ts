@@ -33,55 +33,50 @@ import {
    * Entidad Activity completa (matching ActivityDTO del backend)
    */
   export interface Activity extends BaseEntity {
-    // Información básica obligatoria
+    // =============================================================
+    // CAMPOS QUE VIENEN DIRECTAMENTE DEL ActivityDTO.java
+    // =============================================================
+    
+    // Información básica (Nombres corregidos)
     type: ActivityType;
-    title: string;
+    subject: string;                  // ✅ CORREGIDO: de 'title' a 'subject'
     description?: string;
     
-    // Fechas y duración
-    activityDate: string;           // Fecha/hora de la actividad
-    dueDate?: string;              // Para tasks/follow-ups
-    completedAt?: string;          // Cuando se marcó como completada
-    duration?: number;             // Duración en minutos
+    // Fechas y duración (Nombres y tipos corregidos)
+    scheduledAt: string;              // ✅ CORREGIDO: de 'activityDate' a 'scheduledAt'
+    completedAt?: string;
+    durationMinutes?: number;         // ✅ CORREGIDO: de 'duration' a 'durationMinutes'
     
-    // Ownership y asignación
-    createdByCognitoSub: CognitoSub;  // Usuario que creó la actividad
-    createdByName?: string;           // Computed field
-    assignedToCognitoSub?: CognitoSub; // Para tasks/follow-ups
-    assignedToName?: string;          // Computed field
-    
-    // Relaciones con entidades
-    contactId?: ID;                // Actividad relacionada a contacto
-    contactName?: string;          // Computed field
-    companyId?: ID;                // Actividad relacionada a empresa
-    companyName?: string;          // Computed field
-    dealId?: ID;                   // Actividad relacionada a deal
-    dealTitle?: string;            // Computed field
-    
+    // Asignación (Nombre corregido)
+    assigneeCognitoSub: CognitoSub;   // ✅ CORREGIDO: de 'assignedToCognitoSub' a 'assigneeCognitoSub'
+  
+    // Relaciones (Nombres corregidos)
+    contactId?: ID;
+    contactName?: string;
+    companyId?: ID;
+    companyName?: string;
+    dealId?: ID;
+    dealTitle?: string;               // ✅ CORREGIDO: 'dealTitle' ya estaba bien
+  
     // Estado y outcome
     status: ActivityStatus;
-    outcome?: ActivityOutcome;
-    priority?: ActivityPriority;
-    
-    // Metadata específica por tipo
-    metadata?: ActivityMetadata;
-    
-    // Custom fields
-    customFields: CustomFields;
+    outcome?: string;                 // Cambiado de 'ActivityOutcome' a 'string' para coincidir
+    outcomeNotes?: string;
   
-    /**
-     * Un array de objetos Tag asociados a esta actividad.
-     * Permite categorización flexible (follow-up, hot-lead, etc.)
-     * @type {Tag[] | undefined}
-     */
-    tags?: Tag[];
+    // =============================================================
+    // CAMPOS ADICIONALES O CALCULADOS EN EL FRONTEND (PUEDEN QUEDAR)
+    // =============================================================
     
-    // Campos calculados
-    isOverdue?: boolean;           // Si está vencida
-    isCompleted?: boolean;         // Si está completada
-    relatedEntityType?: 'CONTACT' | 'COMPANY' | 'DEAL'; // Tipo de entidad principal
-    relatedEntityId?: ID;          // ID de entidad principal
-    relatedEntityName?: string;    // Nombre de entidad principal
+    // Estos campos no vienen del DTO principal pero pueden ser útiles en el frontend.
+    // Es importante saber que son opcionales y pueden no estar presentes.
+    dueDate?: string;                 // Para tasks/follow-ups
+    priority?: ActivityPriority;
+    metadata?: ActivityMetadata;
+    customFields?: CustomFields;
+    tags?: Tag[];
+    createdByName?: string;           // Computed field
+    assignedToName?: string;          // Computed field
+    isOverdue?: boolean;              // Computed field
   }
   
   /**
@@ -261,8 +256,8 @@ import {
   export type CreateActivityRequest = Partial<Omit<Activity, keyof BaseEntity>> & {
     // Campos requeridos por el formulario de creación
     type: ActivityType;
-    title: string;
-    activityDate: string;
+    subject: string;
+    scheduledAt: string;
     
     // Campos opcionales del formulario
     description?: string;
@@ -277,7 +272,7 @@ import {
     dealId?: ID;
     
     // Asignación
-    assignedToCognitoSub?: CognitoSub;
+    assigneeCognitoSub?: CognitoSub;
     
     // Metadata y campos adicionales
     metadata?: ActivityMetadata;
@@ -292,15 +287,15 @@ import {
     
     // Todos los demás campos opcionales
     type?: ActivityType;
-    title?: string;
+    subject?: string;
     description?: string;
-    activityDate?: string;
+    scheduledAt?: string;
     dueDate?: string;
     duration?: number;
     status?: ActivityStatus;
     outcome?: ActivityOutcome;
     priority?: ActivityPriority;
-    assignedToCognitoSub?: CognitoSub;
+    assigneeCognitoSub?: CognitoSub;
     metadata?: ActivityMetadata;
     customFields?: CustomFields;
   };
@@ -543,8 +538,17 @@ import {
    * Helper para verificar si es una actividad de hoy
    */
   export const isActivityToday = (activity: Activity): boolean => {
-    const today = new Date().toISOString().split('T')[0];
-    const activityDate = activity.activityDate.split('T')[0];
+    // Si la actividad no tiene fecha programada, no puede ser de hoy.
+    if (!activity.scheduledAt) {
+        return false;
+    }
+    
+    // ✅ CORRECCIÓN QUIRÚRGICA: Usa 'scheduledAt' en lugar de 'activityDate'
+    // Se convierten ambas fechas a formato YYYY-MM-DD para una comparación segura
+    // sin verse afectado por zonas horarias o milisegundos.
+    const today = new Date().toISOString().slice(0, 10);
+    const activityDate = new Date(activity.scheduledAt).toISOString().slice(0, 10);
+    
     return activityDate === today;
   };
   
@@ -553,9 +557,18 @@ import {
    */
   export const isActivityThisWeek = (activity: Activity): boolean => {
     const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    const endOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 6));
-    const activityDate = new Date(activity.activityDate);
+    // Ajuste para que la semana comience en Lunes (1) o Domingo (0) según tu preferencia. 
+    // new Date().getDay() devuelve 0 para Domingo.
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now.setDate(now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1))); // Lunes
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // ✅ CORRECCIÓN QUIRÚRGICA: Usa 'scheduledAt' en lugar de 'activityDate'
+    const activityDate = new Date(activity.scheduledAt);
     return activityDate >= startOfWeek && activityDate <= endOfWeek;
   };
   
@@ -563,7 +576,7 @@ import {
    * Helper para obtener el nombre de la entidad relacionada
    */
   export const getRelatedEntityName = (activity: Activity): string => {
-    if (activity.relatedEntityName) return activity.relatedEntityName;
+    // Este helper ya estaba correcto, no necesita cambios.
     if (activity.dealTitle) return activity.dealTitle;
     if (activity.contactName) return activity.contactName;
     if (activity.companyName) return activity.companyName;
@@ -574,7 +587,7 @@ import {
    * Helper para obtener el tipo de entidad relacionada
    */
   export const getRelatedEntityType = (activity: Activity): 'CONTACT' | 'COMPANY' | 'DEAL' | null => {
-    if (activity.relatedEntityType) return activity.relatedEntityType;
+    // Este helper ya estaba correcto, no necesita cambios.
     if (activity.dealId) return 'DEAL';
     if (activity.contactId) return 'CONTACT';
     if (activity.companyId) return 'COMPANY';
@@ -585,6 +598,7 @@ import {
    * Helper para verificar si requiere seguimiento
    */
   export const requiresFollowUp = (activity: Activity): boolean => {
+    // Este helper ya estaba correcto, no necesita cambios.
     return !!(activity.metadata?.nextSteps || activity.metadata?.followUpDate);
   };
   
@@ -592,11 +606,16 @@ import {
    * Helper para obtener duración formateada
    */
   export const getFormattedDuration = (activity: Activity): string => {
-    if (!activity.duration) return 'Sin duración';
-    const hours = Math.floor(activity.duration / 60);
-    const minutes = activity.duration % 60;
-    if (hours > 0) {
+    // ✅ CORRECCIÓN QUIRÚRGICA: Usa 'durationMinutes' en lugar de 'duration'
+    if (!activity.durationMinutes) return 'Sin duración';
+    const hours = Math.floor(activity.durationMinutes / 60);
+    const minutes = activity.durationMinutes % 60;
+    
+    if (hours > 0 && minutes > 0) {
       return `${hours}h ${minutes}min`;
+    }
+    if (hours > 0) {
+      return `${hours}h`;
     }
     return `${minutes}min`;
   };

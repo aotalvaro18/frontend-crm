@@ -73,7 +73,10 @@ interface ActivityItemComponentProps {
 
 const ActivityItemComponent: React.FC<ActivityItemComponentProps> = ({ activity, isLast, onComplete, onEdit, onDelete, isCompleting, isDeleting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const relativeTime = formatDistance(parseISO(activity.activityDate), new Date(), { addSuffix: true, locale: es });
+  const relativeTime = formatDistance(parseISO(activity.scheduledAt), new Date(), {
+    addSuffix: true,
+    locale: es
+  });
   const hasExpandableContent = activity.description && activity.description.length > 100;
   const completed = isActivityCompleted(activity);
   const isLoading = isCompleting || isDeleting;
@@ -88,7 +91,7 @@ const ActivityItemComponent: React.FC<ActivityItemComponentProps> = ({ activity,
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h4 className={cn("text-sm font-medium", completed ? "text-app-gray-400 line-through" : "text-app-gray-100")}>
-              {activity.title}
+            {activity.subject}
             </h4>
             <div className="flex items-center space-x-2 mt-1 text-xs text-app-gray-400">
               <span>{activity.createdByName || 'Usuario'}</span>
@@ -145,7 +148,8 @@ const CompanyActivityTimeline: React.FC<CompanyActivityTimelineProps> = ({ compa
 
   // Los handlers son idénticos, solo cambia el contexto del 'console.log'
   const handleAddActivity = useCallback(() => {
-    setActivityToEdit(null);
+    setActivityToEdit(null); // No hay actividad para editar
+    // ✅ El contactId NO se pre-selecciona. El usuario lo elegirá en el formulario.
     setIsModalOpen(true);
   }, []);
   const handleEditActivity = useCallback((activity: ActivityDTO) => {
@@ -226,7 +230,7 @@ const CompanyActivityTimeline: React.FC<CompanyActivityTimelineProps> = ({ compa
         onClose={() => setActivityToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Eliminar Actividad"
-        description={`¿Estás seguro que quieres eliminar la actividad "${activityToDelete?.title}"? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro que quieres eliminar la actividad "${activityToDelete?.subject}"? Esta acción no se puede deshacer.`}
         confirmLabel="Sí, eliminar"
         isConfirming={activityToDelete ? isDeleting(activityToDelete.id) : false}
         variant="destructive"
@@ -236,8 +240,8 @@ const CompanyActivityTimeline: React.FC<CompanyActivityTimelineProps> = ({ compa
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => setIsModalOpen(false)}
-        contactId={activityToEdit?.contactId} // Puede ser opcional aquí
-        companyId={companyId} // Pasa el companyId del contexto
+        // contactId no se pasa, o se pasa como undefined
+        companyId={companyId}
         activityToEdit={activityToEdit}
         />
     </>

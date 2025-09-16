@@ -425,7 +425,8 @@ export class ActivityApiService {
    */
   async bulkUpdateActivities(
     activityIds: number[],
-    updates: Partial<Pick<UpdateActivityRequest, 'status' | 'priority' | 'assignedToCognitoSub'>>
+    // ✅ CORREGIDO: Usa 'assigneeCognitoSub' en lugar de 'assignedToCognitoSub'
+    updates: Partial<Pick<UpdateActivityRequest, 'status' | 'priority' | 'assigneeCognitoSub'>>
   ): Promise<BulkOperationResult> {
     
     if (activityIds.length > 100) {
@@ -523,13 +524,15 @@ export class ActivityApiService {
   // ============================================
 
   private validateCreateRequest(request: CreateActivityRequest): void {
-    if (!request.title?.trim()) {
-      throw new Error('El título de la actividad es requerido');
+    // ✅ CORREGIDO: Usa 'subject' en lugar de 'title'
+    if (!request.subject?.trim()) {
+      throw new Error('El asunto de la actividad es requerido');
     }
     if (!request.type) {
       throw new Error('El tipo de actividad es requerido');
     }
-    if (!request.activityDate) {
+    // ✅ CORREGIDO: Usa 'scheduledAt' en lugar de 'activityDate'
+    if (!request.scheduledAt) {
       throw new Error('La fecha de actividad es requerida');
     }
     
@@ -539,24 +542,29 @@ export class ActivityApiService {
     }
     
     // Validar fecha de actividad
-    if (new Date(request.activityDate).getTime() < Date.now() - 86400000) {
+    // ✅ CORREGIDO: Usa 'scheduledAt'
+    if (new Date(request.scheduledAt).getTime() < Date.now() - 86400000) {
       throw new Error('La fecha de actividad no puede ser más de 1 día en el pasado');
     }
     
     // Validar duración si existe
-    if (request.duration && (request.duration < 1 || request.duration > 1440)) {
+    // ✅ CORREGIDO: Usa 'durationMinutes' en lugar de 'duration'
+    if (request.durationMinutes && (request.durationMinutes < 1 || request.durationMinutes > 1440)) {
       throw new Error('La duración debe estar entre 1 y 1440 minutos');
     }
   }
 
   private validateUpdateRequest(request: UpdateActivityRequest): void {
-    if (request.title !== undefined && !request.title?.trim()) {
-      throw new Error('El título de la actividad es requerido');
+    // ✅ CORREGIDO: Usa 'subject' en lugar de 'title'
+    if (request.subject !== undefined && !request.subject?.trim()) {
+      throw new Error('El asunto de la actividad es requerido');
     }
-    if (request.activityDate && new Date(request.activityDate).getTime() < Date.now() - 86400000) {
+    // ✅ CORREGIDO: Usa 'scheduledAt' en lugar de 'activityDate'
+    if (request.scheduledAt && new Date(request.scheduledAt).getTime() < Date.now() - 86400000) {
       throw new Error('La fecha de actividad no puede ser más de 1 día en el pasado');
     }
-    if (request.duration && (request.duration < 1 || request.duration > 1440)) {
+    // ✅ CORREGIDO: Usa 'durationMinutes' en lugar de 'duration'
+    if (request.durationMinutes && (request.durationMinutes < 1 || request.durationMinutes > 1440)) {
       throw new Error('La duración debe estar entre 1 y 1440 minutos');
     }
     if (typeof request.version !== 'number') {

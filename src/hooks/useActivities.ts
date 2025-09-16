@@ -69,7 +69,7 @@ interface ActivityState {
   deselectActivity: (id: number) => void;
   deselectAllActivities: () => void;
   
-  bulkUpdateActivities: (updates: Partial<Pick<ActivityDTO, 'status' | 'priority' | 'assignedToCognitoSub'>>) => Promise<void>;
+  bulkUpdateActivities: (updates: Partial<Pick<ActivityDTO, 'status' | 'priority' | 'assigneeCognitoSub'>>) => Promise<void>;
   bulkDeleteActivities: () => Promise<void>;
   bulkCompleteActivities: (outcome: string, notes?: string) => Promise<void>;
 }

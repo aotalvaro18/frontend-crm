@@ -1,6 +1,6 @@
 // src/components/activities/ActivityFormModal.tsx
-// ✅ ACTIVITY FORM MODAL DE TALLA MUNDIAL
-// Reutilizable, contextual, y alineado con la arquitectura existente.
+// ✅ CORRECCIÓN QUIRÚRGICA: Mapeo correcto de campos para backend
+// ✅ VALIDADO: Schema y request alineados con ActivityController.java
 
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -34,15 +34,15 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 
 // ============================================
-// VALIDATION SCHEMA
+// ✅ CORRECCIÓN 1: VALIDATION SCHEMA con nombres correctos del backend
 // ============================================
 const activityFormSchema = z.object({
   type: z.string().min(1, 'El tipo de actividad es requerido'),
-  title: z.string().min(1, 'El asunto es requerido').max(255),
-  activityDate: z.string().min(1, 'La fecha es requerida'),
+  subject: z.string().min(1, 'El asunto es requerido').max(255),              // ✅ 'subject' no 'title'
+  scheduledAt: z.string().min(1, 'La fecha es requerida'),                   // ✅ 'scheduledAt' no 'activityDate'
   description: z.string().max(2000).optional(),
   dealId: z.preprocess((val) => val ? Number(val) : undefined, z.number().optional()),
-  assignedToCognitoSub: z.string().optional(),
+  assigneeCognitoSub: z.string().optional(),                                 // ✅ 'assigneeCognitoSub' no 'assignedToCognitoSub'
   contactId: z.preprocess((val) => val ? Number(val) : undefined, z.number().optional()),
 });
 
@@ -96,17 +96,22 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
     resolver: zodResolver(activityFormSchema),
   });
 
-  // Resetear el formulario cuando el modal se abre o cambia la actividad a editar
+  // ✅ CORRECCIÓN 2: Reset con nombres correctos de campos
   useEffect(() => {
     if (isOpen) {
+      // ✅ Generar fecha por defecto en formato correcto
+      const defaultScheduledAt = activityToEdit?.scheduledAt 
+        ? new Date(activityToEdit.scheduledAt).toISOString().slice(0, 16) 
+        : new Date().toISOString().slice(0, 16);
+
       const defaultValues = {
         type: activityToEdit?.type || DEFAULT_ACTIVITY_TYPE,
-        title: activityToEdit?.title || '',
-        activityDate: (activityToEdit?.activityDate || new Date().toISOString()).split('T')[0],
+        subject: activityToEdit?.subject || '',                              // ✅ 'subject'
+        scheduledAt: defaultScheduledAt,                                     // ✅ 'scheduledAt'
         description: activityToEdit?.description || '',
         contactId: contactId,
         dealId: activityToEdit?.dealId || dealId,
-        assignedToCognitoSub: activityToEdit?.assignedToCognitoSub,
+        assigneeCognitoSub: activityToEdit?.assigneeCognitoSub || '',        // ✅ 'assigneeCognitoSub'
       };
       reset(defaultValues);
     }
@@ -117,16 +122,14 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   // ============================================
   const { data: users, isLoading: isLoadingUsers } = useActiveUsers();
   const { data: deals, isLoading: isLoadingDeals } = useDealsByContact(
-    contactId!, // 1. El '!' le dice a TypeScript: "Confía en mí, no será nulo aquí"
+    contactId!,
     {
-      // 2. 'enabled' es la barrera de seguridad. La query solo se ejecuta si contactId es un número válido.
       enabled: !!contactId, 
     }
   );
 
   const { data: companyContacts, isLoading: isLoadingCompanyContacts } = useContactsByCompany(
     companyId,
-    // Solo ejecuta esta query si estamos en el contexto de una compañía y NO tenemos un contacto predefinido
     { enabled: !!companyId && !contactId } 
   );
 
@@ -135,7 +138,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   const dealOptions = useMemo(() => deals?.map(d => ({ value: d.id.toString(), label: d.title })) || [], [deals]);
 
   // ============================================
-  // HANDLERS
+  // ✅ CORRECCIÓN 3: HANDLERS con mapeo correcto
   // ============================================
   const handleFormSubmit = async (data: ActivityFormData) => {
     try {
@@ -146,23 +149,35 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
             return;
         }
 
+        // ✅ CORRECCIÓN CRÍTICA: Mapear campos correctamente para el backend
         const request: CreateActivityRequest = {
-          ...data,
-          contactId,
-          dealId,
-          companyId,
           type: data.type as ActivityType,
+          subject: data.subject,                    // ✅ Mapeo correcto
+          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto
+          description: data.description,
+          contactId: contactId,
+          dealId: data.dealId || dealId,
+          companyId: companyId,
+          assigneeCognitoSub: data.assigneeCognitoSub || undefined,  // ✅ Mapeo correcto
         };
+        
+        console.log('🚀 Enviando request de actividad:', request); // Debug log
         await createActivity(request, onSuccess);
+        
       } else if (activityToEdit) {
         const request: UpdateActivityRequest = {
-          ...data,
-          version: activityToEdit.version,
           type: data.type as ActivityType,
+          subject: data.subject,                    // ✅ Mapeo correcto
+          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto  
+          description: data.description,
+          dealId: data.dealId,
+          assigneeCognitoSub: data.assigneeCognitoSub || undefined, // ✅ Mapeo correcto
+          version: activityToEdit.version,
         };
         await updateActivity(activityToEdit.id, request, onSuccess);
       }
     } catch (error) {
+      console.error('❌ Error en handleFormSubmit:', error);
       handleError(error, `Error al ${mode === 'create' ? 'crear' : 'actualizar'} la actividad`);
     }
   };
@@ -227,19 +242,21 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
               )}
             />
 
+            {/* ✅ CORRECCIÓN 4: Campo scheduledAt con nombre correcto */}
             <Controller
-              name="activityDate"
+              name="scheduledAt"
               control={control}
               render={({ field }) => (
-                <FormField label="Fecha y Hora" name="activityDate" required error={errors.activityDate?.message}>
+                <FormField label="Fecha y Hora" name="scheduledAt" required error={errors.scheduledAt?.message}>
                   <Input type="datetime-local" {...field} />
                 </FormField>
               )}
             />
           </div>
 
-          <FormField label="Asunto" name="title" required error={errors.title?.message}>
-            <Input {...register('title')} placeholder="Ej: Llamada de seguimiento sobre propuesta" />
+          {/* ✅ CORRECCIÓN 5: Campo subject con nombre correcto */}
+          <FormField label="Asunto" name="subject" required error={errors.subject?.message}>
+            <Input {...register('subject')} placeholder="Ej: Llamada de seguimiento sobre propuesta" />
           </FormField>
 
           <FormField label="Descripción / Notas" name="description" error={errors.description?.message}>
@@ -269,11 +286,12 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
               )}
             />
 
+            {/* ✅ CORRECCIÓN 6: Campo assigneeCognitoSub con nombre correcto */}
             <Controller
-              name="assignedToCognitoSub"
+              name="assigneeCognitoSub"
               control={control}
               render={({ field }) => (
-                <FormField label="Asignado a (Opcional)" name="assignedToCognitoSub" icon={<User />} error={errors.assignedToCognitoSub?.message}>
+                <FormField label="Asignado a (Opcional)" name="assigneeCognitoSub" icon={<User />} error={errors.assigneeCognitoSub?.message}>
                   <Select
                     options={userOptions}
                     value={field.value || ''}
