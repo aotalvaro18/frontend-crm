@@ -132,6 +132,7 @@ export const usePipelineKanbanData = (pipelineId: number) => {
 
 /**
  * Hook para obtener deals de un contacto específico
+ * ✅ CORRECCIÓN QUIRÚRGICA: Manejo robusto de errores 403 con degradación elegante
  */
 export const useDealsByContact = (
     contactId: number,
@@ -147,49 +148,161 @@ export const useDealsByContact = (
   ) => {
     return useQuery({
       queryKey: DEALS_BY_CONTACT_QUERY_KEY(contactId),
-      // Esta función devuelve Promise<PageResponse<DealDTO>>
-      queryFn: () => dealApi.searchDeals({ contactId }, { page: 0, size: 100, sort: ['name,asc'] }),
+      // ✅ CORRECCIÓN: QueryFn con manejo robusto de permisos
+      queryFn: async () => {
+        try {
+          return await dealApi.searchDeals({ contactId }, { page: 0, size: 100, sort: ['name,asc'] });
+        } catch (error: any) {
+          // ✅ DEGRADACIÓN ELEGANTE: Si no tiene permisos, devolver estructura vacía
+          if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+            console.debug('🔒 No permissions for deals by contact, returning empty result', { contactId });
+            return {
+              content: [],
+              totalElements: 0,
+              totalPages: 0,
+              size: 100,
+              number: 0,
+              numberOfElements: 0,
+              first: true,
+              last: true,
+              empty: true
+            } as PageResponse<DealDTO>;
+          }
+          // ✅ OTROS ERRORES: Re-lanzar para manejo normal
+          throw error;
+        }
+      },
       
       // Esta función transforma PageResponse<DealDTO> en DealDTO[]
       select: (data) => data.content,
       
       enabled: !!contactId && contactId > 0,
+      
+      // ✅ RETRY STRATEGY: No reintentar errores de permisos
+      retry: (failureCount, error: any) => {
+        if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+          return false; // No reintentar errores de permisos
+        }
+        return failureCount < 2; // Reintentar otros errores hasta 2 veces
+      },
+      
       ...options,
     });
   };
 
 /**
  * Hook para obtener deals de una empresa específica
+ * ✅ APLICANDO MISMO PATRÓN: Manejo robusto de permisos
  */
 export const useDealsByCompany = (companyId: number) => {
   return useQuery({
     queryKey: DEALS_BY_COMPANY_QUERY_KEY(companyId),
-    queryFn: () => dealApi.searchDeals({ companyId }, { page: 0, size: 100, sort: ['name,asc'] }),
+    queryFn: async () => {
+      try {
+        return await dealApi.searchDeals({ companyId }, { page: 0, size: 100, sort: ['name,asc'] });
+      } catch (error: any) {
+        if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+          console.debug('🔒 No permissions for deals by company, returning empty result', { companyId });
+          return {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size: 100,
+            number: 0,
+            numberOfElements: 0,
+            first: true,
+            last: true,
+            empty: true
+          } as PageResponse<DealDTO>;
+        }
+        throw error;
+      }
+    },
     enabled: !!companyId && companyId > 0,
     select: (data: PageResponse<DealDTO>) => data.content,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };
 
 /**
  * Hook para obtener deals de una etapa específica
+ * ✅ APLICANDO MISMO PATRÓN: Manejo robusto de permisos
  */
 export const useDealsByStage = (stageId: number) => {
   return useQuery({
     queryKey: DEALS_BY_STAGE_QUERY_KEY(stageId),
-    queryFn: () => dealApi.searchDeals({ stageId }, { page: 0, size: 100, sort: ['name,asc'] }),
+    queryFn: async () => {
+      try {
+        return await dealApi.searchDeals({ stageId }, { page: 0, size: 100, sort: ['name,asc'] });
+      } catch (error: any) {
+        if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+          console.debug('🔒 No permissions for deals by stage, returning empty result', { stageId });
+          return {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size: 100,
+            number: 0,
+            numberOfElements: 0,
+            first: true,
+            last: true,
+            empty: true
+          } as PageResponse<DealDTO>;
+        }
+        throw error;
+      }
+    },
     enabled: !!stageId && stageId > 0,
     select: (data: PageResponse<DealDTO>) => data.content,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };
 
 /**
  * Hook para obtener deals de un pipeline específico
+ * ✅ APLICANDO MISMO PATRÓN: Manejo robusto de permisos
  */
 export const useDealsByPipeline = (pipelineId: number) => {
   return useQuery({
     queryKey: DEALS_BY_PIPELINE_QUERY_KEY(pipelineId),
-    queryFn: () => dealApi.searchDeals({ pipelineId }, { page: 0, size: 100, sort: ['name,asc'] }),
+    queryFn: async () => {
+      try {
+        return await dealApi.searchDeals({ pipelineId }, { page: 0, size: 100, sort: ['name,asc'] });
+      } catch (error: any) {
+        if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+          console.debug('🔒 No permissions for deals by pipeline, returning empty result', { pipelineId });
+          return {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size: 100,
+            number: 0,
+            numberOfElements: 0,
+            first: true,
+            last: true,
+            empty: true
+          } as PageResponse<DealDTO>;
+        }
+        throw error;
+      }
+    },
     enabled: !!pipelineId && pipelineId > 0,
     select: (data: PageResponse<DealDTO>) => data.content,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 403 || error?.code === 'ACCESS_DENIED') {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };

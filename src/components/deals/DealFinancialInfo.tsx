@@ -387,12 +387,12 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
               <span className="font-medium">Creado:</span>
               <br />
               <span className="text-app-gray-300">
-              {deal.ownerName || 'No asignado'}
+                {deal.createdAt ? formatters.dateTime(deal.createdAt) : 'No disponible'}
               </span>
               {deal.createdBy && (
                 <>
                   <br />
-                  <span className="text-app-gray-400">por {deal.createdBy}</span>
+                  <span className="text-app-gray-400">por {deal.ownerName || 'No asignado'}</span>
                 </>
               )}
             </div>
@@ -406,7 +406,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
               {deal.updatedBy && (
                 <>
                   <br />
-                  <span className="text-app-gray-400">por {deal.updatedBy}</span>
+                  <span className="text-app-gray-400">por {deal.ownerName || 'No asignado'}</span>
                 </>
               )}
             </div>
