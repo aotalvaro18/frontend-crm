@@ -229,7 +229,19 @@ export const serviceUserToUser = (serviceUser: ServiceUser): User => {
   // ✅ =============================================================
   // ✅ AÑADIR ESTE LOG DE DEPURACIÓN AQUÍ
   // (Justo después de crear el objeto y antes de devolverlo)
-  console.log('✅ CONVERTED FRONTEND USER OBJECT:', JSON.stringify(user, null, 2));
+  console.log('✅ CONVERTED FRONTEND USER 55 OBJECT:', JSON.stringify(user, null, 2));
+
+  // AGREGAR ESTE DEBUG AQUÍ:
+console.log('🔍 serviceUser 33 input:', {
+  id: serviceUser.id,
+  cognitoSub: serviceUser.cognitoSub,
+  email: serviceUser.email
+});
+console.log('🔍 converted user 33 output:', {
+  id: user.id,
+  cognitoSub: user.cognitoSub,
+  email: user.email
+});
   // ✅ =============================================================
 
   // 3. Devolvemos la variable que creamos

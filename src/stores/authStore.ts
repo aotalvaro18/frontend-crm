@@ -80,6 +80,7 @@ class AuthServiceClient {
       }
       
       const serviceUser: ServiceUser = await response.json();
+      console.log('🔍 RAW API 33 RESPONSE:', JSON.stringify(serviceUser, null, 2));
 
 // ✅ =============================================================
 // ✅ AÑADIR ESTE LOG DE DEPURACIÓN AQUÍ
