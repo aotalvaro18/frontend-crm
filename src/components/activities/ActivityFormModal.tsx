@@ -135,6 +135,18 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   // DATA FETCHING PARA SELECTS
   // ============================================
   const { data: users, isLoading: isLoadingUsers } = useActiveUsers();
+
+  // 🔍 DEBUG COGNITOSUB ISSUE
+console.group('🔍 COGNITO SUB DEBUG - ActivityFormModal');
+console.log('currentUser full object:', currentUser);
+console.log('currentUser.cognitoSub:', `"${currentUser?.cognitoSub}"`);
+console.log('currentUser.id:', `"${currentUser?.id}"`);
+console.log('Type of cognitoSub:', typeof currentUser?.cognitoSub);
+console.log('Is cognitoSub undefined?', currentUser?.cognitoSub === undefined);
+console.log('Is cognitoSub empty string?', currentUser?.cognitoSub === '');
+console.groupEnd();
+
+
   const { data: deals, isLoading: isLoadingDeals } = useDealsByContact(
     contactId!,
     {
@@ -149,6 +161,11 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 
   const activityTypeOptions = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({ value, label }));
   const userOptions = useMemo(() => users?.map(u => ({ value: u.cognitoSub, label: u.displayName || u.name || u.email })) || [], [users]);
+
+  // 🔍 DEBUG USER OPTIONS
+console.log('🔍 USER OPTIONS:', userOptions);
+console.log('🔍 USERS RAW DATA:', users);
+
   const dealOptions = useMemo(() => deals?.map(d => ({ value: d.id.toString(), label: d.title })) || [], [deals]);
 
   // ============================================
