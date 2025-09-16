@@ -337,7 +337,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
             {deal.ownerCognitoSub && (
               <div className="p-3 bg-app-dark-700 border border-app-dark-600 rounded-lg">
                 <h5 className="font-medium text-app-gray-300 mb-1">Propietario</h5>
-                <p className="text-sm text-app-gray-200">{deal.ownerName || 'No asignado'}</p>
+                <p className="text-sm text-app-gray-200">{deal.ownerCognitoSub}</p>
               </div>
             )}
           </div>
@@ -392,7 +392,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
               {deal.createdBy && (
                 <>
                   <br />
-                  <span className="text-app-gray-400">por {deal.ownerName || 'No asignado'}</span>
+                  <span className="text-app-gray-400">por {deal.createdBy}</span>
                 </>
               )}
             </div>
@@ -406,7 +406,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
               {deal.updatedBy && (
                 <>
                   <br />
-                  <span className="text-app-gray-400">por {deal.ownerName || 'No asignado'}</span>
+                  <span className="text-app-gray-400">por {deal.updatedBy}</span>
                 </>
               )}
             </div>

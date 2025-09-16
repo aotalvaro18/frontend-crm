@@ -24,6 +24,7 @@ import { useActiveUsers } from '@/hooks/useUsers';
 import { useDealsByContact } from '@/hooks/useDeals'; // Para el selector de deals
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useContactsByCompany } from '@/hooks/useContacts';
+import { useCurrentUser } from '@/stores/authStore';
 
 // ============================================
 // UI COMPONENTS
@@ -79,6 +80,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 }) => {
   const { createActivity, updateActivity, isCreating, isUpdating } = useActivityOperations();
   const { handleError } = useErrorHandler();
+  const currentUser = useCurrentUser();
 
   const mode = activityToEdit ? 'edit' : 'create';
   const isLoading = isCreating || (activityToEdit ? isUpdating(activityToEdit.id) : false);
@@ -138,7 +140,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   const dealOptions = useMemo(() => deals?.map(d => ({ value: d.id.toString(), label: d.title })) || [], [deals]);
 
   // ============================================
-  // ✅ CORRECCIÓN 3: HANDLERS con mapeo correcto
+  // ✅ CORRECCIÓN 3: HANDLERS con mapeo correcto y depuración
   // ============================================
   const handleFormSubmit = async (data: ActivityFormData) => {
     try {
@@ -149,36 +151,64 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
             return;
         }
 
-        // ✅ CORRECCIÓN CRÍTICA: Mapear campos correctamente para el backend
+        // V--- INICIO DEL BLOQUE DE DEPURACIÓN PRECISO ---V
+        console.groupCollapsed('🕵️‍♂️ DEBUG: handleFormSubmit (CREATE)');
+        console.log('%cDatos recibidos del formulario (data):', 'font-weight: bold; color: #f0f;', data);
+        console.log('%cUsuario actual (currentUser):', 'font-weight: bold; color: #f0f;', currentUser);
+        
+        if (!currentUser?.cognitoSub) {
+          console.error('❌ ERROR CRÍTICO: currentUser o currentUser.cognitoSub es nulo o undefined.');
+          console.groupEnd();
+          toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
+          return;
+        } else {
+          console.log('%cValor de currentUser.cognitoSub:', 'font-weight: bold; color: #f0f;', currentUser.cognitoSub);
+        }
+        // ^--- FIN DEL BLOQUE DE DEPURACIÓN ---^
+
         const request: CreateActivityRequest = {
           type: data.type as ActivityType,
-          subject: data.subject,                    // ✅ Mapeo correcto
-          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto
+          subject: data.subject,
+          scheduledAt: new Date(data.scheduledAt).toISOString(),
           description: data.description,
           contactId: contactId,
           dealId: data.dealId || dealId,
           companyId: companyId,
-          assigneeCognitoSub: data.assigneeCognitoSub || undefined,  // ✅ Mapeo correcto
+          assigneeCognitoSub: (data.assigneeCognitoSub && data.assigneeCognitoSub.length > 0)
+                        ? data.assigneeCognitoSub
+                        : currentUser.cognitoSub, // El '!' ya no es necesario por la guarda de arriba
         };
         
-        console.log('🚀 Enviando request de actividad:', request); // Debug log
+        console.log('🚀 Enviando request de actividad:', request);
+        console.groupEnd(); // Cierra el grupo de logs
         await createActivity(request, onSuccess);
         
       } else if (activityToEdit) {
+        // V--- BLOQUE DE DEPURACIÓN PARA UPDATE ---V
+        console.groupCollapsed('🕵️‍♂️ DEBUG: handleFormSubmit (UPDATE)');
+        console.log('%cDatos recibidos del formulario (data):', 'font-weight: bold; color: #f0f;', data);
+        console.log('%cActividad a editar (activityToEdit):', 'font-weight: bold; color: #f0f;', activityToEdit);
+        // ^-----------------------------------------^
+        
         const request: UpdateActivityRequest = {
           type: data.type as ActivityType,
-          subject: data.subject,                    // ✅ Mapeo correcto
-          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto  
+          subject: data.subject,
+          scheduledAt: new Date(data.scheduledAt).toISOString(),
           description: data.description,
           dealId: data.dealId,
-          assigneeCognitoSub: data.assigneeCognitoSub || undefined, // ✅ Mapeo correcto
+          // Mantiene el original si el campo se borra en el formulario, para evitar asignarlo a 'undefined'
+          assigneeCognitoSub: data.assigneeCognitoSub || activityToEdit.assigneeCognitoSub,
           version: activityToEdit.version,
         };
+
+        console.log('🚀 Enviando request de actualización:', request);
+        console.groupEnd();
         await updateActivity(activityToEdit.id, request, onSuccess);
       }
     } catch (error) {
       console.error('❌ Error en handleFormSubmit:', error);
       handleError(error, `Error al ${mode === 'create' ? 'crear' : 'actualizar'} la actividad`);
+      
     }
   };
 

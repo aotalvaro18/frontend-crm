@@ -272,7 +272,7 @@ import {
     dealId?: ID;
     
     // Asignación
-    assigneeCognitoSub?: CognitoSub;
+    assigneeCognitoSub: CognitoSub;
     
     // Metadata y campos adicionales
     metadata?: ActivityMetadata;
