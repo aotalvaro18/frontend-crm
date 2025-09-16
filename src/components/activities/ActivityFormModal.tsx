@@ -156,7 +156,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
         console.log('%cDatos recibidos del formulario (data):', 'font-weight: bold; color: #f0f;', data);
         console.log('%cUsuario actual (currentUser):', 'font-weight: bold; color: #f0f;', currentUser);
         
-        if (!currentUser?.cognitoSub) {
+        if (!currentUser?.id) {
           console.error('❌ ERROR CRÍTICO: currentUser o currentUser.cognitoSub es nulo o undefined.');
           console.groupEnd();
           toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
@@ -176,7 +176,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
           companyId: companyId,
           assigneeCognitoSub: (data.assigneeCognitoSub && data.assigneeCognitoSub.length > 0)
                         ? data.assigneeCognitoSub
-                        : currentUser.cognitoSub, // El '!' ya no es necesario por la guarda de arriba
+                        : currentUser.id,
         };
         
         console.log('🚀 Enviando request de actividad:', request);
