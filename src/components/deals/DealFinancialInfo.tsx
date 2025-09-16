@@ -337,7 +337,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
             {deal.ownerCognitoSub && (
               <div className="p-3 bg-app-dark-700 border border-app-dark-600 rounded-lg">
                 <h5 className="font-medium text-app-gray-300 mb-1">Propietario</h5>
-                <p className="text-sm text-app-gray-200">{deal.ownerCognitoSub}</p>
+                <p className="text-sm text-app-gray-200">{deal.ownerName || 'No asignado'}</p>
               </div>
             )}
           </div>
@@ -387,7 +387,7 @@ const DealFinancialInfo: React.FC<DealFinancialInfoProps> = ({ deal }) => {
               <span className="font-medium">Creado:</span>
               <br />
               <span className="text-app-gray-300">
-                {deal.createdAt ? formatters.dateTime(deal.createdAt) : 'No disponible'}
+              {deal.ownerName || 'No asignado'}
               </span>
               {deal.createdBy && (
                 <>
