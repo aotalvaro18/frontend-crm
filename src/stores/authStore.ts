@@ -485,15 +485,18 @@ export const useAuthStore = create<AuthStore>()(
       {
         name: 'auth-store',
         // ✅ Persist config optimizado
-        partialize: (state) => ({ 
-          isAuthenticated: state.isAuthenticated,
-          user: state.user ? {
-            id: state.user.id,
-            cognitoSub: state.user.cognitoSub,
-            email: state.user.email,
-            nombre: state.user.nombre,
-          } : null, // Solo persistir datos básicos del usuario
-        }),
+        partialize: (state) => { 
+          console.log('🔍 PERSIST 33 DEBUG - state.user:', state.user);
+          return {
+            isAuthenticated: state.isAuthenticated,
+            user: state.user ? {
+              id: state.user.id,
+              cognitoSub: state.user.cognitoSub,
+              email: state.user.email,
+              nombre: state.user.nombre,
+            } : null,
+          };
+        },
         version: 1, // ✅ Versioning para migrations futuras
       }
     ),
