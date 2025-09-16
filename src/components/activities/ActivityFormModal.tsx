@@ -188,7 +188,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
           companyId: companyId,
           assigneeCognitoSub: (data.assigneeCognitoSub && data.assigneeCognitoSub.length > 0)
                         ? data.assigneeCognitoSub
-                        : currentUser.id,
+                        : currentUser.cognitoSub || currentUser.id,
         };
         
         console.log('🚀 Enviando request de actividad:', request);
