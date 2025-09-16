@@ -35,6 +35,18 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+const formatScheduledAt = (dateTimeLocal: string): string => {
+  // Si ya tiene segundos, devolverlo tal como está
+  if (dateTimeLocal.includes(':') && dateTimeLocal.split(':').length === 3) {
+    return dateTimeLocal;
+  }
+  // Si no tiene segundos, agregarlos
+  return dateTimeLocal + ':00';
+};
+
+// ============================================
 // ✅ CORRECCIÓN 1: VALIDATION SCHEMA con nombres correctos del backend
 // ============================================
 const activityFormSchema = z.object({
@@ -169,7 +181,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
         const request: CreateActivityRequest = {
           type: data.type as ActivityType,
           subject: data.subject,
-          scheduledAt: data.scheduledAt,
+          scheduledAt: formatScheduledAt(data.scheduledAt),
           description: data.description,
           contactId: contactId,
           dealId: data.dealId || dealId,
@@ -193,7 +205,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
         const request: UpdateActivityRequest = {
           type: data.type as ActivityType,
           subject: data.subject,
-          scheduledAt: data.scheduledAt,
+          scheduledAt: formatScheduledAt(data.scheduledAt),
           description: data.description,
           dealId: data.dealId,
           // Mantiene el original si el campo se borra en el formulario, para evitar asignarlo a 'undefined'
