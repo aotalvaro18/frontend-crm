@@ -489,6 +489,7 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: state.isAuthenticated,
           user: state.user ? {
             id: state.user.id,
+            cognitoSub: state.user.cognitoSub,
             email: state.user.email,
             nombre: state.user.nombre,
           } : null, // Solo persistir datos básicos del usuario
