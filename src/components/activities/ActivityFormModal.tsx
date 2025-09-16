@@ -21,7 +21,6 @@ import { ACTIVITY_TYPE_LABELS, DEFAULT_ACTIVITY_TYPE } from '@/types/activity.ty
 // ============================================
 import { useActivityOperations } from '@/hooks/useActivities';
 import { useActiveUsers } from '@/hooks/useUsers';
-import { useCurrentUser } from '@/stores/authStore';
 import { useDealsByContact } from '@/hooks/useDeals'; // Para el selector de deals
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useContactsByCompany } from '@/hooks/useContacts';
@@ -80,7 +79,6 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 }) => {
   const { createActivity, updateActivity, isCreating, isUpdating } = useActivityOperations();
   const { handleError } = useErrorHandler();
-  const currentUser = useCurrentUser(); // <-- LLAMA AL HOOK PARA OBTENER AL USUARIO LOGUEADO
 
   const mode = activityToEdit ? 'edit' : 'create';
   const isLoading = isCreating || (activityToEdit ? isUpdating(activityToEdit.id) : false);
@@ -142,75 +140,47 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   // ============================================
   // ✅ CORRECCIÓN 3: HANDLERS con mapeo correcto
   // ============================================
-  // ✅ CORRECCIÓN CRÍTICA: Debug del handleFormSubmit para identificar el problema
+  const handleFormSubmit = async (data: ActivityFormData) => {
+    try {
+      if (mode === 'create') {
+        // Validación: Al menos uno de los IDs de contexto debe estar presente
+        if (!contactId && !dealId && !companyId) {
+            toast.error("No se puede crear una actividad sin un contexto (Contacto, Oportunidad o Empresa).");
+            return;
+        }
 
-const handleFormSubmit = async (data: ActivityFormData) => {
-  try {
-    if (mode === 'create') {
-      // Validación: Al menos uno de los IDs de contexto debe estar presente
-      if (!contactId && !dealId && !companyId) {
-          toast.error("No se puede crear una actividad sin un contexto (Contacto, Oportunidad o Empresa).");
-          return;
+        // ✅ CORRECCIÓN CRÍTICA: Mapear campos correctamente para el backend
+        const request: CreateActivityRequest = {
+          type: data.type as ActivityType,
+          subject: data.subject,                    // ✅ Mapeo correcto
+          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto
+          description: data.description,
+          contactId: contactId,
+          dealId: data.dealId || dealId,
+          companyId: companyId,
+          assigneeCognitoSub: data.assigneeCognitoSub || undefined,  // ✅ Mapeo correcto
+        };
+        
+        console.log('🚀 Enviando request de actividad:', request); // Debug log
+        await createActivity(request, onSuccess);
+        
+      } else if (activityToEdit) {
+        const request: UpdateActivityRequest = {
+          type: data.type as ActivityType,
+          subject: data.subject,                    // ✅ Mapeo correcto
+          scheduledAt: data.scheduledAt,            // ✅ Mapeo correcto  
+          description: data.description,
+          dealId: data.dealId,
+          assigneeCognitoSub: data.assigneeCognitoSub || undefined, // ✅ Mapeo correcto
+          version: activityToEdit.version,
+        };
+        await updateActivity(activityToEdit.id, request, onSuccess);
       }
-
-      // ✅ VALIDACIÓN DEL USUARIO ACTUAL
-      if (!currentUser?.cognitoSub) {
-          console.error('❌ Usuario actual no disponible:', currentUser);
-          toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
-          return;
-      }
-
-      // ✅ CORRECCIÓN CRÍTICA: Formatear scheduledAt como ISO string para el backend
-      const scheduledAtISO = new Date(data.scheduledAt).toISOString();
-
-      const request: CreateActivityRequest = {
-        type: data.type as ActivityType,
-        subject: data.subject,
-        scheduledAt: scheduledAtISO,  // ✅ Formato ISO correcto
-        description: data.description || '',  // ✅ Asegurar que no sea undefined
-        contactId: contactId,
-        dealId: data.dealId || dealId,
-        companyId: companyId,
-        assigneeCognitoSub: data.assigneeCognitoSub || currentUser.cognitoSub,
-      };
-      
-      // ✅ DEBUG LOGGING COMPLETO
-      console.log('🔍 DEBUGGING ACTIVITY REQUEST:');
-      console.log('📊 Form Data Original:', data);
-      console.log('👤 Current User:', currentUser);
-      console.log('📝 Request Final:', request);
-      console.log('🕐 ScheduledAt Original:', data.scheduledAt);
-      console.log('🕐 ScheduledAt ISO:', scheduledAtISO);
-      console.log('📋 Context IDs:', { contactId, dealId, companyId });
-      
-      await createActivity(request, onSuccess);
-      
-    } else if (activityToEdit) {
-      const scheduledAtISO = new Date(data.scheduledAt).toISOString();
-      
-      const request: UpdateActivityRequest = {
-        type: data.type as ActivityType,
-        subject: data.subject,
-        scheduledAt: scheduledAtISO,
-        description: data.description || '',
-        dealId: data.dealId,
-        assigneeCognitoSub: data.assigneeCognitoSub || currentUser?.cognitoSub,
-        version: activityToEdit.version,
-      };
-      
-      console.log('🔍 UPDATE REQUEST:', request);
-      await updateActivity(activityToEdit.id, request, onSuccess);
+    } catch (error) {
+      console.error('❌ Error en handleFormSubmit:', error);
+      handleError(error, `Error al ${mode === 'create' ? 'crear' : 'actualizar'} la actividad`);
     }
-  } catch (error) {
-    console.error('❌ Error en handleFormSubmit:', error);
-    console.error('❌ Error details:', {
-      message: (error as any)?.message || 'Sin mensaje',
-      status: (error as any)?.status || 'Sin status',
-      response: (error as any)?.response?.data || 'Sin response'
-    });
-    handleError(error, `Error al ${mode === 'create' ? 'crear' : 'actualizar'} la actividad`);
-  }
-};
+  };
 
   if (!isOpen) return null;
 
