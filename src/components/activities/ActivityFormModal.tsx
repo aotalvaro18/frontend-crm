@@ -142,40 +142,75 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   // ============================================
   // ✅ CORRECCIÓN 3: HANDLERS con mapeo correcto
   // ============================================
-  const handleFormSubmit = async (data: ActivityFormData) => {
-    try {
-      if (mode === 'create') {
-        // ... (tu validación de contexto)
+  // ✅ CORRECCIÓN CRÍTICA: Debug del handleFormSubmit para identificar el problema
 
-        // ✅ LÓGICA CORREGIDA Y VALIDADA
-        if (!currentUser?.cognitoSub) {
-            toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
-            return;
-        }
-
-        const request: CreateActivityRequest = {
-          type: data.type as ActivityType,
-          subject: data.subject,
-          scheduledAt: data.scheduledAt,
-          description: data.description,
-          contactId: contactId,
-          dealId: data.dealId || dealId,
-          companyId: companyId,
-          // Si el usuario no seleccionó a nadie en el dropdown (data.assigneeCognitoSub es vacío/null),
-          // usa el cognitoSub del usuario actual como valor por defecto.
-          assigneeCognitoSub: data.assigneeCognitoSub || currentUser.cognitoSub,
-        };
-        
-        console.log('🚀 Enviando request de actividad:', request);
-        await createActivity(request, onSuccess);
-        
-      } else if (activityToEdit) {
-        // ... Lógica de update ...
+const handleFormSubmit = async (data: ActivityFormData) => {
+  try {
+    if (mode === 'create') {
+      // Validación: Al menos uno de los IDs de contexto debe estar presente
+      if (!contactId && !dealId && !companyId) {
+          toast.error("No se puede crear una actividad sin un contexto (Contacto, Oportunidad o Empresa).");
+          return;
       }
-    } catch (error) {
-      // ... Manejo de error ...
+
+      // ✅ VALIDACIÓN DEL USUARIO ACTUAL
+      if (!currentUser?.cognitoSub) {
+          console.error('❌ Usuario actual no disponible:', currentUser);
+          toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
+          return;
+      }
+
+      // ✅ CORRECCIÓN CRÍTICA: Formatear scheduledAt como ISO string para el backend
+      const scheduledAtISO = new Date(data.scheduledAt).toISOString();
+
+      const request: CreateActivityRequest = {
+        type: data.type as ActivityType,
+        subject: data.subject,
+        scheduledAt: scheduledAtISO,  // ✅ Formato ISO correcto
+        description: data.description || '',  // ✅ Asegurar que no sea undefined
+        contactId: contactId,
+        dealId: data.dealId || dealId,
+        companyId: companyId,
+        assigneeCognitoSub: data.assigneeCognitoSub || currentUser.cognitoSub,
+      };
+      
+      // ✅ DEBUG LOGGING COMPLETO
+      console.log('🔍 DEBUGGING ACTIVITY REQUEST:');
+      console.log('📊 Form Data Original:', data);
+      console.log('👤 Current User:', currentUser);
+      console.log('📝 Request Final:', request);
+      console.log('🕐 ScheduledAt Original:', data.scheduledAt);
+      console.log('🕐 ScheduledAt ISO:', scheduledAtISO);
+      console.log('📋 Context IDs:', { contactId, dealId, companyId });
+      
+      await createActivity(request, onSuccess);
+      
+    } else if (activityToEdit) {
+      const scheduledAtISO = new Date(data.scheduledAt).toISOString();
+      
+      const request: UpdateActivityRequest = {
+        type: data.type as ActivityType,
+        subject: data.subject,
+        scheduledAt: scheduledAtISO,
+        description: data.description || '',
+        dealId: data.dealId,
+        assigneeCognitoSub: data.assigneeCognitoSub || currentUser?.cognitoSub,
+        version: activityToEdit.version,
+      };
+      
+      console.log('🔍 UPDATE REQUEST:', request);
+      await updateActivity(activityToEdit.id, request, onSuccess);
     }
-  };
+  } catch (error) {
+    console.error('❌ Error en handleFormSubmit:', error);
+    console.error('❌ Error details:', {
+      message: (error as any)?.message || 'Sin mensaje',
+      status: (error as any)?.status || 'Sin status',
+      response: (error as any)?.response?.data || 'Sin response'
+    });
+    handleError(error, `Error al ${mode === 'create' ? 'crear' : 'actualizar'} la actividad`);
+  }
+};
 
   if (!isOpen) return null;
 
