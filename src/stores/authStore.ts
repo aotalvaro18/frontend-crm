@@ -41,7 +41,7 @@ console.log('🆘 EMERGENCY DEBUG: Code version check');
 // ============================================
 
 class AuthServiceClient {
-  private baseURL: string;
+  public baseURL: string;
 
   constructor() {
     console.log('🆘 EMERGENCY: AuthServiceClient constructor called');
@@ -250,6 +250,9 @@ export const useAuthStore = create<AuthStore>()(
           }
           
           set({ isLoadingProfile: true, error: null });
+
+          console.log('🔍 LOADING PROFILE - cognitoSession:', cognitoSession);
+          console.log('🔍 LOADING PROFILE - baseURL:', authServiceClient.baseURL);
           
           try {
             authLogger.info('Loading user profile from auth-service');
@@ -258,6 +261,8 @@ export const useAuthStore = create<AuthStore>()(
             let userProfile = await authServiceClient.getCurrentUserFromService(
               cognitoSession.accessToken
             );
+
+            console.log('🔍 AUTH SERVICE RESULT:', userProfile);
             
             // Fallback to Cognito data
             if (!userProfile) {
