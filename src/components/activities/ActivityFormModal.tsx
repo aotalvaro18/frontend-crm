@@ -88,6 +88,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   contactId,
   dealId,
   companyId,
+  assigneeCognitoSub,
   activityToEdit,
 }) => {
   const { createActivity, updateActivity, isCreating, isUpdating } = useActivityOperations();
@@ -124,11 +125,11 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
         description: activityToEdit?.description || '',
         contactId: contactId,
         dealId: activityToEdit?.dealId || dealId,
-        assigneeCognitoSub: activityToEdit?.assigneeCognitoSub || '',        // ✅ 'assigneeCognitoSub'
+        assigneeCognitoSub: activityToEdit?.assigneeCognitoSub || assigneeCognitoSub || '',        // ✅ 'assigneeCognitoSub'
       };
       reset(defaultValues);
     }
-  }, [isOpen, activityToEdit, contactId, dealId, reset]);
+  }, [isOpen, activityToEdit, contactId, dealId, assigneeCognitoSub, reset]);
 
   // ============================================
   // DATA FETCHING PARA SELECTS
