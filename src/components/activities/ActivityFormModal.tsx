@@ -72,6 +72,7 @@ interface ActivityFormModalProps {
   contactId?: number;
   dealId?: number;
   companyId?: number;
+  assigneeCognitoSub?: string;
   
   // Para modo edición
   activityToEdit?: ActivityDTO | null;

@@ -61,6 +61,7 @@ import { es } from 'date-fns/locale';
 // ============================================
 interface DealActivityTimelineProps {
   dealId: number;
+  ownerCognitoSub?: string;
   className?: string;
 }
 
@@ -320,7 +321,8 @@ const ActivityItem: React.FC<ActivityItemProps> = ({
 // MAIN COMPONENT (Siguiendo patrón Companies)
 // ============================================
 const DealActivityTimeline: React.FC<DealActivityTimelineProps> = ({ 
-  dealId, 
+  dealId,
+  ownerCognitoSub, 
   className 
 }) => {
   const { handleError } = useErrorHandler();

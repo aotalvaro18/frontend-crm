@@ -31,6 +31,7 @@ import DealPipelineInfo from '@/components/deals/DealPipelineInfo';
 import DealFinancialInfo from '@/components/deals/DealFinancialInfo';
 import DealActivityTimeline from '@/components/deals/DealActivityTimeline';
 import EditDealModal from '@/components/deals/EditDealModal';
+import ActivityFormModal from '@/components/activities/ActivityFormModal';
 
 // ============================================
 // MAIN COMPONENT
@@ -48,6 +49,7 @@ const DealDetailPage: React.FC = () => {
   const [showCloseWonDialog, setShowCloseWonDialog] = useState(false);
   const [showCloseLostDialog, setShowCloseLostDialog] = useState(false);
   const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   // ============================================
   // DATA FETCHING - ✅ Usando 'dealData' para evitar conflicto de nombres
@@ -205,24 +207,27 @@ const DealDetailPage: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             <DealBasicInfo deal={dealData} />
             <DealContactInfo deal={dealData} />
-            <DealActivityTimeline dealId={dealData.id} />
+            <DealActivityTimeline 
+              dealId={dealData.id} 
+              ownerCognitoSub={dealData.ownerCognitoSub}
+            />
           </div>
           <div className="space-y-6">
           <DealPipelineInfo 
-  deal={dealData}
-  kanbanData={kanbanData}
-  isOperationInProgress={
-    isUpdating(dealData.id) || 
-    isDeleting(dealData.id) || 
-    isClosingWon(dealData.id) || 
-    isClosingLost(dealData.id) || 
-    isReopening(dealData.id)
-  }
-  onStageMove={handleStageMove}
-  onCloseWon={() => setShowCloseWonDialog(true)}
-  onCloseLost={() => setShowCloseLostDialog(true)}
-  onReopen={() => setShowReopenDialog(true)}
-/>
+              deal={dealData}
+              kanbanData={kanbanData}
+              isOperationInProgress={
+                isUpdating(dealData.id) || 
+                isDeleting(dealData.id) || 
+                isClosingWon(dealData.id) || 
+                isClosingLost(dealData.id) || 
+                isReopening(dealData.id)
+              }
+              onStageMove={handleStageMove}
+              onCloseWon={() => setShowCloseWonDialog(true)}
+              onCloseLost={() => setShowCloseLostDialog(true)}
+              onReopen={() => setShowReopenDialog(true)}
+            />
             <DealFinancialInfo deal={dealData} />
           </div>
         </div>
@@ -282,6 +287,25 @@ const DealDetailPage: React.FC = () => {
         confirmLabel="Sí, reabrir"
         isConfirming={isReopening(dealData.id)}
         variant="default"
+      />
+
+      {/* ============================================ */}
+      {/* MODAL DE NUEVA ACTIVIDAD */}
+      {/* ============================================ */}
+      <ActivityFormModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        onSuccess={() => {
+          toastSuccess('Actividad creada exitosamente.');
+          setShowActivityModal(false);
+          // Opcional: Refrescar el timeline de actividades si no lo hace automáticamente.
+        }}
+        // Pasamos los datos del deal al modal
+        contactId={dealData.contactId}
+        dealId={dealData.id}
+        companyId={dealData.companyId}
+        // Pasamos el dueño del deal como el asignado por defecto
+        assigneeCognitoSub={dealData.ownerCognitoSub}
       />
     </Page>
   );
