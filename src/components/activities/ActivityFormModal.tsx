@@ -24,7 +24,6 @@ import { useActiveUsers } from '@/hooks/useUsers';
 import { useDealsByContact } from '@/hooks/useDeals'; // Para el selector de deals
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useContactsByCompany } from '@/hooks/useContacts';
-import { useCurrentUser } from '@/stores/authStore';
 
 // ============================================
 // UI COMPONENTS
@@ -92,8 +91,7 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
 }) => {
   const { createActivity, updateActivity, isCreating, isUpdating } = useActivityOperations();
   const { handleError } = useErrorHandler();
-  const currentUser = useCurrentUser();
-
+  
   const mode = activityToEdit ? 'edit' : 'create';
   const isLoading = isCreating || (activityToEdit ? isUpdating(activityToEdit.id) : false);
 
@@ -136,17 +134,6 @@ const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
   // ============================================
   const { data: users, isLoading: isLoadingUsers } = useActiveUsers();
 
-  // 🔍 DEBUG COGNITOSUB ISSUE
-console.group('🔍 COGNITO SUB DEBUG - ActivityFormModal');
-console.log('currentUser full object:', currentUser);
-console.log('currentUser.cognitoSub:', `"${currentUser?.cognitoSub}"`);
-console.log('currentUser.id:', `"${currentUser?.id}"`);
-console.log('Type of cognitoSub:', typeof currentUser?.cognitoSub);
-console.log('Is cognitoSub undefined?', currentUser?.cognitoSub === undefined);
-console.log('Is cognitoSub empty string?', currentUser?.cognitoSub === '');
-console.groupEnd();
-
-
   const { data: deals, isLoading: isLoadingDeals } = useDealsByContact(
     contactId!,
     {
@@ -162,10 +149,6 @@ console.groupEnd();
   const activityTypeOptions = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({ value, label }));
   const userOptions = useMemo(() => users?.map(u => ({ value: u.cognitoSub, label: u.displayName || u.name || u.email })) || [], [users]);
 
-  // 🔍 DEBUG USER OPTIONS
-console.log('🔍 USER OPTIONS:', userOptions);
-console.log('🔍 USERS RAW DATA:', users);
-
   const dealOptions = useMemo(() => deals?.map(d => ({ value: d.id.toString(), label: d.title })) || [], [deals]);
 
   // ============================================
@@ -174,27 +157,13 @@ console.log('🔍 USERS RAW DATA:', users);
   const handleFormSubmit = async (data: ActivityFormData) => {
     try {
       if (mode === 'create') {
-        // Validación: Al menos uno de los IDs de contexto debe estar presente
+        // Validación de contexto en el frontend (esto está bien)
         if (!contactId && !dealId && !companyId) {
             toast.error("No se puede crear una actividad sin un contexto (Contacto, Oportunidad o Empresa).");
             return;
         }
 
-        // V--- INICIO DEL BLOQUE DE DEPURACIÓN PRECISO ---V
-        console.groupCollapsed('🕵️‍♂️ DEBUG: handleFormSubmit (CREATE)');
-        console.log('%cDatos recibidos del formulario (data):', 'font-weight: bold; color: #f0f;', data);
-        console.log('%cUsuario actual (currentUser):', 'font-weight: bold; color: #f0f;', currentUser);
-        
-        if (!currentUser?.id) {
-          console.error('❌ ERROR CRÍTICO: currentUser o currentUser.cognitoSub es nulo o undefined.');
-          console.groupEnd();
-          toast.error("No se pudo identificar al usuario actual. Por favor, inicia sesión de nuevo.");
-          return;
-        } else {
-          console.log('%cValor de currentUser.cognitoSub:', 'font-weight: bold; color: #f0f;', currentUser.cognitoSub);
-        }
-        // ^--- FIN DEL BLOQUE DE DEPURACIÓN ---^
-
+        // ✅ LÓGICA SIMPLIFICADA: El frontend solo envía lo que el usuario ingresó.
         const request: CreateActivityRequest = {
           type: data.type as ActivityType,
           subject: data.subject,
@@ -203,35 +172,29 @@ console.log('🔍 USERS RAW DATA:', users);
           contactId: contactId,
           dealId: data.dealId || dealId,
           companyId: companyId,
-          assigneeCognitoSub: (data.assigneeCognitoSub && data.assigneeCognitoSub.length > 0)
-                        ? data.assigneeCognitoSub
-                        : currentUser.cognitoSub || currentUser.id,
+          // Si el usuario no seleccionó a nadie, 'data.assigneeCognitoSub' será '' o undefined.
+          // El backend se encargará de asignarlo al usuario actual.
+          assigneeCognitoSub: data.assigneeCognitoSub,
         };
         
-        console.log('🚀 Enviando request de actividad:', request);
-        console.groupEnd(); // Cierra el grupo de logs
+        console.log('🚀 Enviando request de actividad (versión simplificada):', request);
         await createActivity(request, onSuccess);
         
       } else if (activityToEdit) {
-        // V--- BLOQUE DE DEPURACIÓN PARA UPDATE ---V
-        console.groupCollapsed('🕵️‍♂️ DEBUG: handleFormSubmit (UPDATE)');
-        console.log('%cDatos recibidos del formulario (data):', 'font-weight: bold; color: #f0f;', data);
-        console.log('%cActividad a editar (activityToEdit):', 'font-weight: bold; color: #f0f;', activityToEdit);
-        // ^-----------------------------------------^
-        
+        // La lógica de update también se simplifica
         const request: UpdateActivityRequest = {
           type: data.type as ActivityType,
           subject: data.subject,
           scheduledAt: formatScheduledAt(data.scheduledAt),
           description: data.description,
           dealId: data.dealId,
-          // Mantiene el original si el campo se borra en el formulario, para evitar asignarlo a 'undefined'
-          assigneeCognitoSub: data.assigneeCognitoSub || activityToEdit.assigneeCognitoSub,
+          // Si el usuario borra el campo, se enviará '' o undefined.
+          // El backend decidirá si mantener el original o reasignar.
+          assigneeCognitoSub: data.assigneeCognitoSub,
           version: activityToEdit.version,
         };
 
-        console.log('🚀 Enviando request de actualización:', request);
-        console.groupEnd();
+        console.log('🚀 Enviando request de actualización (versión simplificada):', request);
         await updateActivity(activityToEdit.id, request, onSuccess);
       }
     } catch (error) {
