@@ -555,49 +555,13 @@ const PipelineListPage: React.FC = () => {
             </div>
           </div>
 
-          {/* TODO: Aquí irá el DealKanbanView cuando lo creemos */}
-          <div className="text-center py-16 border-2 border-dashed border-app-dark-600 rounded-lg">
-            <BarChart3 className="h-16 w-16 text-app-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-app-gray-100 mb-2">
-              Vista Kanban en Desarrollo
-            </h3>
-            <p className="text-app-gray-400 mb-6">
-              El componente DealKanbanView se integrará aquí para mostrar las oportunidades fluyendo por las etapas del pipeline.
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <Button variant="outline" onClick={handleCreateNewDeal}>
-                <Plus className="h-4 w-4" />
-                Crear Nueva Oportunidad
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/settings/pipelines')}>
-                <Settings className="h-4 w-4" />
-                Configurar Pipelines
-              </Button>
-            </div>
-
-            {/* Preview de las etapas */}
-            {currentPipeline.stages && currentPipeline.stages.length > 0 && (
-              <div className="mt-8">
-                <p className="text-sm text-app-gray-500 mb-4">
-                  Etapas de este pipeline:
-                </p>
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  {currentPipeline.stages
-                    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-                    .map((stage, index) => (
-                      <Badge 
-                        key={stage.id}
-                        variant="outline" 
-                        className="text-xs"
-                      >
-                        {index + 1}. {stage.name}
-                      </Badge>
-                    ))
-                  }
-                </div>
-              </div>
-            )}
-          </div>
+          {/* ============================================ */}
+          {/* DEAL KANBAN VIEW - COMPONENTE REAL */}
+          {/* ============================================ */}
+          <DealKanbanView 
+            pipeline={currentPipeline}
+            searchTerm={debouncedSearchTerm}
+          />
         </div>
       )}
 
