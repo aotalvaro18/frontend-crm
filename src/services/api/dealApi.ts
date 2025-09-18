@@ -173,7 +173,12 @@ export class DealApiService {
    */
   async getDealById(id: number): Promise<DealDTO> {
     try {
-      return await apiClient.get<DealDTO>(API_ENDPOINTS.DEAL_BY_ID(id));
+      console.log('🔍 Llamando a:', API_ENDPOINTS.DEAL_BY_ID(id));
+      const result = await apiClient.get<DealDTO>(API_ENDPOINTS.DEAL_BY_ID(id));
+      console.log('🔍 Respuesta recibida:', result);
+      console.log('🔍 Tiene title?:', result.title);
+      console.log('🔍 Tiene type?:', result.type);
+      return result;
     } catch (error: unknown) {
       this.handleDealError(error, id);
       throw error;
