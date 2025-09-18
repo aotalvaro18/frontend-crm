@@ -111,10 +111,12 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     return kanbanData.pipeline.stages.map(stage => ({
       ...stage,
       deals: (stage.deals || []).filter(deal => 
-        deal.title?.toLowerCase().includes(searchLower) ||
-        deal.description?.toLowerCase().includes(searchLower) ||
-        deal.contactName?.toLowerCase().includes(searchLower) ||
-        deal.companyName?.toLowerCase().includes(searchLower)
+        deal && deal.title && (
+          deal.title?.toLowerCase().includes(searchLower) ||
+          deal.description?.toLowerCase().includes(searchLower) ||
+          deal.contactName?.toLowerCase().includes(searchLower) ||
+          deal.companyName?.toLowerCase().includes(searchLower)
+        )
       )
     }));
   }, [kanbanData?.pipeline?.stages, searchTerm]);
@@ -134,10 +136,10 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     }
     
     const stage = filteredStages.find(s => 
-      s.deals && Array.isArray(s.deals) && s.deals.some(d => d.id === dealId)
+      s.deals && Array.isArray(s.deals) && s.deals.some(d => d && d.id === dealId)
     );
     if (stage) {
-      const deal = stage.deals.find(d => d.id === dealId);
+      const deal = stage.deals.find(d => d && d.id === dealId);
       if (deal) {
         setActiveDragData({
           deal,
@@ -325,11 +327,11 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
                 </div>
               </div>
 
-              {/* Lista de Deals - DROPPABLE ZONE */}
+              {/* Lista de Deals - DROPPABLE ZONE - CON VALIDACIONES DEFENSIVAS */}
               <SortableContext 
-                items={(stage.deals || []).map(d => d.id)}
+                items={(stage.deals || []).map(d => d?.id).filter(id => id !== undefined)}
                 strategy={verticalListSortingStrategy}
-                id={stage.stageId.toString()}
+                id={stage.stageId?.toString() || 'unknown'}
               >
                 <div 
                   className="min-h-[200px] space-y-3"
@@ -341,7 +343,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
                       onCreateDeal={() => handleCreateDeal(stage.stageId)}
                     />
                   ) : (
-                    (stage.deals || []).map((deal) => (
+                    (stage.deals || []).filter(deal => deal && deal.id).map((deal) => (
                       <DealCard
                         key={deal.id}
                         deal={deal}
