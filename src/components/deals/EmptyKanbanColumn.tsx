@@ -1,6 +1,6 @@
 // src/components/deals/EmptyKanbanColumn.tsx
 // ✅ EMPTY KANBAN COLUMN - Estado vacío para columnas sin deals
-// Mobile-first + Call-to-action + Ilustración
+// 🔧 CORREGIDO: Validación defensiva para stageName
 
 import React from 'react';
 import { Plus, Target, Lightbulb } from 'lucide-react';
@@ -37,9 +37,18 @@ export const EmptyKanbanColumn: React.FC<EmptyKanbanColumnProps> = ({
   showTips = true,
 }) => {
   // ============================================
-  // TIPS DINÁMICOS POR ETAPA
+  // TIPS DINÁMICOS POR ETAPA - CON VALIDACIÓN DEFENSIVA
   // ============================================
   const getTipsForStage = (stageName: string): string[] => {
+    // ✅ VALIDACIÓN DEFENSIVA: Verificar que stageName existe y es string
+    if (!stageName || typeof stageName !== 'string') {
+      return [
+        'Crea una nueva oportunidad',
+        'Mueve deals desde otras etapas',
+        'Importa desde hojas de cálculo'
+      ];
+    }
+    
     const lowerStageName = stageName.toLowerCase();
     
     if (lowerStageName.includes('lead') || lowerStageName.includes('prospecto')) {
@@ -83,6 +92,9 @@ export const EmptyKanbanColumn: React.FC<EmptyKanbanColumnProps> = ({
   };
 
   const tips = getTipsForStage(stageName);
+  
+  // ✅ VALIDACIÓN DEFENSIVA: Fallback para stageName
+  const displayStageName = stageName || 'esta etapa';
 
   // ============================================
   // RENDER
@@ -108,7 +120,7 @@ export const EmptyKanbanColumn: React.FC<EmptyKanbanColumnProps> = ({
 
       {/* Título */}
       <h3 className="text-sm font-medium text-app-gray-300 mb-2">
-        Sin oportunidades en "{stageName}"
+        Sin oportunidades en "{displayStageName}"
       </h3>
 
       {/* Descripción */}

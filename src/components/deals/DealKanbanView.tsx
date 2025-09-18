@@ -339,7 +339,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
                 >
                   {(stage.deals || []).length === 0 ? (
                     <EmptyKanbanColumn 
-                      stageName={stage.stageName}
+                    stageName={stage.stageName || 'Etapa'}
                       onCreateDeal={() => handleCreateDeal(stage.stageId)}
                     />
                   ) : (
