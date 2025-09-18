@@ -161,13 +161,8 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       select: (data) => data.content,
     });
 
-    // ✅ CAMBIO QUIRÚRGICO: Esta query fue removida porque ContactSelector maneja su propia búsqueda
-    // const { data: contacts, isLoading: isLoadingContacts } = useQuery({
-    //   queryKey: ['contactsForSelect'],
-    //   queryFn: () => contactApi.searchContacts({ status: 'ACTIVE' }, { page: 0, size: 100, sort: ['name,asc'] }),
-    //   select: (data) => data.content,
-    // });
-
+    {/* COMENTAR TEMPORALMENTE PARA PROBAR HERENCIA AUTOMÁTICA: Se guarda la empresa
+      desde el Backend con la misma empresa del contact
     const { data: companies, isLoading: isLoadingCompanies } = useQuery({
         queryKey: ['companiesForSelect'],
         queryFn: () => companyApi.searchCompanies(
@@ -176,7 +171,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
         ),
         select: (data) => data.content,
       });
-    
+    */}
     const stageOptions = useMemo(() => {
       if (!selectedPipelineId || !pipelines) return [];
       const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
@@ -307,6 +302,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
             )}
           />
 
+          {/* COMENTAR TEMPORALMENTE PARA PROBAR HERENCIA AUTOMÁTICA:
           <Controller
             name="companyId"
             control={control}
@@ -323,6 +319,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
               </FormField>
             )}
           />
+          */}
         </div>
         
         {/* --- SECCIÓN ADICIONAL - Sin cambios --- */}
