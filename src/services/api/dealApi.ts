@@ -173,7 +173,7 @@ export class DealApiService {
    */
   async getDealById(id: number): Promise<DealDTO> {
     try {
-      return await apiClient.get<DealDTO>(`${API_ENDPOINTS.DEALS}/${id}`);
+      return await apiClient.get<DealDTO>(API_ENDPOINTS.DEAL_BY_ID(id));
     } catch (error: unknown) {
       this.handleDealError(error, id);
       throw error;
