@@ -1,6 +1,7 @@
 // src/components/deals/DealKanbanView.tsx
 // ✅ EL CORAZÓN DE LA FUNCIONALIDAD KANBAN
 // Componente responsable del tablero Kanban y manejo de Drag & Drop
+// 🔧 ACTUALIZADO: Con validaciones defensivas para evitar crashes
 
 import React, { useMemo, useCallback } from 'react';
 import {
@@ -62,6 +63,10 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     refetch 
   } = usePipelineKanbanData(pipeline.id);
 
+  // DEBUG: Logging temporal para diagnosticar errores
+  console.log('Debug kanbanData:', kanbanData);
+  console.log('Debug pipeline stages:', kanbanData?.pipeline?.stages);
+
   // ============================================
   // ACTIONS - Para el Drag & Drop
   // ============================================
@@ -73,7 +78,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Mínima distancia para activar drag
+        distance: 8,
       },
     }),
     useSensor(MouseSensor, {
@@ -90,10 +95,13 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   );
 
   // ============================================
-  // FILTERED DEALS (Por término de búsqueda)
+  // FILTERED DEALS (Por término de búsqueda) - CON VALIDACIÓN DEFENSIVA
   // ============================================
   const filteredStages = useMemo(() => {
-    if (!kanbanData?.pipeline?.stages) return [];
+    // ✅ VALIDACIÓN DEFENSIVA: Evita crashes por datos undefined
+    if (!kanbanData?.pipeline?.stages || !Array.isArray(kanbanData.pipeline.stages)) {
+      return [];
+    }
     
     if (!searchTerm || searchTerm.trim() === '') {
       return kanbanData.pipeline.stages;
@@ -102,8 +110,8 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     const searchLower = searchTerm.toLowerCase();
     return kanbanData.pipeline.stages.map(stage => ({
       ...stage,
-      deals: stage.deals.filter(deal => 
-        deal.title.toLowerCase().includes(searchLower) ||
+      deals: (stage.deals || []).filter(deal => 
+        deal.title?.toLowerCase().includes(searchLower) ||
         deal.description?.toLowerCase().includes(searchLower) ||
         deal.contactName?.toLowerCase().includes(searchLower) ||
         deal.companyName?.toLowerCase().includes(searchLower)
@@ -112,18 +120,22 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   }, [kanbanData?.pipeline?.stages, searchTerm]);
 
   // ============================================
-  // DRAG & DROP HANDLERS
+  // DRAG & DROP HANDLERS - CON VALIDACIÓN DEFENSIVA
   // ============================================
-  // ✅ RECOMENDACIÓN 1: State optimizado con fromStageId
   const [activeDragData, setActiveDragData] = React.useState<{ deal: Deal; fromStageId: number } | null>(null);
 
-  // ✅ RECOMENDACIÓN 1: handleDragStart optimizado
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
     const dealId = Number(active.id);
     
-    // Encontrar el stage y deal que se está arrastrando
-    const stage = filteredStages.find(s => s.deals.some(d => d.id === dealId));
+    // ✅ VALIDACIÓN DEFENSIVA: Verificar que filteredStages existe y es un array
+    if (!filteredStages || !Array.isArray(filteredStages)) {
+      return;
+    }
+    
+    const stage = filteredStages.find(s => 
+      s.deals && Array.isArray(s.deals) && s.deals.some(d => d.id === dealId)
+    );
     if (stage) {
       const deal = stage.deals.find(d => d.id === dealId);
       if (deal) {
@@ -135,7 +147,6 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     }
   }, [filteredStages]);
 
-  // ✅ RECOMENDACIÓN 1: handleDragEnd optimizado
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { over } = event;
     
@@ -147,20 +158,16 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     const fromStageId = currentDragData.fromStageId;
     const newStageId = Number(over.id);
     
-    // Verificación más directa - no necesita buscar en arrays
     if (fromStageId === newStageId) {
-      return; // No cambió de etapa
+      return;
     }
 
-    // 🎯 LLAMAR A LA ACCIÓN QUE YA CREAMOS
-    // La invalidación de caché se maneja automáticamente
     try {
       await moveDealToStage(currentDragData.deal.id, newStageId, undefined, () => {
         console.log(`✅ Deal ${currentDragData.deal.id} moved to stage ${newStageId} successfully`);
       });
     } catch (error) {
       console.error('❌ Failed to move deal:', error);
-      // El error se maneja en el hook, aquí solo loggeamos
     }
   }, [activeDragData, moveDealToStage]);
 
@@ -168,7 +175,6 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   // CREATE DEAL HANDLER
   // ============================================
   const handleCreateDeal = useCallback((stageId: number) => {
-    // TODO: Implementar modal de creación rápida o navegar a create page con stage preseleccionada
     console.log('Create deal in stage:', stageId);
   }, []);
 
@@ -190,7 +196,6 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     return (
       <ErrorMessage 
         message="Error al cargar los datos del pipeline"
-        // ✅ CORRECCIÓN: Pasamos un array de componentes de botón, no de objetos
         actions={[
           <Button key="retry" onClick={() => refetch()}>
             Reintentar
@@ -200,7 +205,8 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     );
   }
 
-  if (!kanbanData?.pipeline?.stages || kanbanData.pipeline.stages.length === 0) {
+  // ✅ VALIDACIÓN DEFENSIVA: Verificar que tenemos stages válidos
+  if (!kanbanData?.pipeline?.stages || !Array.isArray(kanbanData.pipeline.stages) || kanbanData.pipeline.stages.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 border-2 border-dashed border-app-dark-600 rounded-lg">
         <div className="text-center">
@@ -292,7 +298,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
         onDragEnd={handleDragEnd}
       >
         <div className="flex space-x-4 overflow-x-auto pb-4">
-          {filteredStages.map((stage) => (
+          {(filteredStages || []).map((stage) => (
             <div key={stage.stageId} className="flex-shrink-0 w-80">
               {/* Cabecera de la Columna */}
               <div className="mb-4 p-3 bg-app-dark-700 border border-app-dark-600 rounded-lg">
@@ -300,7 +306,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
                   <div>
                     <h3 className="font-medium text-white">{stage.stageName}</h3>
                     <div className="flex items-center space-x-4 mt-1 text-xs text-app-gray-400">
-                      <span>{stage.dealCount} deals</span>
+                      <span>{stage.dealCount || (stage.deals || []).length} deals</span>
                       <span>{stage.totalValue?.toLocaleString('es-CO', {
                         style: 'currency',
                         currency: 'COP',
@@ -321,27 +327,26 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
 
               {/* Lista de Deals - DROPPABLE ZONE */}
               <SortableContext 
-                items={stage.deals.map(d => d.id)}
+                items={(stage.deals || []).map(d => d.id)}
                 strategy={verticalListSortingStrategy}
                 id={stage.stageId.toString()}
               >
                 <div 
                   className="min-h-[200px] space-y-3"
-                  // Esta div actúa como la zona de drop
                   data-stage-id={stage.stageId}
                 >
-                  {stage.deals.length === 0 ? (
+                  {(stage.deals || []).length === 0 ? (
                     <EmptyKanbanColumn 
                       stageName={stage.stageName}
                       onCreateDeal={() => handleCreateDeal(stage.stageId)}
                     />
                   ) : (
-                    stage.deals.map((deal) => (
+                    (stage.deals || []).map((deal) => (
                       <DealCard
                         key={deal.id}
                         deal={deal}
                         isMoving={isMovingToStage(deal.id)}
-                        showStage={false} // No mostrar stage en Kanban
+                        showStage={false}
                       />
                     ))
                   )}
@@ -368,7 +373,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
       </DndContext>
 
       {/* Mensaje de búsqueda si no hay resultados */}
-      {searchTerm && filteredStages.every(stage => stage.deals.length === 0) && (
+      {searchTerm && (filteredStages || []).every(stage => !(stage.deals || []).length) && (
         <div className="mt-8 text-center">
           <AlertCircle className="h-12 w-12 text-app-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-app-gray-300 mb-2">

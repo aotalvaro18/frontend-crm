@@ -1,7 +1,7 @@
 // src/pages/pipelines/PipelineListPage.tsx
 // ✅ PIPELINE LIST PAGE - Replicando exactamente CompanyListPage.tsx
 // EL KANBAN PRINCIPAL - Donde se muestran los deals fluyendo por las etapas
-// 🔧 ACTUALIZADO: Con dropdown de acciones estilo Salesforce
+// 🔧 ACTUALIZADO: Con DealKanbanView integrado
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,7 +10,7 @@ import {
   Plus, Settings, Filter, Search, X,
   Target, BarChart3, TrendingUp,
   RefreshCw, GitBranch,
-  // 🔧 NUEVOS IMPORTS: Para dropdown de acciones
+  // 🔧 IMPORTS: Para dropdown de acciones
   MoreHorizontal, Eye, Edit3
 } from 'lucide-react';
 
@@ -23,7 +23,6 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-// 🔧 NUEVO IMPORT: Dropdown component
 import Dropdown from '@/components/ui/Dropdown';
 
 // ============================================
@@ -50,7 +49,6 @@ import {
 import { pipelineApi } from '@/services/api/pipelineApi';
 import { useSearchDebounce } from '@/hooks/useDebounce';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-//import { toastSuccess } from '@/services/notifications/toastService';
 
 // ============================================
 // TYPES - Importando desde types como CompanyListPage
@@ -78,20 +76,17 @@ const PipelineListPage: React.FC = () => {
   const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(
     searchParams.get('pipeline') ? Number(searchParams.get('pipeline')) : null
   );
-  // 🔧 NUEVO STATE: Para modal de confirmación de eliminación
   const [pipelineToDelete, setPipelineToDelete] = useState<PipelineDTO | null>(null);
 
   const debouncedSearchTerm = useSearchDebounce(searchTerm, 300);
 
-  // 🔧 Search criteria siguiendo el patrón de Companies
+  // Search criteria siguiendo el patrón de Companies
   const searchCriteria = useMemo((): PipelineSearchCriteria => {
     const criteria: PipelineSearchCriteria = {};
     if (debouncedSearchTerm) {
       criteria.search = debouncedSearchTerm;
     }
-    // Solo pipelines activos por defecto para el Kanban
-    //criteria.isActive = true;
-    criteria.includeInactive = false;  // Excluir inactivos (incluyendo eliminados)
+    criteria.includeInactive = false;
     return criteria;
   }, [debouncedSearchTerm]);
 
@@ -109,7 +104,7 @@ const PipelineListPage: React.FC = () => {
     queryKey: PIPELINES_LIST_QUERY_KEY(searchCriteria, currentPage),
     queryFn: () => pipelineApi.searchPipelines(searchCriteria, { 
       page: currentPage, 
-      size: 100, // Más pipelines para el selector
+      size: 100,
       sort: ['updatedAt,desc'] 
     }),
     enabled: true,
@@ -120,9 +115,6 @@ const PipelineListPage: React.FC = () => {
   });
 
   const pipelines = pipelinesData?.content || [];
-  //const totalPipelines = pipelinesData?.totalElements || 0;
-
-  // ✅ PASO 1: AÑADIR VARIABLE DE ESTADO UX
   const hasPipelines = pipelines.length > 0;
 
   // Obtener el pipeline seleccionado (el primero por defecto si no hay uno específico)
@@ -130,7 +122,6 @@ const PipelineListPage: React.FC = () => {
     if (selectedPipelineId) {
       return pipelines.find(p => p.id === selectedPipelineId);
     }
-    // Priorizar pipeline por defecto, luego el primero
     return pipelines.find(p => p.isDefault) || pipelines[0];
   }, [pipelines, selectedPipelineId]);
 
@@ -190,7 +181,6 @@ const PipelineListPage: React.FC = () => {
 
   const handlePipelineChange = (pipelineId: number) => {
     setSelectedPipelineId(pipelineId);
-    // Actualizar URL para mantener el estado
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set('pipeline', pipelineId.toString());
     setSearchParams(newSearchParams);
@@ -204,17 +194,12 @@ const PipelineListPage: React.FC = () => {
     navigate('/settings/pipelines');
   };
 
-  // ✅ NUEVO HANDLER: Para crear nueva oportunidad cuando hay pipelines
   const handleCreateNewDeal = () => {
-    // Validación defensiva - enterprise best practice
     if (!currentPipeline) {
       console.error("No se puede crear una oportunidad sin un pipeline seleccionado.");
-      // Opcional: mostrar toast de error
-      // toast.error("Por favor selecciona un pipeline primero");
       return;
     }
   
-    // Pre-seleccionar la primera etapa del pipeline
     const firstStage = currentPipeline.stages
       ?.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))[0];
   
@@ -226,15 +211,12 @@ const PipelineListPage: React.FC = () => {
     navigate(`/deals/new?${params.toString()}`);
   };
 
-  // 🔧 NUEVOS HANDLERS: Para acciones del dropdown estilo Salesforce
   const handleViewPipelineDeals = (pipeline: PipelineDTO) => {
-    // Mantener el pipeline seleccionado y enfocarse en el Kanban
     setSelectedPipelineId(pipeline.id);
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set('pipeline', pipeline.id.toString());
     setSearchParams(newSearchParams);
     
-    // Scroll al kanban si está fuera de vista
     document.getElementById('kanban-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -252,7 +234,6 @@ const PipelineListPage: React.FC = () => {
     try {
       await deletePipeline(pipelineToDelete.id, () => {
         setPipelineToDelete(null);
-        // Si se elimina el pipeline actual, seleccionar otro
         if (selectedPipelineId === pipelineToDelete.id) {
           setSelectedPipelineId(null);
         }
@@ -267,7 +248,6 @@ const PipelineListPage: React.FC = () => {
     refetchStats();
   };
 
-  // 🔧 NUEVA FUNCIÓN: Configurar items del dropdown estilo Salesforce
   const getPipelineActionItems = (pipeline: PipelineDTO) => [
     { 
       id: 'view-deals', 
@@ -326,25 +306,18 @@ const PipelineListPage: React.FC = () => {
       title="Gestión de Oportunidades" 
       description="Visualiza y gestiona el flujo de oportunidades a través de tus pipelines de negocio"
     >
-      {/* ============================================ */}
-      {/* STATS CARDS - Usando componente shared */}
-      {/* ============================================ */}
+      {/* STATS CARDS */}
       <StatsCards
         configs={pipelineStatConfigs}
         stats={stats}
         isLoading={isLoadingStats}
       />
 
-      {/* ============================================ */}
-      {/* ACTIONS BAR - ✅ PASO 2: AHORA ADAPTATIVA */}
-      {/* ============================================ */}
+      {/* ACTIONS BAR */}
       <div className="flex items-center justify-between gap-4 mb-6">
         {hasPipelines ? (
-          // === VISTA CUANDO SÍ HAY PIPELINES ===
           <>
-            {/* --- Lado Izquierdo: Controles de Vista --- */}
             <div className="flex items-stretch gap-3 flex-1">
-              {/* Pipeline Selector - Usando componente reutilizable */}
               <PipelineSelector
                 pipelines={pipelines}
                 selectedPipeline={currentPipeline}
@@ -359,7 +332,6 @@ const PipelineListPage: React.FC = () => {
                 placeholder="Seleccionar pipeline..."
               />
               
-              {/* Search */}
               <div className="relative max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-app-gray-400" />
                 <Input
@@ -379,7 +351,6 @@ const PipelineListPage: React.FC = () => {
               </Button>
             </div>
 
-            {/* --- Lado Derecho: Acciones --- */}
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -396,7 +367,6 @@ const PipelineListPage: React.FC = () => {
             </div>
           </>
         ) : (
-          // === VISTA CUANDO NO HAY PIPELINES (ESTADO INICIAL) ===
           <div className="w-full flex justify-end">
             <Button onClick={() => navigate('/settings/pipelines')}>
               <Settings className="h-4 w-4 mr-2" />
@@ -406,10 +376,7 @@ const PipelineListPage: React.FC = () => {
         )}
       </div>
 
-      {/* ============================================ */}
-      {/* FILTERS PANEL (Condicional) - Mismo patrón que Companies */}
-      {/* Solo se muestra cuando HAY pipelines */}
-      {/* ============================================ */}
+      {/* FILTERS PANEL */}
       {showFilters && hasPipelines && (
         <div className="p-4 mb-6 border-app-dark-600 bg-app-dark-800/50">
           <div className="flex items-center justify-between mb-4">
@@ -464,17 +431,13 @@ const PipelineListPage: React.FC = () => {
               </label>
               <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200">
                 <option value="">Todas</option>
-                {/* TODO: Cargar empresas dinámicamente */}
               </select>
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================ */}
       {/* KANBAN VIEW - EL CORAZÓN DE LA PÁGINA */}
-      {/* 🔧 ACTUALIZADO: Con dropdown de acciones estilo Salesforce */}
-      {/* ============================================ */}
       {isLoadingPipelines && !currentPipeline ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
@@ -485,7 +448,6 @@ const PipelineListPage: React.FC = () => {
           title="No hay pipelines disponibles"
           description="Crea tu primer pipeline para empezar a gestionar oportunidades."
           action={
-            // ✅ PASO 3: CAMBIAR BOTÓN DEL EMPTY STATE
             <Button onClick={() => navigate('/settings/pipelines')}>
               <Settings className="h-4 w-4 mr-2" />
               Ir a Configuración
@@ -494,7 +456,7 @@ const PipelineListPage: React.FC = () => {
         />
       ) : (
         <div id="kanban-section" className="border-app-dark-600 bg-app-dark-800/50 p-6">
-          {/* 🔧 PIPELINE HEADER - ACTUALIZADO CON DROPDOWN ESTILO SALESFORCE */}
+          {/* PIPELINE HEADER */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary-500/10 rounded-lg">
@@ -515,9 +477,7 @@ const PipelineListPage: React.FC = () => {
               )}
             </div>
 
-            {/* 🔧 NUEVA SECCIÓN: Stats + Dropdown de acciones */}
             <div className="flex items-center gap-4">
-              {/* Pipeline stats */}
               <div className="flex items-center gap-4 text-sm text-app-gray-400">
                 <div className="flex items-center gap-1">
                   <Target className="h-4 w-4" />
@@ -539,7 +499,6 @@ const PipelineListPage: React.FC = () => {
                 )}
               </div>
 
-              {/* 🔧 DROPDOWN DE ACCIONES ESTILO SALESFORCE */}
               <Dropdown
                 trigger={
                   <IconButton variant="ghost" size="sm">
@@ -565,11 +524,7 @@ const PipelineListPage: React.FC = () => {
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* MODALES DE CONFIRMACIÓN - Usando componente shared */}
-      {/* 🔧 ACTUALIZADO: Modal para eliminar desde el dropdown */}
-      {/* ============================================ */}
-      
+      {/* MODAL DE CONFIRMACIÓN */}
       <ConfirmDialog
         isOpen={!!pipelineToDelete}
         onClose={() => setPipelineToDelete(null)}
