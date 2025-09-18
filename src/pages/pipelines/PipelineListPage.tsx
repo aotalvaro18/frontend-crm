@@ -1,7 +1,7 @@
 // src/pages/pipelines/PipelineListPage.tsx
 // ✅ PIPELINE LIST PAGE - Replicando exactamente CompanyListPage.tsx
 // EL KANBAN PRINCIPAL - Donde se muestran los deals fluyendo por las etapas
-// 🔧 ACTUALIZADO: Con DealKanbanView integrado
+// 🔧 REFACTORIZADO: Con métricas avanzadas de nivel Salesforce (Valor Ponderado)
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -29,7 +29,6 @@ import Dropdown from '@/components/ui/Dropdown';
 // SHARED COMPONENTS - Reutilizando exactamente como Companies
 // ============================================
 import { StatsCards } from '@/components/shared/StatsCards';
-import type { StatCardConfig } from '@/components/shared/StatsCards';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ============================================
@@ -46,9 +45,16 @@ import {
   PIPELINE_STATS_QUERY_KEY,
   PIPELINES_LIST_QUERY_KEY
 } from '@/hooks/usePipelines';
+import { usePipelineKanbanData } from '@/hooks/useDeals';
 import { pipelineApi } from '@/services/api/pipelineApi';
 import { useSearchDebounce } from '@/hooks/useDebounce';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+
+// 🔧 NUEVO: Import de configuraciones de métricas avanzadas
+import { 
+  PIPELINE_KANBAN_STATS_CONFIG,
+  processPipelineStats
+} from '@/config/pipelineStatsConfig';
 
 // ============================================
 // TYPES - Importando desde types como CompanyListPage
@@ -125,8 +131,28 @@ const PipelineListPage: React.FC = () => {
     return pipelines.find(p => p.isDefault) || pipelines[0];
   }, [pipelines, selectedPipelineId]);
 
-  // Stats query
-  const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
+  // 🔧 NUEVO: Data fetching para métricas del kanban actual
+  const { 
+    data: kanbanData, 
+    isLoading: isLoadingKanban 
+  } = usePipelineKanbanData(currentPipeline?.id || 0);
+
+  // 🔧 NUEVO: Procesar métricas avanzadas del pipeline actual
+  const pipelineStats = useMemo(() => {
+    if (!kanbanData) {
+      return {
+        totalDeals: 0,
+        totalValue: 0,
+        weightedValue: 0,
+        conversionRate: 0,
+      };
+    }
+    
+    return processPipelineStats(kanbanData);
+  }, [kanbanData]);
+
+  // Stats query para métricas globales (conservado para compatibilidad)
+  const { data: globalStats, isLoading: isLoadingGlobalStats, refetch: refetchStats } = useQuery({
     queryKey: PIPELINE_STATS_QUERY_KEY,
     queryFn: () => pipelineApi.getPipelineStats(),
   });
@@ -137,46 +163,11 @@ const PipelineListPage: React.FC = () => {
   const { deletePipeline } = usePipelineOperations();
   const { handleError } = useErrorHandler();
 
-  // ============================================
-  // STATS CARDS CONFIGURATION - Adaptado para Pipeline Kanban
-  // ============================================
-  const pipelineStatConfigs: StatCardConfig[] = [
-    { 
-      key: 'total', 
-      title: 'Pipelines Activos', 
-      description: 'Procesos de negocio disponibles para gestionar deals.', 
-      icon: GitBranch, 
-      variant: 'default', 
-      format: 'number' 
-    },
-    { 
-      key: 'totalDealsInPipelines', 
-      title: 'Oportunidades Activas', 
-      description: 'Deals fluyendo actualmente por todos los pipelines.', 
-      icon: BarChart3, 
-      variant: 'info', 
-      format: 'number' 
-    },
-    { 
-      key: 'totalValueInPipelines', 
-      title: 'Valor en Pipeline', 
-      description: 'Valor total de todas las oportunidades en proceso.', 
-      icon: TrendingUp, 
-      variant: 'success', 
-      format: 'currency' 
-    },
-    { 
-      key: 'averageConversionRate', 
-      title: 'Tasa de Conversión', 
-      description: 'Promedio de deals cerrados como ganados.', 
-      icon: Target, 
-      variant: 'warning', 
-      format: 'percentage' 
-    },
-  ];
+  // 🔧 REFACTORIZACIÓN QUIRÚRGICA: Usar configuraciones avanzadas
+  const isLoadingStats = isLoadingKanban || isLoadingGlobalStats;
 
   // ============================================
-  // EVENT HANDLERS
+  // EVENT HANDLERS - Conservados sin cambios
   // ============================================
 
   const handlePipelineChange = (pipelineId: number) => {
@@ -279,7 +270,7 @@ const PipelineListPage: React.FC = () => {
   ];
 
   // ============================================
-  // RENDER STATES
+  // RENDER STATES - Conservados sin cambios
   // ============================================
 
   if (pipelinesError) {
@@ -306,14 +297,17 @@ const PipelineListPage: React.FC = () => {
       title="Gestión de Oportunidades" 
       description="Visualiza y gestiona el flujo de oportunidades a través de tus pipelines de negocio"
     >
-      {/* STATS CARDS */}
+      {/* 🔧 REFACTORIZACIÓN QUIRÚRGICA: STATS CARDS CON MÉTRICAS AVANZADAS */}
       <StatsCards
-        configs={pipelineStatConfigs}
-        stats={stats}
+        configs={PIPELINE_KANBAN_STATS_CONFIG}
+        stats={pipelineStats}
         isLoading={isLoadingStats}
+        showTrends={false}
+        showTooltips={true}
+        variant="default"
       />
 
-      {/* ACTIONS BAR */}
+      {/* ACTIONS BAR - Conservado sin cambios */}
       <div className="flex items-center justify-between gap-4 mb-6">
         {hasPipelines ? (
           <>
@@ -376,7 +370,7 @@ const PipelineListPage: React.FC = () => {
         )}
       </div>
 
-      {/* FILTERS PANEL */}
+      {/* FILTERS PANEL - Conservado sin cambios */}
       {showFilters && hasPipelines && (
         <div className="p-4 mb-6 border-app-dark-600 bg-app-dark-800/50">
           <div className="flex items-center justify-between mb-4">
@@ -437,7 +431,7 @@ const PipelineListPage: React.FC = () => {
         </div>
       )}
 
-      {/* KANBAN VIEW - EL CORAZÓN DE LA PÁGINA */}
+      {/* KANBAN VIEW - EL CORAZÓN DE LA PÁGINA - Conservado sin cambios */}
       {isLoadingPipelines && !currentPipeline ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
@@ -456,7 +450,7 @@ const PipelineListPage: React.FC = () => {
         />
       ) : (
         <div id="kanban-section" className="border-app-dark-600 bg-app-dark-800/50 p-6">
-          {/* PIPELINE HEADER */}
+          {/* PIPELINE HEADER - Conservado sin cambios */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary-500/10 rounded-lg">
@@ -486,14 +480,20 @@ const PipelineListPage: React.FC = () => {
                 <span>•</span>
                 <div className="flex items-center gap-1">
                   <BarChart3 className="h-4 w-4" />
-                  <span>{currentPipeline.totalDeals || 0} oportunidades</span>
+                  <span>{pipelineStats.totalDeals} oportunidades</span>
                 </div>
-                {currentPipeline.totalValue && (
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>{formatters.currency(pipelineStats.totalValue)}</span>
+                </div>
+                {/* 🔧 NUEVO: Mostrar valor ponderado en el header */}
+                {pipelineStats.weightedValue > 0 && pipelineStats.weightedValue !== pipelineStats.totalValue && (
                   <>
                     <span>•</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-app-accent-400">
                       <TrendingUp className="h-4 w-4" />
-                      <span>{formatters.currency(currentPipeline.totalValue)}</span>
+                      <span>{formatters.currency(pipelineStats.weightedValue)} ponderado</span>
                     </div>
                   </>
                 )}
@@ -524,7 +524,7 @@ const PipelineListPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMACIÓN */}
+      {/* MODAL DE CONFIRMACIÓN - Conservado sin cambios */}
       <ConfirmDialog
         isOpen={!!pipelineToDelete}
         onClose={() => setPipelineToDelete(null)}
