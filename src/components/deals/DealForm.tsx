@@ -63,7 +63,10 @@ const dealFormSchema = z.object({
     z.number({ required_error: 'Debe seleccionar una etapa' })
   ).optional(),
   contactId: z.preprocess(Number, z.number().positive('Debe seleccionar un contacto')),
-  companyId: z.preprocess(Number, z.number().optional()),
+  companyId: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
+    z.number().optional()
+  ),
 
   // Campos financieros
   amount: z.preprocess(
@@ -190,7 +193,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
         pipelineId: data.pipelineId,
         stageId: data.stageId,
         contactId: data.contactId,
-        companyId: data.companyId,
+        companyId: data.companyId || undefined,
         amount: data.amount,
         probability: data.probability,
         expectedCloseDate: data.expectedCloseDate || undefined,
