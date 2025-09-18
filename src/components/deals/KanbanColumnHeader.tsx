@@ -65,7 +65,7 @@ const getStageColor = (stageName: string, stageId: number): string => {
   ];
   
   // Si hay un patrón en el nombre, usar eso
-  const lowerName = stageName.toLowerCase();
+  const lowerName = (stageName || '').toLowerCase();
   
   if (lowerName.includes('contacto') || lowerName.includes('lead')) return 'bg-blue-500';
   if (lowerName.includes('calificad') || lowerName.includes('seguimiento')) return 'bg-indigo-500';
@@ -181,7 +181,7 @@ const KanbanColumnHeader: React.FC<KanbanColumnHeaderProps> = ({
   // COMPUTED VALUES
   // ============================================
   
-  const stageColor = showStageColor ? getStageColor(stage.stageName, stage.stageId) : null;
+  const stageColor = showStageColor ? getStageColor(stage.stageName || '', stage.stageId) : null;
   const bottleneckAlert = showBottleneckAlerts ? getBottleneckAlert(stage) : null;
   const metrics = useMemo(() => getAdvancedMetrics(stage), [stage]);
   
