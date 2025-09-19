@@ -67,7 +67,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
 
   // DEBUG: Logging temporal para diagnosticar errores
   console.log('Debug kanbanData:', kanbanData);
-  console.log('Debug pipeline stages:', kanbanData?.pipeline?.stages);
+  console.log('Debug stages:', kanbanData?.stages);
 
   // ============================================
   // ACTIONS - Para el Drag & Drop
@@ -100,18 +100,18 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   // FILTERED DEALS (Por término de búsqueda) - CON VALIDACIÓN DEFENSIVA
   // ============================================
   const filteredStages = useMemo(() => {
-    // ✅ VALIDACIÓN DEFENSIVA: Evita crashes por datos undefined
-    if (!kanbanData?.pipeline?.stages || !Array.isArray(kanbanData.pipeline.stages)) {
+    // ✅ VALIDACIÓN DEFENSIVA: Estructura correcta según JSON del backend
+    if (!kanbanData?.stages || !Array.isArray(kanbanData.stages)) {
       return [];
     }
     
     if (!searchTerm || searchTerm.trim() === '') {
-      return kanbanData.pipeline.stages;
+      return kanbanData.stages;
     }
 
     const searchLower = searchTerm.toLowerCase();
     
-    return kanbanData.pipeline.stages.map(stage => ({
+    return kanbanData.stages.map(stage => ({
       ...stage,
       deals: (stage.deals || []).filter(deal => {
         if (!deal) return false;
@@ -126,7 +126,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
         return searchableText.includes(searchLower);
       })
     }));
-  }, [kanbanData?.pipeline?.stages, searchTerm]);
+  }, [kanbanData?.stages, searchTerm]);
 
   // ============================================
   // DRAG & DROP HANDLERS
@@ -211,7 +211,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
     );
   }
 
-  if (!kanbanData?.pipeline?.stages || kanbanData.pipeline.stages.length === 0) {
+  if (!kanbanData?.stages || kanbanData.stages.length === 0) {
     return (
       <div className="text-center py-12">
         <AlertCircle className="h-12 w-12 text-app-gray-500 mx-auto mb-4" />

@@ -17,6 +17,7 @@ import type {
 
 import type { PageRequest, PageResponse } from '@/types/common.types';
 
+import { kanbanApi } from '@/services/api/kanbanApi';
 
 // ============================================
 // RE-EXPORTAR HOOKS DEL STORE (para consistencia de imports)
@@ -120,9 +121,9 @@ export const useDealStats = () => {
 export const usePipelineKanbanData = (pipelineId: number) => {
   return useQuery({
     queryKey: DEAL_PIPELINE_KANBAN_QUERY_KEY(pipelineId),
-    queryFn: () => dealApi.getPipelineKanbanData(pipelineId),
+    queryFn: () => kanbanApi.getPipelineKanbanData(pipelineId),
     enabled: !!pipelineId && pipelineId > 0,
-    staleTime: 30 * 1000, // 30 segundos - datos más frescos para Kanban
+    staleTime: 30 * 1000,
   });
 };
 

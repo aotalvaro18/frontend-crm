@@ -181,7 +181,7 @@ const KanbanColumnHeader: React.FC<KanbanColumnHeaderProps> = ({
   // COMPUTED VALUES
   // ============================================
   
-  const stageColor = showStageColor ? getStageColor(stage.stageName || '', stage.stageId) : null;
+  const stageColor = showStageColor ? getStageColor(stage.stageName || '', stage.stageId || 0) : null;
   const bottleneckAlert = showBottleneckAlerts ? getBottleneckAlert(stage) : null;
   const metrics = useMemo(() => getAdvancedMetrics(stage), [stage]);
   

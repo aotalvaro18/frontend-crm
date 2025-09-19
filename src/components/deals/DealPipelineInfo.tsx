@@ -2,7 +2,7 @@
 // ✅ DEAL PIPELINE INFO - Información del pipeline y etapa del deal
 // Reescrito siguiendo arquitectura correcta: React Query + dealStore + datos reales
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react'; // <-- Se añade useCallback
 import { 
   Workflow, 
   ChevronRight, 
@@ -17,43 +17,37 @@ import {
 // ============================================
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
-
 // ============================================
 // HOOKS & SERVICES (Arquitectura correcta)
 // ============================================
-import { 
-  useDealOperations 
-} from '@/hooks/useDeals';
-
+import { useDealOperations } from '@/hooks/useDeals';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ============================================
-// TYPES (Exactos del sistema)
+// TYPES (Cambiado para alineación)
 // ============================================
-import type { 
-  DealDTO, 
-  KanbanData 
-} from '@/types/deal.types';
+import type { DealDTO } from '@/types/deal.types';
+// ✅ CAMBIO QUIRÚRGICO 1: Importar el tipo KanbanDataDTO global
+import type { KanbanDataDTO } from '@/types/kanban.types'; 
 
 import { 
   getStatusVariant,
   formatDealAmount,
   DEAL_STATUS_LABELS 
 } from '@/types/deal.types';
-
 import { cn } from '@/utils/cn';
 
 // ============================================
-// COMPONENT PROPS
+// COMPONENT PROPS (Actualizadas con los tipos correctos)
 // ============================================
 interface DealPipelineInfoProps {
     deal: DealDTO;
-    kanbanData: KanbanData; // También lo necesita para las etapas
+    // ✅ CAMBIO QUIRÚRGICO 2: Usar el tipo global 'KanbanDataDTO' en lugar del tipo local 'KanbanData'.
+    kanbanData: KanbanDataDTO;
     isLoading?: boolean;
     error?: Error | null;
     isOperationInProgress: boolean;
@@ -63,7 +57,7 @@ interface DealPipelineInfoProps {
     onReopen: () => void;
     className?: string;
     showActions?: boolean;
-  }
+}
 
 // ============================================
 // MAIN COMPONENT
@@ -82,7 +76,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   }) => {
   
   // ============================================
-  // LOCAL STATE (Solo para UI)
+  // LOCAL STATE (Solo para UI) - SIN CAMBIOS
   // ============================================
   const [showStageSelector, setShowStageSelector] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
@@ -92,7 +86,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   } | null>(null);
 
   // ============================================
-  // OPERATIONS (Mutaciones desde dealStore)
+  // OPERATIONS (Mutaciones desde dealStore) - SIN CAMBIOS
   // ============================================
   const {
     isMovingToStage,
@@ -104,20 +98,20 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   const { handleError } = useErrorHandler();
 
   // ============================================
-  // COMPUTED VALUES - CORRECCIÓN QUIRÚRGICA
+  // COMPUTED VALUES - CON CAMBIO QUIRÚRGICO
   // ============================================
   const currentStage = useMemo(() => {
     if (!deal) return null;
     
-    // PRIORIDAD 1: Buscar en kanbanData
-    if (kanbanData?.pipeline?.stages) {
-      const found = kanbanData.pipeline.stages.find(stage => 
+    // ✅ CAMBIO QUIRÚRGICO 3: Acceder a 'stages' desde la raíz de 'kanbanData'.
+    if (kanbanData?.stages) {
+      const found = kanbanData.stages.find(stage => 
         Number(stage.stageId) === Number(deal.stageId)
       );
       if (found) return found;
     }
     
-    // PRIORIDAD 2: Usar datos del deal como fallback
+    // Fallback se mantiene por robustez.
     return {
       stageId: deal.stageId,
       stageName: deal.stageName || 'Etapa sin nombre',
@@ -129,7 +123,8 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
 
   const availableStages = useMemo(() => {
     if (!kanbanData) return [];
-    return kanbanData.pipeline.stages.filter(stage => stage.stageId !== deal?.stageId);
+    // ✅ CAMBIO QUIRÚRGICO 4: Acceder a 'stages' desde la raíz de 'kanbanData'.
+    return kanbanData.stages.filter(stage => stage.stageId !== deal?.stageId);
   }, [kanbanData, deal?.stageId]);
 
   const isOperationInProgress = useMemo(() => {
@@ -141,13 +136,8 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   }, [deal, isMovingToStage, isClosingWon, isClosingLost, isReopening]);
 
   // ============================================
-  // EVENT HANDLERS
+  // EVENT HANDLERS - SIN CAMBIOS
   // ============================================
-  
-
-  
-
-  
   const handleConfirmAction = () => {
     if (!confirmAction) return;
     
@@ -167,12 +157,11 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
         }
         break;
     }
-    // Cerramos el diálogo después de invocar la acción del padre
     setConfirmAction(null); 
   };
 
   // ============================================
-  // LOADING STATES
+  // LOADING STATES - SIN CAMBIOS
   // ============================================
   if (isLoading) {
     return (
@@ -186,7 +175,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   }
 
   // ============================================
-  // ERROR STATES
+  // ERROR STATES - SIN CAMBIOS
   // ============================================
   if (error) {
     return (
@@ -199,7 +188,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => window.location.reload()} // O idealmente una función 'onRetry'
+              onClick={() => window.location.reload()}
             >
               Reintentar
             </Button>
@@ -210,7 +199,7 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
   }
 
   // ============================================
-  // RENDER
+  // RENDER - SIN CAMBIOS EN LA ESTRUCTURA, SOLO ACCESO A DATOS
   // ============================================
   return (
     <div className={cn("space-y-4", className)}>
@@ -394,21 +383,18 @@ const DealPipelineInfo: React.FC<DealPipelineInfoProps> = ({
             confirmAction?.type === 'reopen' ? 'Reabrir Oportunidad' :
             confirmAction?.type === 'move' ? 'Mover a Nueva Etapa' : 'Confirmar Acción'
         }
-        // ✅ CORREGIDO: 'message' -> 'description'
         description={
             confirmAction?.type === 'won' ? '¿Estás seguro de que quieres marcar esta oportunidad como ganada?' :
             confirmAction?.type === 'lost' ? '¿Estás seguro de que quieres marcar esta oportunidad como perdida?' :
             confirmAction?.type === 'reopen' ? '¿Estás seguro de que quieres reabrir esta oportunidad?' :
             confirmAction?.type === 'move' ? `¿Confirmas mover la oportunidad a "${confirmAction.data?.stageName}"?` : 'Por favor, confirma la acción.'
         }
-        // ✅ CORREGIDO: 'confirmText' -> 'confirmLabel'
         confirmLabel={
             confirmAction?.type === 'won' ? 'Sí, Cerrar Ganada' :
             confirmAction?.type === 'lost' ? 'Sí, Cerrar Perdida' :
             confirmAction?.type === 'reopen' ? 'Sí, Reabrir' :
             confirmAction?.type === 'move' ? 'Sí, Mover' : 'Confirmar'
         }
-        // ✅ CORREGIDO: 'loading' -> 'isConfirming'
         isConfirming={isOperationInProgress}
         variant={
             confirmAction?.type === 'lost' ? 'destructive' : 'default'
