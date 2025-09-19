@@ -372,64 +372,50 @@ const PipelineListPage: React.FC = () => {
 
       {/* FILTERS PANEL - Conservado sin cambios */}
       {showFilters && hasPipelines && (
-        <div className="p-4 mb-6 border-app-dark-600 bg-app-dark-800/50">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-app-gray-200">Filtros de Oportunidades</h3>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFilters(false)}
-            >
-              <X className="h-4 w-4" />
-            </IconButton>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                Estado
-              </label>
-              <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200">
-                <option value="">Todos</option>
-                <option value="OPEN">Abiertos</option>
-                <option value="WON">Ganados</option>
-                <option value="LOST">Perdidos</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                Propietario
-              </label>
-              <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200">
-                <option value="">Todos</option>
-                <option value="me">Mis oportunidades</option>
-                <option value="team">Mi equipo</option>
-              </select>
-            </div>
+  <div className="p-4 mb-6 border border-app-dark-600 bg-app-dark-800/50 rounded-lg">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-sm font-medium text-app-gray-200">Filtros de Oportunidades</h3>
+      <IconButton variant="ghost" size="sm" onClick={() => setShowFilters(false)}>
+        <X className="h-4 w-4" />
+      </IconButton>
+    </div>
+    
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-app-gray-300 mb-2">Estado</label>
+        <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200 text-sm">
+          <option value="">Todos</option>
+          <option value="OPEN">Abiertos</option>
+          <option value="WON">Ganados</option>
+          <option value="LOST">Perdidos</option>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-app-gray-300 mb-2">Propietario</label>
+        <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200 text-sm">
+          <option value="">Todos</option>
+          <option value="me">Mis oportunidades</option>
+          <option value="team">Mi equipo</option>
+        </select>
+      </div>
 
-            <div>
-              <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                Valor mínimo
-              </label>
-              <Input
-                type="number"
-                placeholder="0"
-                className="w-full"
-              />
-            </div>
+      <div>
+        <label className="block text-sm font-medium text-app-gray-300 mb-2">Valor mínimo</label>
+        <Input type="number" placeholder="0" className="w-full text-sm" />
+      </div>
 
-            <div>
-              <label className="block text-sm font-medium text-app-gray-300 mb-2">
-                Empresa
-              </label>
-              <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200">
-                <option value="">Todas</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
+      <div>
+        <label className="block text-sm font-medium text-app-gray-300 mb-2">Prioridad</label>
+        <select className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded-lg text-app-gray-200 text-sm">
+          <option value="">Todas</option>
+          <option value="HIGH">Alta</option>
+          <option value="URGENT">Urgente</option>
+        </select>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* KANBAN VIEW - EL CORAZÓN DE LA PÁGINA - Conservado sin cambios */}
       {isLoadingPipelines && !currentPipeline ? (
@@ -485,7 +471,9 @@ const PipelineListPage: React.FC = () => {
                 <span>•</span>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-4 w-4" />
-                  <span>{formatters.currency(pipelineStats.totalValue)}</span>
+                  <span>{formatters.currency(pipelineStats.totalValue)} 
+{pipelineStats.weightedValue > 0 && ` (${formatters.currency(pipelineStats.weightedValue)} ponderado)`}
+</span>
                 </div>
                 {/* 🔧 NUEVO: Mostrar valor ponderado en el header */}
                 {pipelineStats.weightedValue > 0 && pipelineStats.weightedValue !== pipelineStats.totalValue && (
