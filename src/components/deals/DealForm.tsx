@@ -386,7 +386,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
                   placeholder="Buscar contacto por nombre..."
                   className="w-full"
                   
-                  // ✅ Pasa el mensaje de error, no un booleano
+                  // ✅ Pasa el mensaje de error, no un booleano //
                   error={errors.contactId?.message}
                   
                   disabled={loading}
