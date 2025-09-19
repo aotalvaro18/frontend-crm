@@ -38,6 +38,8 @@ import { EmptyKanbanColumn } from './EmptyKanbanColumn';
 // 🔧 NUEVO: Import del componente de cabecera mejorado
 import KanbanColumnHeader from './KanbanColumnHeader';
 
+import { cn } from '@/utils/cn';
+
 // ============================================
 // TYPES
 // ============================================
@@ -260,9 +262,13 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
                 id={stage.stageId?.toString() || 'unknown'}
               >
                 <div 
-                  className="min-h-[200px] space-y-3 flex-1 overflow-y-auto"
-                  data-stage-id={stage.stageId}
-                >
+  className={cn(
+    "min-h-[200px] space-y-3 flex-1 overflow-y-auto transition-colors duration-200",
+    activeDragData && "border-2 border-dashed border-transparent",
+    activeDragData && "hover:border-app-accent-500 hover:bg-app-accent-500/5"
+  )}
+  data-stage-id={stage.stageId}
+>
                   {(stage.deals || []).length === 0 ? (
                     <EmptyKanbanColumn 
                       stageName={stage.stageName || 'Etapa'}
@@ -289,7 +295,7 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
         {/* ============================================ */}
         <DragOverlay>
           {activeDragData ? (
-            <div className="transform rotate-3 opacity-90">
+            <div className="transform rotate-3 opacity-90 scale-105 shadow-2xl ring-2 ring-app-accent-500">
               <DealCard 
                 deal={activeDragData.deal} 
                 isMoving={false}
