@@ -544,83 +544,147 @@ export interface CreatePipelineRequest {
  * caso de uso específico, proporcionando valor inmediato.
  */
 
-  export const DEFAULT_PIPELINE_TEMPLATES = {
+  // ============================================
+// TIPOS DE DEALS POR CATEGORÍA DE PIPELINE
+// ============================================
+
+/**
+ * Tipos de deals específicos por categoría de pipeline
+ * 
+ * BUSINESS: 10 tipos comprehensivos que cubren todo el ciclo B2B
+ * - Desde adquisición hasta alianzas estratégicas
+ * - Basados en estadísticas reales de conversión
+ * - Coordinados exactamente con DealConstants.java del backend
+ * 
+ * CHURCH, NONPROFIT, EDUCATION, GENERAL: Sin tipos específicos
+ * - La categorización se hace a nivel de pipeline, no de deal
+ * - Mantiene simplicidad operativa para estos contextos
+ */
+export const DEAL_TYPES_BY_CATEGORY = {
+  BUSINESS: [
+    'Nuevo Negocio',           // Primera compra de un cliente nuevo
+    'Renovación',              // Renovación de contrato, suscripción o servicio existente
+    'Venta Adicional',         // Venta de más unidades o mayor volumen del mismo producto/servicio
+    'Venta Cruzada',           // Venta de productos/servicios distintos a los ya contratados
+    'Expansión de Cuenta',     // Crecimiento dentro de la misma cuenta (ej. más áreas, filiales)
+    'Licenciamiento',          // Venta de licencias de software u otros derechos de uso
+    'Implementación / Proyecto', // Implementación de un sistema o proyecto específico
+    'Servicios Profesionales', // Consultoría, capacitación o servicios profesionales relacionados
+    'Soporte / Mantenimiento', // Contratos de soporte técnico o mantenimiento postventa
+    'Alianza Estratégica'      // Oportunidad derivada de una alianza o colaboración estratégica
+  ],
+  CHURCH: [],
+  NONPROFIT: [],
+  EDUCATION: [],
+  GENERAL: [],
+  // CHURCH, NONPROFIT, EDUCATION, GENERAL no necesitan tipos específicos
+} as const;
+
+/**
+ * Mapa de colores por tipo de deal (clases Tailwind)
+ * 
+ * ORGANIZACIÓN SEMÁNTICA:
+ * - Azules: Adquisición de nuevos clientes
+ * - Verdes: Retención y mantenimiento
+ * - Púrpuras: Crecimiento y expansión
+ * - Naranjas: Servicios y proyectos
+ * - Rosas: Alianzas estratégicas
+ */
+export const DEAL_TYPE_COLORS = {
+  // Adquisición (Azules)
+  'Nuevo Negocio': 'bg-blue-100 text-blue-800 border-blue-200',
   
-    // ===============================================
-    // PLANTILLAS PARA EMPRESAS (Vertical: BUSINESS)
-    // ===============================================
+  // Retención (Verdes)
+  'Renovación': 'bg-green-100 text-green-800 border-green-200',
+  'Soporte / Mantenimiento': 'bg-emerald-100 text-emerald-800 border-emerald-200',
   
-    BUSINESS_SALES: {
-      key: 'BUSINESS_SALES',
-      name: 'Proceso de Ventas B2B',
-      category: 'BUSINESS',
-      description: 'Un embudo de ventas estándar para seguir oportunidades comerciales desde el lead hasta el cierre.',
-      icon: 'TrendingUp', // Sugerencia de icono (nombre de Lucide React)
-      stages: [
-        { name: 'Lead', orderIndex: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Contacto Establecido', orderIndex: 1, probability: 20, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'Calificado', orderIndex: 2, probability: 40, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Propuesta Presentada', orderIndex: 3, probability: 60, color: DEFAULT_STAGE_COLORS[3] },
-        { name: 'En Negociación', orderIndex: 4, probability: 80, color: DEFAULT_STAGE_COLORS[4] },
-        { name: 'Ganado', orderIndex: 5, probability: 100, color: DEFAULT_STAGE_COLORS[5], isClosedWon: true },
-        { name: 'Perdido', orderIndex: 6, probability: 0, color: DEFAULT_STAGE_COLORS[6], isClosedLost: true },
-      ],
-    },
+  // Crecimiento (Púrpuras)
+  'Venta Adicional': 'bg-purple-100 text-purple-800 border-purple-200',
+  'Venta Cruzada': 'bg-violet-100 text-violet-800 border-violet-200',
+  'Expansión de Cuenta': 'bg-indigo-100 text-indigo-800 border-indigo-200',
   
-    BUSINESS_SERVICE_DELIVERY: {
-      key: 'BUSINESS_SERVICE_DELIVERY',
-      name: 'Proceso de Entrega de Servicio',
-      category: 'BUSINESS',
-      description: 'Flujo de trabajo para gestionar la entrega de un proyecto o servicio desde la orden hasta la facturación.',
-      icon: 'ClipboardCheck',
-      stages: [
-        { name: 'Costos Aprobados', orderIndex: 0, probability: 10, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Orden de Servicio Generada', orderIndex: 1, probability: 30, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'En Desarrollo / Ejecución', orderIndex: 2, probability: 60, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Control de Calidad / QA', orderIndex: 3, probability: 80, color: DEFAULT_STAGE_COLORS[3] },
-        { name: 'Acta de Entrega Firmada', orderIndex: 4, probability: 95, color: DEFAULT_STAGE_COLORS[4] },
-        { name: 'Facturado y Cerrado', orderIndex: 5, probability: 100, color: DEFAULT_STAGE_COLORS[5], isClosedWon: true },
-        { name: 'Cancelado', orderIndex: 6, probability: 0, color: DEFAULT_STAGE_COLORS[6], isClosedLost: true },
-      ],
-    },
-    
-    // ===============================================
-    // PLANTILLA PARA IGLESIAS (Vertical: CHURCH)
-    // ===============================================
+  // Servicios (Naranjas)
+  'Licenciamiento': 'bg-orange-100 text-orange-800 border-orange-200',
+  'Implementación / Proyecto': 'bg-amber-100 text-amber-800 border-amber-200',
+  'Servicios Profesionales': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   
-    CHURCH_CONSOLIDATION: {
-      key: 'CHURCH_CONSOLIDATION',
-      name: 'Proceso de Consolidación',
-      category: 'CHURCH',
-      description: 'Seguimiento de nuevos contactos hasta que se consolidan como miembros activos en la comunidad.',
-      icon: 'HeartHandshake',
-      stages: [
-        { name: 'Nuevo Contacto', orderIndex: 0, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'En Seguimiento Personal', orderIndex: 1, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'Asistente Regular', orderIndex: 2, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Asistió a Encuentro/Retiro', orderIndex: 3, color: DEFAULT_STAGE_COLORS[3] },
-        { name: 'Consolidado', orderIndex: 4, color: DEFAULT_STAGE_COLORS[4], isClosedWon: true },
-        { name: 'No Interesado / Inactivo', orderIndex: 5, color: DEFAULT_STAGE_COLORS[5], isClosedLost: true },
-      ],
-    },
-    
-    // ===============================================
-    // PLANTILLA PARA ORGANIZACIONES SIN FINES DE LUCRO
-    // ===============================================
-  
-    NONPROFIT_VOLUNTEER_MANAGEMENT: {
-      key: 'NONPROFIT_VOLUNTEER_MANAGEMENT',
-      name: 'Gestión de Voluntarios',
-      category: 'NONPROFIT',
-      description: 'Proceso para reclutar, entrenar e integrar voluntarios a una causa u ONG.',
-      icon: 'Megaphone',
-      stages: [
-        { name: 'Interesado Registrado', orderIndex: 0, color: DEFAULT_STAGE_COLORS[0] },
-        { name: 'Entrevista / Contacto', orderIndex: 1, color: DEFAULT_STAGE_COLORS[1] },
-        { name: 'En Entrenamiento', orderIndex: 2, color: DEFAULT_STAGE_COLORS[2] },
-        { name: 'Voluntario Activo', orderIndex: 3, color: DEFAULT_STAGE_COLORS[3], isClosedWon: true },
-        { name: 'No Disponible / Descartado', orderIndex: 4, color: DEFAULT_STAGE_COLORS[4], isClosedLost: true },
-      ],
-    },
-  
-  } as const;
+  // Alianzas (Rosas)
+  'Alianza Estratégica': 'bg-pink-100 text-pink-800 border-pink-200'
+} as const;
+
+/**
+ * Mapa de íconos por tipo de deal (Lucide React)
+ * 
+ * ICONOGRAFÍA INTUITIVA:
+ * - UserPlus: Nuevos clientes
+ * - RefreshCw: Renovaciones y ciclos
+ * - TrendingUp: Crecimiento y expansión
+ * - Settings: Implementaciones técnicas
+ * - GraduationCap: Servicios profesionales/consultoría
+ * - Handshake: Alianzas y partnerships
+ */
+export const DEAL_TYPE_ICONS = {
+  'Nuevo Negocio': 'UserPlus',
+  'Renovación': 'RefreshCw',
+  'Venta Adicional': 'TrendingUp',
+  'Venta Cruzada': 'ArrowRightLeft',
+  'Expansión de Cuenta': 'Building2',
+  'Licenciamiento': 'FileText',
+  'Implementación / Proyecto': 'Settings',
+  'Servicios Profesionales': 'GraduationCap',
+  'Soporte / Mantenimiento': 'Wrench',
+  'Alianza Estratégica': 'Handshake'
+} as const;
+
+/**
+ * Helper function para obtener tipos válidos por categoría
+ * 
+ * @param category Categoría del pipeline (BUSINESS, CHURCH, etc.)
+ * @returns Array de tipos válidos para esa categoría
+ */
+export const getDealTypesForCategory = (category: PipelineCategory): readonly string[] => {
+  return DEAL_TYPES_BY_CATEGORY[category] || [];
+};
+
+/**
+ * Helper function para obtener color de un tipo de deal
+ * 
+ * @param type Tipo de deal
+ * @returns Clases CSS de Tailwind para el color
+ */
+export const getDealTypeColor = (type: string): string => {
+  return DEAL_TYPE_COLORS[type as keyof typeof DEAL_TYPE_COLORS] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
+/**
+ * Helper function para obtener ícono de un tipo de deal
+ * 
+ * @param type Tipo de deal
+ * @returns Nombre del ícono de Lucide React
+ */
+export const getDealTypeIcon = (type: string): string => {
+  return DEAL_TYPE_ICONS[type as keyof typeof DEAL_TYPE_ICONS] || 'Circle';
+};
+
+/**
+ * Validation helper para verificar si un tipo es válido para una categoría
+ * 
+ * @param category Categoría del pipeline
+ * @param type Tipo de deal a validar
+ * @returns true si el tipo es válido para la categoría
+ */
+export const isValidDealType = (category: PipelineCategory, type: string | undefined): boolean => {
+  if (!type) return true; // Si es undefined o '', es válido porque el campo es opcional
+  const validTypes = getDealTypesForCategory(category);
+  return validTypes.includes(type);
+};
+
+/**
+ * Helper para verificar si una categoría requiere tipos específicos
+ * 
+ * @param category Categoría del pipeline
+ * @returns true si la categoría requiere seleccionar un tipo específico
+ */
+export const categoryRequiresDealTypes = (category: PipelineCategory): boolean => {
+  return category === 'BUSINESS';
+};

@@ -18,6 +18,8 @@ import { FormField } from '@/components/forms/FormField';
 // ============================================
 import { contactApi } from '@/services/api/contactApi';
 import { useSearchDebounce } from '@/hooks/useDebounce';
+import type { Contact } from '@/types/contact.types';
+
 
 // ============================================
 // TYPES
@@ -27,6 +29,7 @@ export interface ContactSelectorProps {
   // Valor y cambio
   value?: number | null;
   onValueChange: (value: number | null) => void;
+  onContactSelect?: (contact: Contact) => void;
   
   // FormField props
   label?: string;
@@ -68,6 +71,7 @@ const MAX_SUGGESTIONS = 10;
 export const ContactSelector: React.FC<ContactSelectorProps> = ({
   value,
   onValueChange,
+  onContactSelect,
   label = 'Contacto Principal',
   name = 'contactId',
   required = false,

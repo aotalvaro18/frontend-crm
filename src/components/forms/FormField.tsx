@@ -9,6 +9,7 @@ interface FormFieldProps {
   label: string;
   name: string;
   error?: string;
+  helpText?: string;
   required?: boolean;
   icon?: React.ReactNode;
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   label,
   name,
   error,
+  helpText,
   required,
   icon,
   children,
@@ -39,11 +41,19 @@ export const FormField: React.FC<FormFieldProps> = ({
       <p className="text-xs text-app-gray-500 pt-1">{description}</p>
     )}
     
-    {error && (
+    {/* V--- INICIO DEL CAMBIO QUIRÚRGICO ---V */}
+
+    {/* Lógica mejorada: Muestra el error si existe. Si no, muestra el texto de ayuda. */}
+    {error ? (
       <div className="flex items-center text-xs text-red-400 pt-1">
         <AlertCircle className="h-3 w-3 mr-1 flex-shrink-0" />
         {error}
       </div>
-    )}
+    ) : helpText ? (
+      <p className="text-xs text-app-gray-500 pt-1">{helpText}</p>
+    ) : null}
+    
+    {/* ^--- FIN DEL CAMBIO QUIRÚRGICO ---^ */}
+
   </div>
 );

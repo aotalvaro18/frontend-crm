@@ -62,7 +62,7 @@ import {
     
     // RELACIONES OBLIGATORIAS - Conecta con el pipeline
     pipelineId: number;
-    stageId: number;
+    stageId: number | null | undefined;
     contactId: number;      // Contacto principal
     companyId?: number;     // Empresa opcional
     

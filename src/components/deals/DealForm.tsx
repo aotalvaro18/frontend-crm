@@ -1,8 +1,8 @@
 // src/components/deals/DealForm.tsx
-// ✅ DEAL FORM DE TALLA MUNDIAL - Con ContactSelector inteligente actualizado
-// Cambio quirúrgico: Reemplazado Select básico por ContactSelector con autocompletado
+// ✅ DEAL FORM DE TALLA MUNDIAL - Con ContactSelector inteligente y tipos de oportunidad
+// Cambio quirúrgico: Agregado campo type con validación robusta para pipelines BUSINESS
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,6 +25,9 @@ import type {
 } from '@/types/deal.types';
 import { DEAL_PRIORITY_LABELS, DEAL_TYPE_LABELS } from '@/types/deal.types';
 
+// ✅ IMPORTS PARA TIPOS DE OPORTUNIDAD
+import { getDealTypesForCategory, isValidDealType, categoryRequiresDealTypes } from '@/types/pipeline.types';
+
 // ============================================
 // UI COMPONENTS
 // ============================================
@@ -41,49 +44,68 @@ import { ContactSelector } from '@/components/contacts/ContactSelector';
 // HOOKS & SERVICES
 // ============================================
 import { pipelineApi } from '@/services/api/pipelineApi';
-// ✅ CAMBIO QUIRÚRGICO: Ya no necesitamos contactApi para el select básico
+
 // import { contactApi } from '@/services/api/contactApi';
 import { companyApi } from '@/services/api/companyApi';
+import type { Contact } from '@/types/contact.types';
 
 // ============================================
-// VALIDATION SCHEMA - Sin cambios
+// VALIDATION SCHEMA - ✅ CORREGIDO CON PREPROCESSING
+// ============================================
+
+// ============================================
+// VALIDATION SCHEMA - ✅ CORRECCIÓN FINAL
 // ============================================
 
 const dealFormSchema = z.object({
+  // CAMPOS REQUERIDOS (matching CreateDealRequest)
   title: z.string()
     .min(1, 'El nombre de la oportunidad es requerido')
     .max(255, 'El nombre no puede exceder los 255 caracteres'),
   
+  // ✅ PREPROCESSING: Los selects devuelven strings, convertimos a number
+  pipelineId: z.preprocess(
+    (val) => val ? Number(val) : undefined,
+    z.number().positive('Debe seleccionar un pipeline')
+  ),
+  stageId: z.preprocess(
+    // Si el valor es "falsy" (vacío, nulo, etc.), lo convertimos a null.
+    (val) => (val === '' || val === null || val === undefined) ? null : Number(val),
+    // Hacemos que Zod acepte explícitamente el tipo null.
+    z.number({ required_error: 'Debe seleccionar una etapa' })
+  ).nullable().optional(),
+  contactId: z.preprocess(
+    (val) => val ? Number(val) : undefined,
+    z.number().positive('Debe seleccionar un contacto')
+  ),
+  
+  // CAMPOS OPCIONALES (matching DealEditableFields)
   description: z.string().max(2000).optional(),
   
-  // IDs de relaciones - Requeridos
-  pipelineId: z.preprocess(Number, z.number().positive('Debe seleccionar un pipeline')),
-  stageId: z.preprocess(
+  // ✅ CAMPOS NUMÉRICOS: Preprocessing para manejar strings vacíos
+  amount: z.preprocess(
     (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
-    z.number({ required_error: 'Debe seleccionar una etapa' })
-  ).optional(),
-  contactId: z.preprocess(Number, z.number().positive('Debe seleccionar un contacto')),
+    z.number().min(0, 'El monto no puede ser negativo').optional()
+  ),
+  probability: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
+    z.number().min(0).max(100, 'La probabilidad debe ser entre 0 y 100').optional()
+  ),
   companyId: z.preprocess(
     (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
     z.number().optional()
   ),
-
-  // Campos financieros
-  amount: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
-    z.number({ invalid_type_error: 'Debe ser un número' }).min(0, 'El monto no puede ser negativo').optional()
-  ),
-  probability: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
-    z.number({ invalid_type_error: 'Debe ser un número' }).min(0).max(100, 'La probabilidad debe ser entre 0 y 100').optional()
-  ),
+  
+  // CAMPOS DE TEXTO - ✅ CORRECCIÓN: Tipos exactos del backend
   expectedCloseDate: z.string().optional(),
-
-  // Campos de clasificación
-  priority: z.string().optional(),
-  type: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).optional(),
+  
+  // ✅ CORRECCIÓN CRÍTICA: type debe ser DealType, no string genérico
+  type: z.enum(['NEW_BUSINESS', 'EXISTING_BUSINESS', 'RENEWAL', 'UPSELL', 'CROSS_SELL'] as const).optional(),
+  
   source: z.string().max(100).optional(),
-
+  
+  // CUSTOM FIELDS
   customFields: z.record(z.any()).optional(),
 });
 
@@ -140,9 +162,10 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
           companyId: baseValues?.companyId,
           amount: baseValues?.amount,
           probability: baseValues?.probability,
-          expectedCloseDate: baseValues?.expectedCloseDate?.split('T')[0] || '', // Formato YYYY-MM-DD
+          expectedCloseDate: baseValues?.expectedCloseDate?.split('T')[0] || '',
           priority: baseValues?.priority || 'MEDIUM',
-          type: baseValues?.type,
+          // ✅ CAMBIO QUIRÚRGICO: Asegura que el valor por defecto sea 'undefined' si no hay tipo.
+          type: baseValues?.type || undefined,
           source: baseValues?.source || '',
           customFields: (baseValues as Deal)?.customFields || {},
         };
@@ -172,48 +195,84 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
         select: (data) => data.content,
       });
     */}
+    
     const stageOptions = useMemo(() => {
       if (!selectedPipelineId || !pipelines) return [];
       const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
       return selectedPipeline?.stages.map(s => ({ value: s.id.toString(), label: s.name })) || [];
     }, [selectedPipelineId, pipelines]);
 
+    // ✅ NUEVO: Opciones de tipo de oportunidad según pipeline seleccionado
+    const dealTypeOptions = useMemo(() => {
+      if (!selectedPipelineId || !pipelines) return [];
+      
+      const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+      if (!selectedPipeline) return [];
+      
+      const availableTypes = getDealTypesForCategory(selectedPipeline.category);
+      return availableTypes.map(type => ({ value: type, label: type }));
+    }, [selectedPipelineId, pipelines]);
+
+    // ✅ NUEVO: useEffect para sincronizar el tipo en modo edición
+    useEffect(() => {
+      // Sync form values when editing and data loads
+      if (mode === 'edit' && deal && pipelines) {
+        const dealPipeline = pipelines.find(p => p.id === deal.pipelineId);
+        if (dealPipeline && deal.type) {
+          setValue('type', deal.type, { shouldValidate: true });
+        }
+      }
+    }, [deal, pipelines, mode, setValue]);
+
+    // ✅ NUEVO: Reset del tipo cuando cambia el pipeline
+    useEffect(() => {
+      if (selectedPipelineId) {
+        // ✅ CORRECCIÓN QUIRÚRGICA: Resetea el valor a 'undefined' en lugar de ''.
+        setValue('type', undefined, { shouldValidate: true });
+      }
+    }, [selectedPipelineId, setValue]);
+
     // ============================================
-    // HANDLERS - Sin cambios
+    // HANDLERS - ✅ VERSIÓN FINAL ROBUSTA
     // ============================================
     const handleFormSubmit = async (data: DealFormData) => {
-        const payload = {
-        title: data.title.trim(),
-        description: data.description?.trim() || undefined,
-        pipelineId: data.pipelineId,
-        stageId: data.stageId,
-        contactId: data.contactId,
-        companyId: data.companyId || undefined,
-        amount: data.amount,
-        probability: data.probability,
-        expectedCloseDate: data.expectedCloseDate || undefined,
-        priority: data.priority as DealPriority,
-        type: data.type as DealType,
-        source: data.source?.trim() || undefined,
-        customFields: data.customFields,
+      // Validaciones de negocio (perfectas como están)
+      const selectedPipeline = pipelines?.find(p => p.id === data.pipelineId);
+      if (selectedPipeline && categoryRequiresDealTypes(selectedPipeline.category) && !data.type) {
+        toast.error('Debe seleccionar un Tipo de Oportunidad para este pipeline.');
+        return;
+      }
+      // ...
+  
+      // ✅ PASO 1: Construir un payload base con los campos comunes.
+      // TypeScript puede inferir este tipo correctamente.
+      const payload = {
+          title: data.title,
+          description: data.description,
+          pipelineId: data.pipelineId,
+          stageId: data.stageId,
+          contactId: data.contactId,
+          companyId: data.companyId,
+          amount: data.amount,
+          probability: data.probability,
+          expectedCloseDate: data.expectedCloseDate,
+          priority: data.priority,
+          type: data.type,
+          source: data.source,
+          customFields: data.customFields,
       };
-
+  
       if (mode === 'edit' && deal) {
-        const updateData: UpdateDealRequest = {
-          ...payload,
-          version: deal.version,
-        };
-        await onSubmit(updateData);
+          // ✅ PASO 2: Crear el objeto final para 'update' y asegurar su tipo.
+          const updateData: UpdateDealRequest = {
+            ...payload,
+            version: deal.version,
+          };
+          await onSubmit(updateData);
       } else {
-        if (payload.pipelineId === undefined || payload.stageId === undefined || payload.contactId === undefined) {
-            console.error("Error de lógica: Faltan IDs requeridos en el formulario de creación.");
-            toast.error("Faltan datos requeridos. Por favor, revisa el pipeline, la etapa y el contacto.");
-            return;
-          }
-      
-          // Ahora TypeScript sabe que pipelineId, stageId y contactId son 'number'.
-          const createData: CreateDealRequest = payload as CreateDealRequest;
-        await onSubmit(createData);
+          // ✅ PASO 3: Crear el objeto final para 'create' y asegurar su tipo.
+          const createData: CreateDealRequest = payload;
+          await onSubmit(createData);
       }
     };
 
@@ -252,7 +311,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
                   value={field.value?.toString() || ''}
                   onValueChange={(val) => {
                     field.onChange(val);
-                    setValue('stageId', undefined, { shouldValidate: true }); // Reset stage on pipeline change
+                    setValue('stageId', null); // Reset stage on pipeline change
                   }}
                   placeholder={isLoadingPipelines ? 'Cargando...' : 'Seleccionar pipeline...'}
                   disabled={isLoadingPipelines}
@@ -270,93 +329,30 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
                   options={stageOptions}
                   value={field.value?.toString() || ''}
                   onValueChange={field.onChange}
-                  placeholder={!selectedPipelineId ? 'Primero elige un pipeline' : 'Seleccionar etapa...'}
+                  placeholder={!selectedPipelineId ? 
+                    'Primero selecciona un pipeline' : 
+                    stageOptions.length === 0 ? 'No hay etapas disponibles' : 'Seleccionar etapa...'
+                  }
                   disabled={!selectedPipelineId || stageOptions.length === 0}
                 />
               </FormField>
             )}
           />
 
-          {/* ✅ CAMBIO QUIRÚRGICO PRINCIPAL: Reemplazado Select por ContactSelector */}
-          <Controller
-            name="contactId"
-            control={control}
-            render={({ field }) => (
-              <ContactSelector
-                label="Contacto Principal"
-                name="contactId"
-                required={true}
-                value={field.value || null}
-                onValueChange={(contactId) => field.onChange(contactId)}
-                error={errors.contactId?.message}
-                placeholder="Buscar contacto por nombre..."
-                description="Selecciona el contacto responsable de esta oportunidad"
-                disabled={loading}
-                allowClear={false}
-                // ✅ MEJORA: Callback opcional para crear contacto on-the-fly
-                onCreateNew={() => {
-                  // TODO: Implementar lógica para abrir modal de crear contacto
-                  console.log('TODO: Abrir modal crear contacto');
-                }}
-              />
-            )}
-          />
-
-          {/* COMENTAR TEMPORALMENTE PARA PROBAR HERENCIA AUTOMÁTICA:
-          <Controller
-            name="companyId"
-            control={control}
-            render={({ field }) => (
-              <FormField label="Empresa (Opcional)" name="companyId" icon={<Building />} error={errors.companyId?.message}>
-                <Select
-                  options={companies?.map(c => ({ value: c.id.toString(), label: c.name })) || []}
-                  value={field.value?.toString() || ''}
-                  onValueChange={field.onChange}
-                  placeholder={isLoadingCompanies ? 'Cargando...' : 'Seleccionar empresa...'}
-                  disabled={isLoadingCompanies}
-                  clearable
-                />
-              </FormField>
-            )}
-          />
-          */}
-        </div>
-        
-        {/* --- SECCIÓN ADICIONAL - Sin cambios --- */}
-        <div className="space-y-6">
-          <h3 className="text-lg font-medium text-app-gray-100 border-b border-app-dark-700 pb-2">Información Adicional</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Controller
-              name="expectedCloseDate"
-              control={control}
-              render={({ field }) => (
-                <FormField label="Fecha de Cierre Esperada" name="expectedCloseDate" icon={<Calendar />} error={errors.expectedCloseDate?.message}>
-                  <Input type="date" {...field} />
-                </FormField>
-              )}
-            />
-            
-            <Controller
-              name="priority"
-              control={control}
-              render={({ field }) => (
-                <FormField label="Prioridad" name="priority" error={errors.priority?.message}>
-                  <Select
-                    options={Object.entries(DEAL_PRIORITY_LABELS).map(([value, label]) => ({ value, label }))}
-                    value={field.value || ''}
-                    onValueChange={field.onChange}
-                  />
-                </FormField>
-              )}
-            />
-            
+          {/* ✅ NUEVO CAMPO: Tipo de Oportunidad (solo para pipelines BUSINESS) */}
+          {dealTypeOptions.length > 0 && (
             <Controller
               name="type"
               control={control}
               render={({ field }) => (
-                <FormField label="Tipo de Oportunidad" name="type" error={errors.type?.message}>
+                <FormField 
+                  label="Tipo de Oportunidad" 
+                  name="type" 
+                  error={errors.type?.message}
+                  helpText="Define la naturaleza comercial de esta oportunidad"
+                >
                   <Select
-                    options={Object.entries(DEAL_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                    options={dealTypeOptions}
                     value={field.value || ''}
                     onValueChange={field.onChange}
                     placeholder="Seleccionar tipo..."
@@ -365,15 +361,87 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
                 </FormField>
               )}
             />
-          </div>
+          )}
+
+          <Controller
+            name="contactId"
+            control={control}
+            render={({ field }) => (
+              <FormField label="Contacto Principal" name="contactId" required error={errors.contactId?.message}>
+                <ContactSelector
+                  // ✅ Usa la prop 'value' para el ID
+                  value={field.value || null}
+                  
+                  // ✅ Usa 'onValueChange' para actualizar el formulario
+                  onValueChange={field.onChange}
+                  
+                  // ✅ Usa la nueva 'onContactSelect' para la lógica de herencia
+                  onContactSelect={(contact: Contact) => {
+                    // La herencia automática ahora funciona perfectamente
+                    if (contact.companyId && !watch('companyId')) {
+                      setValue('companyId', contact.companyId, { shouldValidate: true });
+                    }
+                  }}
+                  
+                  placeholder="Buscar contacto por nombre..."
+                  className="w-full"
+                  
+                  // ✅ Pasa el mensaje de error, no un booleano
+                  error={errors.contactId?.message}
+                  
+                  disabled={loading}
+                  allowClear={false}
+                  onCreateNew={() => {
+                    console.log('TODO: Abrir modal crear contacto');
+                  }}
+                />
+              </FormField>
+            )}
+          />
+
+          <Controller
+            name="probability"
+            control={control}
+            render={({ field }) => (
+              <FormField label="Probabilidad %" name="probability" error={errors.probability?.message}>
+                <Input type="number" min="0" max="100" placeholder="50" {...field} value={field.value || ''} />
+              </FormField>
+            )}
+          />
+
+          <Controller
+            name="expectedCloseDate"
+            control={control}
+            render={({ field }) => (
+              <FormField label="Fecha de Cierre Esperada" name="expectedCloseDate" icon={<Calendar />} error={errors.expectedCloseDate?.message}>
+                <Input type="date" {...field} />
+              </FormField>
+            )}
+          />
+        </div>
+
+        {/* --- SECCIÓN DE DETALLES --- */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-medium text-app-gray-100">Detalles Adicionales</h3>
+          
           <FormField label="Descripción" name="description" error={errors.description?.message}>
-            <textarea
+            <textarea 
               {...register('description')}
               rows={4}
-              className="w-full px-3 py-2 bg-app-dark-700 border border-app-dark-600 rounded text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="Añade detalles sobre la oportunidad, necesidades del cliente, próximos pasos, etc."
+              className="w-full px-3 py-2 border border-app-gray-600 rounded-lg bg-app-dark-800 text-app-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              placeholder="Describe los detalles de esta oportunidad..."
             />
           </FormField>
+
+          <Controller
+            name="source"
+            control={control}
+            render={({ field }) => (
+              <FormField label="Fuente" name="source" error={errors.source?.message}>
+                <Input {...field} placeholder="Ej: Website, Referido, Evento..." />
+              </FormField>
+            )}
+          />
         </div>
 
         {showActions && (
