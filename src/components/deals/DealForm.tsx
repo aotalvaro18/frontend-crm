@@ -155,14 +155,13 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
     const {
       register, control, handleSubmit,
       formState: { errors },
-      watch, setValue,
+      watch, setValue, reset,
     } = useForm<DealFormData>({
       resolver: zodResolver(dealFormSchema),
       defaultValues: useMemo(() => {
         const baseValues = mode === 'edit' ? deal : initialValues;
-        // ✅ DEBUG: Verificar valores calculados
-  console.log('📝 Default values calculated:', baseValues);
-  console.log('📝 Mode:', mode, 'Deal title:', deal?.title);
+        console.log('📝 Default values calculated:', baseValues);
+        console.log('📝 Mode:', mode, 'Deal title:', deal?.title);
         return {
           title: baseValues?.title || '',
           description: baseValues?.description || '',
@@ -174,13 +173,33 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
           probability: baseValues?.probability,
           expectedCloseDate: baseValues?.expectedCloseDate?.split('T')[0] || '',
           priority: baseValues?.priority || 'MEDIUM',
-          // ✅ CAMBIO QUIRÚRGICO: Asegura que el valor por defecto sea 'undefined' si no hay tipo.
           type: baseValues?.type || undefined,
           source: baseValues?.source || '',
           customFields: (baseValues as Deal)?.customFields || {},
         };
       }, [deal, initialValues, mode]),
     });
+    
+    // ✅ AGREGAR: useEffect para resetear form cuando cambian los datos
+    useEffect(() => {
+      if (mode === 'edit' && deal) {
+        reset({
+          title: deal.title || '',
+          description: deal.description || '',
+          pipelineId: deal.pipelineId,
+          stageId: deal.stageId,
+          contactId: deal.contactId,
+          companyId: deal.companyId,
+          amount: deal.amount,
+          probability: deal.probability,
+          expectedCloseDate: deal.expectedCloseDate?.split('T')[0] || '',
+          priority: deal.priority || 'MEDIUM',
+          type: deal.type || undefined,
+          source: deal.source || '',
+          customFields: deal.customFields || {},
+        });
+      }
+    }, [deal, mode, reset]);
     
     const selectedPipelineId = watch('pipelineId');
 
