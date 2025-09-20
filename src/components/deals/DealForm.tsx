@@ -247,6 +247,7 @@ return options;
     // HANDLERS - ✅ VERSIÓN FINAL ROBUSTA
     // ============================================
     const handleFormSubmit = async (data: DealFormData) => {
+      console.log('🚀 handleFormSubmit ejecutado con data:', data);
       // Validaciones de negocio
       const selectedPipeline = pipelines?.find(p => p.id === data.pipelineId);
       if (selectedPipeline && categoryRequiresDealTypes(selectedPipeline.category) && !data.type) {
@@ -265,7 +266,7 @@ return options;
         toast.error('Debe seleccionar una etapa.');
         return;
       }
-    
+      console.log('✅ Validaciones pasadas, enviando al backend...');
       try {
         if (mode === 'edit' && deal) {
           // ✅ UPDATE: Todos los campos son opcionales excepto version
