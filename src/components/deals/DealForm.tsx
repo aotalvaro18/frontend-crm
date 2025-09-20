@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { 
-  DollarSign, Calendar, Building, Target, Save, X, AlertCircle, Workflow, FileText
+  DollarSign, Calendar, Target, Save, X, AlertCircle, Workflow, FileText
 } from 'lucide-react';
 
 // ============================================
@@ -19,14 +19,15 @@ import type {
   Deal,
   DealDTO,
   CreateDealRequest,
-  UpdateDealRequest,
-  DealPriority,
-  DealType
+  UpdateDealRequest
 } from '@/types/deal.types';
-import { DEAL_PRIORITY_LABELS, DEAL_TYPE_LABELS } from '@/types/deal.types';
+import { DEAL_PRIORITY_LABELS } from '@/types/deal.types';
 
-// ✅ IMPORTS PARA TIPOS DE OPORTUNIDAD
-import { getDealTypesForCategory, isValidDealType, categoryRequiresDealTypes } from '@/types/pipeline.types';
+// ✅ CAMBIO QUIRÚRGICO 1: Agregar getDealTypeSelectOptions al import
+import { 
+  categoryRequiresDealTypes,
+  getDealTypeSelectOptions 
+} from '@/types/pipeline.types';
 
 // ============================================
 // UI COMPONENTS
@@ -46,7 +47,7 @@ import { ContactSelector } from '@/components/contacts/ContactSelector';
 import { pipelineApi } from '@/services/api/pipelineApi';
 
 // import { contactApi } from '@/services/api/contactApi';
-import { companyApi } from '@/services/api/companyApi';
+
 import type { Contact } from '@/types/contact.types';
 
 // ============================================
@@ -100,8 +101,12 @@ const dealFormSchema = z.object({
   expectedCloseDate: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).optional(),
   
-  // ✅ CORRECCIÓN CRÍTICA: type debe ser DealType, no string genérico
-  type: z.enum(['NEW_BUSINESS', 'EXISTING_BUSINESS', 'RENEWAL', 'UPSELL', 'CROSS_SELL'] as const).optional(),
+  // ✅ CAMBIO QUIRÚRGICO 2: Actualizar enum con las 10 claves correctas
+  type: z.enum([
+    'NEW_BUSINESS', 'RENEWAL', 'UPSELL', 'CROSS_SELL', 'ACCOUNT_EXPANSION',
+    'LICENSING', 'IMPLEMENTATION_PROJECT', 'PROFESSIONAL_SERVICES', 
+    'SUPPORT_MAINTENANCE', 'STRATEGIC_ALLIANCE'
+  ] as const).optional(),
   
   source: z.string().max(100).optional(),
   
@@ -202,15 +207,14 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       return selectedPipeline?.stages.map(s => ({ value: s.id.toString(), label: s.name })) || [];
     }, [selectedPipelineId, pipelines]);
 
-    // ✅ NUEVO: Opciones de tipo de oportunidad según pipeline seleccionado
+    // ✅ CAMBIO QUIRÚRGICO 3: Reemplazar useMemo de dealTypeOptions
     const dealTypeOptions = useMemo(() => {
       if (!selectedPipelineId || !pipelines) return [];
       
       const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
       if (!selectedPipeline) return [];
       
-      const availableTypes = getDealTypesForCategory(selectedPipeline.category);
-      return availableTypes.map(type => ({ value: type, label: type }));
+      return getDealTypeSelectOptions(selectedPipeline.category);
     }, [selectedPipelineId, pipelines]);
 
     // ✅ NUEVO: useEffect para sincronizar el tipo en modo edición
@@ -219,7 +223,8 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       if (mode === 'edit' && deal && pipelines) {
         const dealPipeline = pipelines.find(p => p.id === deal.pipelineId);
         if (dealPipeline && deal.type) {
-          setValue('type', deal.type, { shouldValidate: true });
+          //setValue('type', deal.type, { shouldValidate: true });
+          setValue('type', undefined, { shouldValidate: true });
         }
       }
     }, [deal, pipelines, mode, setValue]);
@@ -236,43 +241,61 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
     // HANDLERS - ✅ VERSIÓN FINAL ROBUSTA
     // ============================================
     const handleFormSubmit = async (data: DealFormData) => {
-      // Validaciones de negocio (perfectas como están)
+      // Validaciones de negocio
       const selectedPipeline = pipelines?.find(p => p.id === data.pipelineId);
       if (selectedPipeline && categoryRequiresDealTypes(selectedPipeline.category) && !data.type) {
         toast.error('Debe seleccionar un Tipo de Oportunidad para este pipeline.');
         return;
       }
-      // ...
-  
-      // ✅ PASO 1: Construir un payload base con los campos comunes.
-      // TypeScript puede inferir este tipo correctamente.
-      const payload = {
-          title: data.title,
-          description: data.description,
-          pipelineId: data.pipelineId,
-          stageId: data.stageId,
-          contactId: data.contactId,
-          companyId: data.companyId,
-          amount: data.amount,
-          probability: data.probability,
-          expectedCloseDate: data.expectedCloseDate,
-          priority: data.priority,
-          type: data.type,
-          source: data.source,
-          customFields: data.customFields,
-      };
-  
-      if (mode === 'edit' && deal) {
-          // ✅ PASO 2: Crear el objeto final para 'update' y asegurar su tipo.
+    
+      // ✅ VALIDACIÓN CRITICA: Asegurar que los campos requeridos estén presentes
+      if (!data.stageId) {
+        toast.error('Debe seleccionar una etapa.');
+        return;
+      }
+    
+      try {
+        if (mode === 'edit' && deal) {
+          // ✅ UPDATE: Todos los campos son opcionales excepto version
           const updateData: UpdateDealRequest = {
-            ...payload,
+            title: data.title,
+            description: data.description,
+            pipelineId: data.pipelineId,
+            stageId: data.stageId,
+            contactId: data.contactId,
+            companyId: data.companyId,
+            amount: data.amount,
+            probability: data.probability,
+            expectedCloseDate: data.expectedCloseDate,
+            priority: data.priority,
+            type: data.type,
+            source: data.source,
+            customFields: data.customFields,
             version: deal.version,
           };
           await onSubmit(updateData);
-      } else {
-          // ✅ PASO 3: Crear el objeto final para 'create' y asegurar su tipo.
-          const createData: CreateDealRequest = payload;
+        } else {
+          // ✅ CREATE: Garantizar que los campos requeridos estén como number
+          const createData: CreateDealRequest = {
+            title: data.title,
+            pipelineId: data.pipelineId!,  // Garantizado por validación de Zod
+            stageId: data.stageId,         // Garantizado por validación arriba
+            contactId: data.contactId!,    // Garantizado por validación de Zod
+            // Campos opcionales
+            description: data.description,
+            companyId: data.companyId,
+            amount: data.amount,
+            probability: data.probability,
+            expectedCloseDate: data.expectedCloseDate,
+            priority: data.priority,
+            type: data.type,
+            source: data.source,
+            customFields: data.customFields,
+          };
           await onSubmit(createData);
+        }
+      } catch (error) {
+        console.error('Error submitting deal form:', error);
       }
     };
 
@@ -369,31 +392,15 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
             render={({ field }) => (
               <FormField label="Contacto Principal" name="contactId" required error={errors.contactId?.message}>
                 <ContactSelector
-                  // ✅ Usa la prop 'value' para el ID
                   value={field.value || null}
-                  
-                  // ✅ Usa 'onValueChange' para actualizar el formulario
                   onValueChange={field.onChange}
-                  
-                  // ✅ Usa la nueva 'onContactSelect' para la lógica de herencia
                   onContactSelect={(contact: Contact) => {
-                    // La herencia automática ahora funciona perfectamente
                     if (contact.companyId && !watch('companyId')) {
                       setValue('companyId', contact.companyId, { shouldValidate: true });
                     }
                   }}
-                  
                   placeholder="Buscar contacto por nombre..."
-                  className="w-full"
-                  
-                  // ✅ Pasa el mensaje de error, no un booleano //
-                  error={errors.contactId?.message}
-                  
-                  disabled={loading}
-                  allowClear={false}
-                  onCreateNew={() => {
-                    console.log('TODO: Abrir modal crear contacto');
-                  }}
+                  allowClear
                 />
               </FormField>
             )}
@@ -403,8 +410,30 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
             name="probability"
             control={control}
             render={({ field }) => (
-              <FormField label="Probabilidad %" name="probability" error={errors.probability?.message}>
-                <Input type="number" min="0" max="100" placeholder="50" {...field} value={field.value || ''} />
+              <FormField label="Probabilidad de Cierre %" name="probability" error={errors.probability?.message}>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  placeholder="75" 
+                  {...field} 
+                  value={field.value || ''} 
+                />
+              </FormField>
+            )}
+          />
+
+          <Controller
+            name="priority"
+            control={control}
+            render={({ field }) => (
+              <FormField label="Prioridad" name="priority" error={errors.priority?.message}>
+                <Select
+                  options={Object.entries(DEAL_PRIORITY_LABELS).map(([value, label]) => ({ value, label }))}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                  placeholder="Seleccionar prioridad..."
+                />
               </FormField>
             )}
           />
@@ -413,7 +442,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
             name="expectedCloseDate"
             control={control}
             render={({ field }) => (
-              <FormField label="Fecha de Cierre Esperada" name="expectedCloseDate" icon={<Calendar />} error={errors.expectedCloseDate?.message}>
+              <FormField label="Fecha Esperada de Cierre" name="expectedCloseDate" icon={<Calendar />} error={errors.expectedCloseDate?.message}>
                 <Input type="date" {...field} />
               </FormField>
             )}

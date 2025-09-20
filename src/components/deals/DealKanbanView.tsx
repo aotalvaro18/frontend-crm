@@ -62,7 +62,6 @@ const DealKanbanView: React.FC<DealKanbanViewProps> = ({ pipeline, searchTerm })
   const { 
     data: kanbanData, 
     isLoading, 
-    isFetching,
     error,
     refetch 
   } = usePipelineKanbanData(pipeline.id);

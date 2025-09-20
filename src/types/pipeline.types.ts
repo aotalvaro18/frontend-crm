@@ -540,8 +540,29 @@ export interface CreatePipelineRequest {
 // TIPOS DE DEALS POR CATEGORÍA DE PIPELINE
 // ============================================
 
+// src/types/pipeline.types.ts
+// ✅ VERSIÓN ACTUALIZADA COMPLETA - Con mapeo bidireccional para tipos de oportunidad
+
 /**
- * Tipos de deals específicos por categoría de pipeline
+ * ✅ ENUM DE CLAVES INTERNAS - Matching exacto con DealConstants.java del backend
+ * Estas son las claves que el backend espera y valida en el campo Deal.type
+ */
+export enum BusinessDealType {
+  NEW_BUSINESS = 'NEW_BUSINESS',
+  RENEWAL = 'RENEWAL', 
+  UPSELL = 'UPSELL',
+  CROSS_SELL = 'CROSS_SELL',
+  ACCOUNT_EXPANSION = 'ACCOUNT_EXPANSION',
+  LICENSING = 'LICENSING',
+  IMPLEMENTATION_PROJECT = 'IMPLEMENTATION_PROJECT',
+  PROFESSIONAL_SERVICES = 'PROFESSIONAL_SERVICES',
+  SUPPORT_MAINTENANCE = 'SUPPORT_MAINTENANCE',
+  STRATEGIC_ALLIANCE = 'STRATEGIC_ALLIANCE'
+}
+
+/**
+ * ✅ LABELS DE PRESENTACIÓN - Lo que ve el usuario en la interfaz
+ * Mantiene la misma semántica y organización del código original
  * 
  * BUSINESS: 10 tipos comprehensivos que cubren todo el ciclo B2B
  * - Desde adquisición hasta alianzas estratégicas
@@ -573,7 +594,44 @@ export const DEAL_TYPES_BY_CATEGORY = {
 } as const;
 
 /**
+ * ✅ MAPEO BIDIRECCIONAL: LABEL → CLAVE INTERNA
+ * Convierte de lo que ve el usuario a lo que espera el backend
+ * CRÍTICO: Este mapeo resuelve el conflicto de validación de Zod
+ */
+export const DEAL_TYPE_LABEL_TO_KEY: Record<string, BusinessDealType> = {
+  'Nuevo Negocio': BusinessDealType.NEW_BUSINESS,
+  'Renovación': BusinessDealType.RENEWAL,
+  'Venta Adicional': BusinessDealType.UPSELL,
+  'Venta Cruzada': BusinessDealType.CROSS_SELL,
+  'Expansión de Cuenta': BusinessDealType.ACCOUNT_EXPANSION,
+  'Licenciamiento': BusinessDealType.LICENSING,
+  'Implementación / Proyecto': BusinessDealType.IMPLEMENTATION_PROJECT,
+  'Servicios Profesionales': BusinessDealType.PROFESSIONAL_SERVICES,
+  'Soporte / Mantenimiento': BusinessDealType.SUPPORT_MAINTENANCE,
+  'Alianza Estratégica': BusinessDealType.STRATEGIC_ALLIANCE
+};
+
+/**
+ * ✅ MAPEO BIDIRECCIONAL: CLAVE INTERNA → LABEL
+ * Convierte de lo que viene del backend a lo que ve el usuario
+ * Para mostrar datos existentes en la interfaz
+ */
+export const DEAL_TYPE_KEY_TO_LABEL: Record<BusinessDealType, string> = {
+  [BusinessDealType.NEW_BUSINESS]: 'Nuevo Negocio',
+  [BusinessDealType.RENEWAL]: 'Renovación',
+  [BusinessDealType.UPSELL]: 'Venta Adicional',
+  [BusinessDealType.CROSS_SELL]: 'Venta Cruzada',
+  [BusinessDealType.ACCOUNT_EXPANSION]: 'Expansión de Cuenta',
+  [BusinessDealType.LICENSING]: 'Licenciamiento',
+  [BusinessDealType.IMPLEMENTATION_PROJECT]: 'Implementación / Proyecto',
+  [BusinessDealType.PROFESSIONAL_SERVICES]: 'Servicios Profesionales',
+  [BusinessDealType.SUPPORT_MAINTENANCE]: 'Soporte / Mantenimiento',
+  [BusinessDealType.STRATEGIC_ALLIANCE]: 'Alianza Estratégica'
+};
+
+/**
  * Mapa de colores por tipo de deal (clases Tailwind)
+ * ✅ ACTUALIZADO: Ahora usa las claves internas como keys
  * 
  * ORGANIZACIÓN SEMÁNTICA:
  * - Azules: Adquisición de nuevos clientes
@@ -582,30 +640,43 @@ export const DEAL_TYPES_BY_CATEGORY = {
  * - Naranjas: Servicios y proyectos
  * - Rosas: Alianzas estratégicas
  */
-export const DEAL_TYPE_COLORS = {
+export const DEAL_TYPE_COLORS: Record<string, string> = {
   // Adquisición (Azules)
-  'Nuevo Negocio': 'bg-blue-100 text-blue-800 border-blue-200',
+  [BusinessDealType.NEW_BUSINESS]: 'bg-blue-100 text-blue-800 border-blue-200',
   
   // Retención (Verdes)
-  'Renovación': 'bg-green-100 text-green-800 border-green-200',
-  'Soporte / Mantenimiento': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  [BusinessDealType.RENEWAL]: 'bg-green-100 text-green-800 border-green-200',
+  [BusinessDealType.SUPPORT_MAINTENANCE]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   
   // Crecimiento (Púrpuras)
+  [BusinessDealType.UPSELL]: 'bg-purple-100 text-purple-800 border-purple-200',
+  [BusinessDealType.CROSS_SELL]: 'bg-violet-100 text-violet-800 border-violet-200',
+  [BusinessDealType.ACCOUNT_EXPANSION]: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  
+  // Servicios (Naranjas)
+  [BusinessDealType.LICENSING]: 'bg-orange-100 text-orange-800 border-orange-200',
+  [BusinessDealType.IMPLEMENTATION_PROJECT]: 'bg-amber-100 text-amber-800 border-amber-200',
+  [BusinessDealType.PROFESSIONAL_SERVICES]: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  
+  // Alianzas (Rosas)
+  [BusinessDealType.STRATEGIC_ALLIANCE]: 'bg-pink-100 text-pink-800 border-pink-200',
+  
+  // ✅ BACKWARD COMPATIBILITY: Mantener los labels originales para no romper código existente
+  'Nuevo Negocio': 'bg-blue-100 text-blue-800 border-blue-200',
+  'Renovación': 'bg-green-100 text-green-800 border-green-200',
+  'Soporte / Mantenimiento': 'bg-emerald-100 text-emerald-800 border-emerald-200',
   'Venta Adicional': 'bg-purple-100 text-purple-800 border-purple-200',
   'Venta Cruzada': 'bg-violet-100 text-violet-800 border-violet-200',
   'Expansión de Cuenta': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  
-  // Servicios (Naranjas)
   'Licenciamiento': 'bg-orange-100 text-orange-800 border-orange-200',
   'Implementación / Proyecto': 'bg-amber-100 text-amber-800 border-amber-200',
   'Servicios Profesionales': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  
-  // Alianzas (Rosas)
   'Alianza Estratégica': 'bg-pink-100 text-pink-800 border-pink-200'
-} as const;
+};
 
 /**
  * Mapa de íconos por tipo de deal (Lucide React)
+ * ✅ ACTUALIZADO: Ahora usa las claves internas como keys
  * 
  * ICONOGRAFÍA INTUITIVA:
  * - UserPlus: Nuevos clientes
@@ -615,7 +686,19 @@ export const DEAL_TYPE_COLORS = {
  * - GraduationCap: Servicios profesionales/consultoría
  * - Handshake: Alianzas y partnerships
  */
-export const DEAL_TYPE_ICONS = {
+export const DEAL_TYPE_ICONS: Record<string, string> = {
+  [BusinessDealType.NEW_BUSINESS]: 'UserPlus',
+  [BusinessDealType.RENEWAL]: 'RefreshCw',
+  [BusinessDealType.UPSELL]: 'TrendingUp',
+  [BusinessDealType.CROSS_SELL]: 'ArrowRightLeft',
+  [BusinessDealType.ACCOUNT_EXPANSION]: 'Building2',
+  [BusinessDealType.LICENSING]: 'FileText',
+  [BusinessDealType.IMPLEMENTATION_PROJECT]: 'Settings',
+  [BusinessDealType.PROFESSIONAL_SERVICES]: 'GraduationCap',
+  [BusinessDealType.SUPPORT_MAINTENANCE]: 'Wrench',
+  [BusinessDealType.STRATEGIC_ALLIANCE]: 'Handshake',
+  
+  // ✅ BACKWARD COMPATIBILITY: Mantener los labels originales
   'Nuevo Negocio': 'UserPlus',
   'Renovación': 'RefreshCw',
   'Venta Adicional': 'TrendingUp',
@@ -626,10 +709,11 @@ export const DEAL_TYPE_ICONS = {
   'Servicios Profesionales': 'GraduationCap',
   'Soporte / Mantenimiento': 'Wrench',
   'Alianza Estratégica': 'Handshake'
-} as const;
+};
 
 /**
  * Helper function para obtener tipos válidos por categoría
+ * ✅ MANTENIDO: Sin cambios, sigue retornando los labels para backward compatibility
  * 
  * @param category Categoría del pipeline (BUSINESS, CHURCH, etc.)
  * @returns Array de tipos válidos para esa categoría
@@ -639,40 +723,68 @@ export const getDealTypesForCategory = (category: PipelineCategory): readonly st
 };
 
 /**
- * Helper function para obtener color de un tipo de deal
+ * ✅ NUEVO: Helper para obtener opciones correctas para el Select
+ * Resuelve el conflicto de validación retornando { value: clave_interna, label: texto_usuario }
  * 
- * @param type Tipo de deal
+ * @param category Categoría del pipeline
+ * @returns Array de opciones con value interno y label legible
+ */
+export const getDealTypeSelectOptions = (category: PipelineCategory) => {
+  if (category !== 'BUSINESS') return [];
+  
+  return DEAL_TYPES_BY_CATEGORY.BUSINESS.map(label => ({
+    value: DEAL_TYPE_LABEL_TO_KEY[label], // Clave interna para el backend
+    label: label // Texto legible para el usuario
+  }));
+};
+
+/**
+ * Helper function para obtener color de un tipo de deal
+ * ✅ MEJORADO: Ahora maneja tanto claves internas como labels
+ * 
+ * @param type Tipo de deal (clave interna o label)
  * @returns Clases CSS de Tailwind para el color
  */
 export const getDealTypeColor = (type: string): string => {
-  return DEAL_TYPE_COLORS[type as keyof typeof DEAL_TYPE_COLORS] || 'bg-gray-100 text-gray-800 border-gray-200';
+  return DEAL_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800 border-gray-200';
 };
 
 /**
  * Helper function para obtener ícono de un tipo de deal
+ * ✅ MEJORADO: Ahora maneja tanto claves internas como labels
  * 
- * @param type Tipo de deal
+ * @param type Tipo de deal (clave interna o label)
  * @returns Nombre del ícono de Lucide React
  */
 export const getDealTypeIcon = (type: string): string => {
-  return DEAL_TYPE_ICONS[type as keyof typeof DEAL_TYPE_ICONS] || 'Circle';
+  return DEAL_TYPE_ICONS[type] || 'Circle';
 };
 
 /**
  * Validation helper para verificar si un tipo es válido para una categoría
+ * ✅ MEJORADO: Ahora valida tanto claves internas como labels
  * 
  * @param category Categoría del pipeline
- * @param type Tipo de deal a validar
+ * @param type Tipo de deal a validar (clave interna o label)
  * @returns true si el tipo es válido para la categoría
  */
 export const isValidDealType = (category: PipelineCategory, type: string | undefined): boolean => {
-  if (!type) return true; // Si es undefined o '', es válido porque el campo es opcional
+  if (!type) return true;
+  
+  if (category === 'BUSINESS') {
+    // Validar tanto claves internas como labels
+    const isValidKey = Object.values(BusinessDealType).includes(type as BusinessDealType);
+    const isValidLabel = (DEAL_TYPES_BY_CATEGORY.BUSINESS as readonly string[]).includes(type);
+    return isValidKey || isValidLabel;
+  }
+  
   const validTypes = getDealTypesForCategory(category);
   return validTypes.includes(type);
 };
 
 /**
  * Helper para verificar si una categoría requiere tipos específicos
+ * ✅ MANTENIDO: Sin cambios
  * 
  * @param category Categoría del pipeline
  * @returns true si la categoría requiere seleccionar un tipo específico

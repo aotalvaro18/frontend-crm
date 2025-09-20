@@ -26,6 +26,8 @@ import {
   import type { Tag } from './common.types';
 
   import type { BadgeVariant } from '@/components/ui/Badge';
+
+  import { BusinessDealType, DEAL_TYPE_KEY_TO_LABEL } from './pipeline.types';
     
   // ============================================
   // DEAL CORE TYPES (Matching DealDTO del backend)
@@ -44,8 +46,8 @@ import {
   /**
    * Tipos de oportunidad
    */
-  export type DealType = 'NEW_BUSINESS' | 'EXISTING_BUSINESS' | 'RENEWAL' | 'UPSELL' | 'CROSS_SELL';
-  
+  export type DealType = `${BusinessDealType}`;
+
   /**
    * Entidad Deal completa (matching DealDTO del backend)
    */
@@ -476,16 +478,13 @@ import {
     URGENT: 'Urgente',
   };
   
-  /**
-   * Configuración de etiquetas para tipos
-   */
-  export const DEAL_TYPE_LABELS: Record<DealType, string> = {
-    NEW_BUSINESS: 'Nuevo Negocio',
-    EXISTING_BUSINESS: 'Negocio Existente',
-    RENEWAL: 'Renovación',
-    UPSELL: 'Venta Adicional',
-    CROSS_SELL: 'Venta Cruzada',
-  };
+ /**
+ * Configuración de etiquetas para tipos.
+ * ✅ REFACTORIZADO: Ahora es un alias directo del enum BusinessDealType,
+ * que es la única fuente de verdad para las etiquetas.
+ * Esto elimina la duplicación y asegura la consistencia.
+ */
+ export const DEAL_TYPE_LABELS = DEAL_TYPE_KEY_TO_LABEL;
 
   // ============================================
 // KANBAN SPECIFIC TYPES
