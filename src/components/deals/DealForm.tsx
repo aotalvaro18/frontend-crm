@@ -146,7 +146,9 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
     mode,
     showActions = true,
   }, ref) => {
-
+  
+    // ✅ DEBUG: Verificar datos recibidos en modo edición
+  console.log('🔍 DealForm props:', { mode, deal, initialValues });
     // ============================================
     // FORM SETUP - Sin cambios
     // ============================================
@@ -158,6 +160,9 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       resolver: zodResolver(dealFormSchema),
       defaultValues: useMemo(() => {
         const baseValues = mode === 'edit' ? deal : initialValues;
+        // ✅ DEBUG: Verificar valores calculados
+  console.log('📝 Default values calculated:', baseValues);
+  console.log('📝 Mode:', mode, 'Deal title:', deal?.title);
         return {
           title: baseValues?.title || '',
           description: baseValues?.description || '',
