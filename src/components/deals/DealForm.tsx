@@ -214,7 +214,13 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
       if (!selectedPipeline) return [];
       
-      return getDealTypeSelectOptions(selectedPipeline.category);
+      const options = getDealTypeSelectOptions(selectedPipeline.category);
+
+// ✅ DEBUG TEMPORAL
+console.log('Deal type options:', options);
+console.log('Pipeline category:', selectedPipeline.category);
+
+return options;
     }, [selectedPipelineId, pipelines]);
 
     // ✅ NUEVO: useEffect para sincronizar el tipo en modo edición
@@ -244,6 +250,12 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       // Validaciones de negocio
       const selectedPipeline = pipelines?.find(p => p.id === data.pipelineId);
       if (selectedPipeline && categoryRequiresDealTypes(selectedPipeline.category) && !data.type) {
+        // ✅ DEBUG TEMPORAL
+  console.log('Datos enviados al backend:', {
+    type: data.type,
+    typeOf: typeof data.type,
+    pipelineId: data.pipelineId
+  });
         toast.error('Debe seleccionar un Tipo de Oportunidad para este pipeline.');
         return;
       }
