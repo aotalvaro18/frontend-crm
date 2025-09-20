@@ -148,20 +148,18 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
   }, ref) => {
   
     // ✅ DEBUG: Verificar datos recibidos en modo edición
-  console.log('🔍 DealForm props:', { mode, deal, initialValues });
+  
     // ============================================
-    // FORM SETUP - Sin cambios
+    // FORM SETUP - Simplificado tras fix del modal
     // ============================================
     const {
       register, control, handleSubmit,
       formState: { errors },
-      watch, setValue, reset,
-    } = useForm<DealFormData>({
+      watch, setValue,
+      } = useForm<DealFormData>({
       resolver: zodResolver(dealFormSchema),
       defaultValues: useMemo(() => {
         const baseValues = mode === 'edit' ? deal : initialValues;
-        console.log('📝 Default values calculated:', baseValues);
-        console.log('📝 Mode:', mode, 'Deal title:', deal?.title);
         return {
           title: baseValues?.title || '',
           description: baseValues?.description || '',
@@ -179,28 +177,7 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
         };
       }, [deal, initialValues, mode]),
     });
-    
-    // ✅ AGREGAR: useEffect para resetear form cuando cambian los datos
-    useEffect(() => {
-      if (mode === 'edit' && deal) {
-        reset({
-          title: deal.title || '',
-          description: deal.description || '',
-          pipelineId: deal.pipelineId,
-          stageId: deal.stageId,
-          contactId: deal.contactId,
-          companyId: deal.companyId,
-          amount: deal.amount,
-          probability: deal.probability,
-          expectedCloseDate: deal.expectedCloseDate?.split('T')[0] || '',
-          priority: deal.priority || 'MEDIUM',
-          type: deal.type || undefined,
-          source: deal.source || '',
-          customFields: deal.customFields || {},
-        });
-      }
-    }, [deal, mode, reset]);
-    
+
     const selectedPipelineId = watch('pipelineId');
 
     // ============================================
@@ -212,18 +189,6 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       queryFn: () => pipelineApi.searchPipelines({ isActive: true }, { page: 0, size: 100, sort: ['name,asc'] }),
       select: (data) => data.content,
     });
-
-    {/* COMENTAR TEMPORALMENTE PARA PROBAR HERENCIA AUTOMÁTICA: Se guarda la empresa
-      desde el Backend con la misma empresa del contact
-    const { data: companies, isLoading: isLoadingCompanies } = useQuery({
-        queryKey: ['companiesForSelect'],
-        queryFn: () => companyApi.searchCompanies(
-          { active: true }, // ✅ CORRECCIÓN: de 'isActive' a 'active'
-          { page: 0, size: 1000, sort: ['name,asc'] }
-        ),
-        select: (data) => data.content,
-      });
-    */}
     
     const stageOptions = useMemo(() => {
       if (!selectedPipelineId || !pipelines) return [];
@@ -240,21 +205,15 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       
       const options = getDealTypeSelectOptions(selectedPipeline.category);
 
-// ✅ DEBUG TEMPORAL
-console.log('Deal type options:', options);
-console.log('Pipeline category:', selectedPipeline.category);
-
-return options;
+      return options;
     }, [selectedPipelineId, pipelines]);
 
     // ✅ NUEVO: useEffect para sincronizar el tipo en modo edición
     useEffect(() => {
-      // Sync form values when editing and data loads
       if (mode === 'edit' && deal && pipelines) {
         const dealPipeline = pipelines.find(p => p.id === deal.pipelineId);
         if (dealPipeline && deal.type) {
-          //setValue('type', deal.type, { shouldValidate: true });
-          setValue('type', undefined, { shouldValidate: true });
+          setValue('type', deal.type, { shouldValidate: true }); // ✅ CORRECTO
         }
       }
     }, [deal, pipelines, mode, setValue]);
@@ -271,16 +230,10 @@ return options;
     // HANDLERS - ✅ VERSIÓN FINAL ROBUSTA
     // ============================================
     const handleFormSubmit = async (data: DealFormData) => {
-      console.log('🚀 handleFormSubmit ejecutado con data:', data);
       // Validaciones de negocio
       const selectedPipeline = pipelines?.find(p => p.id === data.pipelineId);
       if (selectedPipeline && categoryRequiresDealTypes(selectedPipeline.category) && !data.type) {
         // ✅ DEBUG TEMPORAL
-  console.log('Datos enviados al backend:', {
-    type: data.type,
-    typeOf: typeof data.type,
-    pipelineId: data.pipelineId
-  });
         toast.error('Debe seleccionar un Tipo de Oportunidad para este pipeline.');
         return;
       }
@@ -290,7 +243,6 @@ return options;
         toast.error('Debe seleccionar una etapa.');
         return;
       }
-      console.log('✅ Validaciones pasadas, enviando al backend...');
       try {
         if (mode === 'edit' && deal) {
           // ✅ UPDATE: Todos los campos son opcionales excepto version

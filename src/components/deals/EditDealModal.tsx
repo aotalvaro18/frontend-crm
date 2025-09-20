@@ -99,16 +99,22 @@ const EditDealModal: React.FC<EditDealModalProps> = ({
         </div>
         
         {/* Form Container */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          <DealForm
-            deal={deal}
-            mode="edit"
-            onSubmit={handleSubmit}
-            onCancel={handleClose}
-            loading={isUpdating(deal.id)} // ✅ FUNCIÓN QUE VERIFICA SI *ESTE* DEAL SE ESTÁ ACTUALIZANDO
-            showActions={true}
-          />
-        </div>
+<div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+  {deal && deal.id ? (
+    <DealForm
+      deal={deal}
+      mode="edit"
+      onSubmit={handleSubmit}
+      onCancel={handleClose}
+      loading={isUpdating(deal.id)}
+      showActions={true}
+    />
+  ) : (
+    <div className="flex items-center justify-center h-32">
+      <div className="text-app-gray-400">Cargando datos del deal...</div>
+    </div>
+  )}
+</div>
       </div>
     </div>
   );
