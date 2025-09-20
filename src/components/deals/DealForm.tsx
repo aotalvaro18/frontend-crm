@@ -159,21 +159,39 @@ const DealForm = React.forwardRef<HTMLFormElement, DealFormProps>(
       } = useForm<DealFormData>({
       resolver: zodResolver(dealFormSchema),
       defaultValues: useMemo(() => {
-        const baseValues = mode === 'edit' ? deal : initialValues;
+        if (mode === 'create') {
+          return {
+            title: initialValues?.title || '',
+            description: initialValues?.description || '',
+            pipelineId: initialValues?.pipelineId,
+            stageId: initialValues?.stageId,
+            contactId: initialValues?.contactId,
+            companyId: initialValues?.companyId,
+            amount: initialValues?.amount,
+            probability: initialValues?.probability,
+            expectedCloseDate: '',
+            priority: 'MEDIUM',
+            type: undefined,
+            source: '',
+            customFields: {},
+          };
+        }
+        
+        // Modo edición - usar deal directamente
         return {
-          title: baseValues?.title || '',
-          description: baseValues?.description || '',
-          pipelineId: baseValues?.pipelineId,
-          stageId: baseValues?.stageId,
-          contactId: baseValues?.contactId,
-          companyId: baseValues?.companyId,
-          amount: baseValues?.amount,
-          probability: baseValues?.probability,
-          expectedCloseDate: baseValues?.expectedCloseDate?.split('T')[0] || '',
-          priority: baseValues?.priority || 'MEDIUM',
-          type: baseValues?.type || undefined,
-          source: baseValues?.source || '',
-          customFields: (baseValues as Deal)?.customFields || {},
+          title: deal?.title || '',
+          description: deal?.description || '',
+          pipelineId: deal?.pipelineId,
+          stageId: deal?.stageId,
+          contactId: deal?.contactId,
+          companyId: deal?.companyId,
+          amount: deal?.amount,
+          probability: deal?.probability,
+          expectedCloseDate: deal?.expectedCloseDate?.split('T')[0] || '',
+          priority: deal?.priority || 'MEDIUM',
+          type: deal?.type || undefined,
+          source: deal?.source || '',
+          customFields: deal?.customFields || {},
         };
       }, [deal, initialValues, mode]),
     });
