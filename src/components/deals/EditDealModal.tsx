@@ -19,6 +19,7 @@ import { useDealOperations } from '@/hooks/useDeals';
 // DEAL COMPONENTS
 // ============================================
 import DealForm from '@/components/deals/DealForm';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 // ============================================
 // TYPES & UTILS
@@ -100,20 +101,14 @@ const EditDealModal: React.FC<EditDealModalProps> = ({
         
         {/* Form Container */}
 <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-  {deal && deal.id ? (
-    <DealForm
-      deal={deal}
-      mode="edit"
-      onSubmit={handleSubmit}
-      onCancel={handleClose}
-      loading={isUpdating(deal.id)}
-      showActions={true}
-    />
-  ) : (
-    <div className="flex items-center justify-center h-32">
-      <div className="text-app-gray-400">Cargando datos del deal...</div>
-    </div>
-  )}
+<DealForm
+  deal={deal}
+  mode="edit"
+  onSubmit={handleSubmit}
+  onCancel={handleClose}
+  loading={isUpdating(deal.id)}
+  showActions={true}
+/>
 </div>
       </div>
     </div>
